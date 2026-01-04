@@ -25,12 +25,24 @@ body{
 header{
   background:var(--brand);
   color:#fff;
-  padding:16px;
+  padding:14px 16px;
 }
-header .t{font-weight:900;font-size:16px;line-height:1.1}
-header .s{opacity:.92;font-size:12px;margin-top:4px}
-main{max-width:920px;margin:0 auto;padding:14px}
+.brandRow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.brandRow img{
+  height:42px;
+  width:auto;
+  background:#fff;
+  border-radius:10px;
+  padding:6px 8px;
+}
+.brandText .t{font-weight:900;font-size:16px;line-height:1.1;margin:0}
+.brandText .s{opacity:.92;font-size:12px;margin:4px 0 0}
 
+main{max-width:920px;margin:0 auto;padding:14px}
 .card{
   background:var(--card);
   border:1px solid var(--border);
@@ -76,15 +88,8 @@ button{
   font-weight:850;
   font-size:14px;
 }
-button.primary{
-  border:0;
-  background:var(--brand);
-  color:#fff;
-}
-button.ghost{
-  background:#e9eefb;
-  border:1px solid #d7deee;
-}
+button.primary{border:0;background:var(--brand);color:#fff}
+button.ghost{background:#e9eefb;border:1px solid #d7deee}
 
 .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
 .thumbs img{
@@ -113,8 +118,13 @@ button.ghost{
 
 <body>
 <header>
-  <div class="t">FORD PROPERTY SERVICES</div>
-  <div class="s">Condition Report</div>
+  <div class="brandRow">
+    <img src="logo.png" alt="Ford Property Services logo">
+    <div class="brandText">
+      <p class="t">FORD PROPERTY SERVICES</p>
+      <p class="s">Condition Report</p>
+    </div>
+  </div>
 </header>
 
 <main>
@@ -186,9 +196,7 @@ button.ghost{
       </div>
     </div>
 
-    <div class="small" style="margin-top:10px">
-      PDF includes up to 6 Before + 6 After photos.
-    </div>
+    <div class="small" style="margin-top:10px">PDF includes up to 6 Before + 6 After photos.</div>
   </div>
 
   <div class="card">
