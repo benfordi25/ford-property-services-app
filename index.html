@@ -1,187 +1,143 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en-GB">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#0b3a78" />
-  <title>Ford Property Services - Condition Report</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ford Property Services – Condition Report</title>
 
   <style>
-    :root{
-      --ink:#111;
-      --bg:#f6f7f9;
-      --card:#fff;
-      --accent:#0b3a78;
-      --radius:12px;
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 12px;
+      color: #111;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:var(--bg);
-      color:var(--ink);
-    }
-    .wrap{
-      max-width: 900px;
-      margin: 0 auto;
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      border: 1px solid #000;
       padding: 14px;
     }
 
-    /* HEADER (logo + name + Condition Report) */
-    .report-header{
-      background:var(--card);
-      border:2px solid var(--ink);
-      border-radius: var(--radius);
-      padding: 12px 14px;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.05);
-    }
-    .logo-box{
-      width: 78px;
-      height: 78px;
-      border:2px solid var(--ink);
-      border-radius: var(--radius);
-      background:#fff;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-      flex: 0 0 auto;
-      padding: 6px;
-    }
-    .logo-box img{
-      width:100%;
-      height:100%;
-      object-fit: contain;
-      display:block;
-    }
-    .brand-text{
-      display:flex;
-      flex-direction:column;
-      line-height:1.1;
-      min-width: 0;
-    }
-    .company-name{
-      font-size: 18px;
-      font-weight: 900;
-      letter-spacing:.2px;
-      word-break: break-word;
-    }
-    .report-title{
-      margin-top:6px;
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--accent);
-    }
-    .meta{
-      margin-left:auto;
-      text-align:right;
-      line-height:1.2;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .meta .pill{
-      display:inline-block;
-      padding:6px 10px;
-      border:2px solid var(--ink);
-      border-radius: 999px;
-      background:#fff;
-      margin-top:6px;
-      font-weight:900;
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
     }
 
-    /* CONTENT */
-    .card{
-      margin-top: 12px;
-      background:var(--card);
-      border:2px solid var(--ink);
-      border-radius: var(--radius);
-      padding: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.05);
+    .header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: bold;
     }
-    .row{display:flex; gap:10px; flex-wrap:wrap}
-    .field{flex:1 1 220px; display:flex; flex-direction:column; gap:6px}
-    label{font-size:12px; font-weight:800}
-    input, textarea, select{
-      border:2px solid var(--ink);
-      border-radius: 10px;
-      padding:10px;
-      font-size:14px;
-      background:#fff;
-    }
-    textarea{min-height:90px; resize:vertical}
-    .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
-    button{
-      border:2px solid var(--ink);
-      border-radius: 12px;
-      padding: 10px 12px;
+
+    .header h2 {
+      margin: 4px 0 0;
       font-size: 14px;
-      font-weight: 900;
-      background:#fff;
-      cursor:pointer;
+      font-weight: bold;
     }
-    button.primary{
-      background: var(--accent);
-      color:#fff;
-      border-color: var(--accent);
+
+    .meta {
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: bold;
     }
-    .hint{font-size:12px; opacity:.8; margin-top:8px}
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .field {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #000;
+      font-size: 14px;
+    }
+
+    textarea {
+      min-height: 80px;
+    }
+
+    .signature-box {
+      margin-top: 14px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 140px;
+      border: 1px solid #000;
+      background: #fff;
+      touch-action: none;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      font-weight: bold;
+      border: 1px solid #000;
+      background: #fff;
+      cursor: pointer;
+    }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
+  <div class="container">
 
-    <header class="report-header">
-      <div class="logo-box">
-        <img id="companyLogo" src="assets/logo.png" alt="Ford Property Services" />
+    <div class="header">
+      <h1>Ford Property Services</h1>
+      <h2>Condition Report</h2>
+      <div class="meta" id="reportMeta">Report ID: —</div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Property Address</label>
+        <input id="property">
       </div>
 
-      <div class="brand-text">
-        <div class="company-name" id="companyName">Ford Property Services</div>
-        <div class="report-title">Condition Report</div>
+      <div class="field">
+        <label>Letting Agent</label>
+        <input id="agent">
       </div>
 
-      <div class="meta">
-        <div id="todayUk"></div>
-        <div class="pill" id="reportId">Report ID: —</div>
+      <div class="field">
+        <label>Date (UK)</label>
+        <input id="date">
       </div>
-    </header>
+    </div>
 
-    <section class="card">
-      <div class="row">
-        <div class="field">
-          <label for="propertyAddress">Property address</label>
-          <input id="propertyAddress" placeholder="e.g. 10 High Street, London" />
-        </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="notes"></textarea>
+    </div>
 
-        <div class="field">
-          <label for="agentName">Letting agent</label>
-          <input id="agentName" placeholder="e.g. ABC Lettings" />
-        </div>
+    <div class="signature-box">
+      <label>Inspector Signature</label>
+      <canvas id="signature"></canvas>
+      <button type="button" onclick="clearSignature()">Clear Signature</button>
+    </div>
 
-        <div class="field">
-          <label for="reportDate">Report date (UK)</label>
-          <input id="reportDate" />
-        </div>
-      </div>
-
-      <div class="field" style="margin-top:10px;">
-        <label for="notes">Notes</label>
-        <textarea id="notes" placeholder="Add any notes here…"></textarea>
-      </div>
-
-      <div class="btns">
-        <button id="saveBtn">Save</button>
-        <button class="primary" id="generateBtn">Generate PDF (next step)</button>
-      </div>
-
-      <div class="hint">
-        Logo path used: <b>assets/logo.png</b> — If you see text instead of the logo, the image isn’t in the right folder or the name doesn’t match.
-      </div>
-    </section>
+    <button type="button" onclick="saveReport()">Save Report (new ID)</button>
 
   </div>
 
