@@ -1,133 +1,99 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#0b4aa2" />
-  <title>Ford Property Services – Completion Report</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <style>
-    :root{--brand:#0b4aa2;--bg:#f5f7fb;--card:#fff;--text:#0b1220}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
-    header{background:var(--brand);color:#fff;padding:14px 16px}
-    header .t{font-weight:900;font-size:16px}
-    header .s{opacity:.9;font-size:12px}
-    main{max-width:820px;margin:0 auto;padding:14px}
-    .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 6px 18px rgba(12,18,32,.08);margin-bottom:12px}
-    label{display:block;font-size:12px;font-weight:750;margin:10px 0 6px}
-    input[type=text],input[type=date],textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #d7deee;font-size:14px}
-    textarea{min-height:110px;resize:vertical}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media(max-width:560px){.row{grid-template-columns:1fr}}
-    .checks{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-    .check{display:flex;gap:8px;align-items:center;font-size:14px}
-    .photos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media(max-width:560px){.photos{grid-template-columns:1fr}}
-    .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-    .thumbs img{width:100%;height:92px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f6}
-    .btnbar{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    button{width:100%;padding:12px;border:0;border-radius:12px;font-weight:900;font-size:15px}
-    .primary{background:var(--brand);color:#fff}
-    .ghost{background:#e9eefb;color:#123}
-    .hint{font-size:12px;opacity:.8;margin-top:8px}
-    .small{font-size:12px;opacity:.9}
-    .photoBtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .mini{padding:10px;border-radius:10px;font-weight:800;font-size:14px}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b4aa2">
+<title>Ford Property Services – Completion Report</title>
+
+<style>
+:root{--brand:#0b4aa2;--bg:#f5f7fb;--card:#fff}
+body{margin:0;font-family:system-ui;background:var(--bg)}
+header{background:var(--brand);color:#fff;padding:14px}
+main{max-width:820px;margin:auto;padding:14px}
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px}
+label{font-size:12px;font-weight:700;display:block;margin-top:10px}
+input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #ccc}
+textarea{min-height:90px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.row{grid-template-columns:1fr}}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+button{padding:10px;border-radius:10px;border:0;font-weight:800}
+.primary{background:#0b4aa2;color:#fff}
+.ghost{background:#e9eefb}
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.thumbs img{width:100%;height:90px;object-fit:cover;border-radius:8px}
+</style>
 </head>
+
 <body>
-  <header>
-    <div class="t">FORD PROPERTY SERVICES</div>
-    <div class="s">Completion Report App</div>
-  </header>
+<header>
+  <strong>FORD PROPERTY SERVICES</strong><br>
+  Completion Report
+</header>
 
-  <main>
-    <div class="card">
-      <div class="small">Install: in Chrome tap <b>⋮</b> → <b>Add to Home screen</b>.</div>
-    </div>
+<main>
 
-    <div class="card">
-      <h3 style="margin:0 0 8px">Job Details</h3>
+<div class="card">
+<label>Letting Agent</label>
+<input id="agent">
 
-      <label>Letting Agent</label>
-      <input id="agent" type="text" placeholder="e.g. ABC Lettings" />
+<label>Property Address</label>
+<input id="address">
 
-      <label>Property Address</label>
-      <input id="address" type="text" placeholder="e.g. 12 High St, London" />
+<div class="row">
+  <div>
+    <label>Job Reference</label>
+    <input id="ref">
+  </div>
+  <div>
+    <label>Date Completed</label>
+    <input id="date" type="date">
+  </div>
+</div>
 
-      <div class="row">
-        <div>
-          <label>Job Reference</label>
-          <input id="ref" type="text" placeholder="e.g. FPS-00123" />
-        </div>
-        <div>
-          <label>Date Completed</label>
-          <input id="date" type="date" />
-        </div>
-      </div>
+<label>Works Carried Out</label>
+<textarea id="works"></textarea>
 
-      <label>Works Carried Out</label>
-      <textarea id="works" placeholder="Describe works carried out, parts fitted, tests done, etc."></textarea>
+<label>
+<input type="checkbox" id="beforeTick"> Before photos taken
+</label>
+<label>
+<input type="checkbox" id="afterTick"> After photos taken
+</label>
 
-      <label>Photo Evidence</label>
-      <div class="checks">
-        <div class="check"><input id="beforeTick" type="checkbox" /> <span>Before photos taken</span></div>
-        <div class="check"><input id="afterTick" type="checkbox" /> <span>After photos taken</span></div>
-      </div>
+<label>Extra Photo / Video Attachments (file names)</label>
+<textarea id="attachments"></textarea>
+</div>
 
-      <label style="margin-top:14px;">Extra Photo / Video Attachments (file names)</label>
-      <textarea id="attachments" placeholder="List attached files the agent will click in the email (e.g. IMG_1021.jpg – Before; VID_0004.mp4 – Leak test)"></textarea>
-    </div>
+<div class="card">
+<h3>Before Photos</h3>
+<div class="btns">
+<button class="ghost" id="beforeGallery">Choose photos</button>
+<button class="ghost" id="beforeCamera">Take photo</button>
+</div>
+<input id="beforePick" type="file" accept="image/*" multiple hidden>
+<input id="beforeCam" type="file" accept="image/*" capture="environment" multiple hidden>
+<div id="beforeThumbs" class="thumbs"></div>
+</div>
 
-    <div class="card">
-      <h3 style="margin:0 0 8px">Photos</h3>
+<div class="card">
+<h3>After Photos</h3>
+<div class="btns">
+<button class="ghost" id="afterGallery">Choose photos</button>
+<button class="ghost" id="afterCamera">Take photo</button>
+</div>
+<input id="afterPick" type="file" accept="image/*" multiple hidden>
+<input id="afterCam" type="file" accept="image/*" capture="environment" multiple hidden>
+<div id="afterThumbs" class="thumbs"></div>
+</div>
 
-      <div class="photos">
-        <div>
-          <label>Before photos</label>
+<div class="card">
+<button class="primary" id="pdfBtn">Generate PDF</button>
+</div>
 
-          <!-- Gallery picker -->
-          <div class="photoBtns">
-            <button class="mini ghost" type="button" id="beforePickBtn">Choose photos</button>
-            <button class="mini ghost" type="button" id="beforeCamBtn">Take photo</button>
-          </div>
+</main>
 
-          <!-- Hidden inputs (one for gallery, one for camera) -->
-          <input id="beforePick" type="file" accept="image/*" multiple style="display:none" />
-          <input id="beforeCam" type="file" accept="image/*" capture="environment" multiple style="display:none" />
-
-          <div id="beforeThumbs" class="thumbs"></div>
-        </div>
-
-        <div>
-          <label>After photos</label>
-
-          <div class="photoBtns">
-            <button class="mini ghost" type="button" id="afterPickBtn">Choose photos</button>
-            <button class="mini ghost" type="button" id="afterCamBtn">Take photo</button>
-          </div>
-
-          <input id="afterPick" type="file" accept="image/*" multiple style="display:none" />
-          <input id="afterCam" type="file" accept="image/*" capture="environment" multiple style="display:none" />
-
-          <div id="afterThumbs" class="thumbs"></div>
-        </div>
-      </div>
-
-      <div class="hint">Photos stay on your phone until you generate the PDF.</div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px">Export</h3>
-      <div class="btnbar">
-        <button class="ghost" id="clearBtn" type="button">Clear</button>
-        <button class="primary" id="pdfBtn" type="button">Generate PDF</button>
-      </div>
-      <div class="hint">After generating, Android will open Print. Choose <b>Save as PDF</b> then share.</div>
-    </div>
-  </main>
-
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
