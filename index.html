@@ -1,146 +1,222 @@
-<!DOCTYPE html>
-<html lang="en-GB">
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ford Property Services – Condition Report</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#0b4aa2" />
+<title>Ford Property Services – Condition Report</title>
 
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f4f4f4;
-      margin: 0;
-      padding: 12px;
-      color: #111;
-    }
+<style>
+:root{
+  --brand:#0b4aa2;
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --border:#d7deee;
+  --text:#0b1220;
+  --muted:#5b667a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  background:var(--bg);
+  color:var(--text);
+}
+header{
+  background:var(--brand);
+  color:#fff;
+  padding:16px;
+}
+header .t{font-weight:900;font-size:16px;line-height:1.1}
+header .s{opacity:.92;font-size:12px;margin-top:4px}
+main{max-width:920px;margin:0 auto;padding:14px}
 
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background: #fff;
-      border: 1px solid #000;
-      padding: 14px;
-    }
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:12px;
+  box-shadow:0 6px 18px rgba(12,18,32,.08);
+}
+h3{margin:0 0 10px}
+label{display:block;font-size:12px;font-weight:750;margin:10px 0 6px;color:#1b2433}
+input, textarea{
+  width:100%;
+  padding:11px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  font-size:14px;
+  background:#fff;
+}
+textarea{min-height:100px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:640px){.row{grid-template-columns:1fr}}
 
-    .header {
-      text-align: center;
-      border-bottom: 2px solid #000;
-      padding-bottom: 10px;
-      margin-bottom: 12px;
-    }
+.tickrow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:10px;
+  font-size:14px;
+  font-weight:750;
+  color:#1b2433;
+}
+.tickrow input{width:20px;height:20px;margin:0}
 
-    .header h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: bold;
-    }
+.photoGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.photoGrid{grid-template-columns:1fr}}
 
-    .header h2 {
-      margin: 4px 0 0;
-      font-size: 14px;
-      font-weight: bold;
-    }
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+button{
+  padding:11px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:#fff;
+  font-weight:850;
+  font-size:14px;
+}
+button.primary{
+  border:0;
+  background:var(--brand);
+  color:#fff;
+}
+button.ghost{
+  background:#e9eefb;
+  border:1px solid #d7deee;
+}
 
-    .meta {
-      margin-top: 6px;
-      font-size: 12px;
-      font-weight: bold;
-    }
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.thumbs img{
+  width:100%;
+  height:96px;
+  object-fit:cover;
+  border-radius:10px;
+  border:1px solid var(--border);
+}
 
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .field {
-      flex: 1;
-      min-width: 200px;
-    }
-
-    label {
-      font-size: 12px;
-      font-weight: bold;
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    input, textarea {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #000;
-      font-size: 14px;
-    }
-
-    textarea {
-      min-height: 80px;
-    }
-
-    .signature-box {
-      margin-top: 14px;
-    }
-
-    canvas {
-      width: 100%;
-      height: 140px;
-      border: 1px solid #000;
-      background: #fff;
-      touch-action: none;
-    }
-
-    button {
-      margin-top: 10px;
-      padding: 10px;
-      font-weight: bold;
-      border: 1px solid #000;
-      background: #fff;
-      cursor: pointer;
-    }
-  </style>
+.small{font-size:12px;color:var(--muted)}
+.sigWrap{
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  background:#fff;
+}
+#sig{
+  width:100%;
+  height:180px;
+  display:block;
+  touch-action:none;
+}
+</style>
 </head>
 
 <body>
-  <div class="container">
+<header>
+  <div class="t">FORD PROPERTY SERVICES</div>
+  <div class="s">Condition Report</div>
+</header>
 
-    <div class="header">
-      <h1>Ford Property Services</h1>
-      <h2>Condition Report</h2>
-      <div class="meta" id="reportMeta">Report ID: —</div>
-    </div>
+<main>
+  <div class="card">
+    <div class="small">Tip: In Chrome tap <b>⋮</b> → <b>Add to Home screen</b> to install.</div>
+  </div>
+
+  <div class="card">
+    <h3>Job Details</h3>
+
+    <label>Letting Agent</label>
+    <input id="agent" placeholder="e.g. ABC Lettings">
+
+    <label>Property Address</label>
+    <input id="address" placeholder="e.g. 12 High St, London">
 
     <div class="row">
-      <div class="field">
-        <label>Property Address</label>
-        <input id="property">
+      <div>
+        <label>Job Reference</label>
+        <input id="ref" placeholder="e.g. FPS-00123">
       </div>
-
-      <div class="field">
-        <label>Letting Agent</label>
-        <input id="agent">
-      </div>
-
-      <div class="field">
-        <label>Date (UK)</label>
-        <input id="date">
+      <div>
+        <label>Date Completed</label>
+        <input id="date" type="date">
       </div>
     </div>
 
-    <div class="field">
-      <label>Notes</label>
-      <textarea id="notes"></textarea>
+    <label>Works / Condition Notes</label>
+    <textarea id="works" placeholder="Describe condition, defects, work completed, parts fitted, tests done, etc."></textarea>
+
+    <div class="tickrow">
+      <input type="checkbox" id="beforeTick">
+      <label for="beforeTick" style="margin:0">Before photos taken</label>
     </div>
 
-    <div class="signature-box">
-      <label>Inspector Signature</label>
-      <canvas id="signature"></canvas>
-      <button type="button" onclick="clearSignature()">Clear Signature</button>
+    <div class="tickrow">
+      <input type="checkbox" id="afterTick">
+      <label for="afterTick" style="margin:0">After photos taken</label>
     </div>
 
-    <button type="button" onclick="saveReport()">Save Report (new ID)</button>
+    <label>Extra Photo / Video Attachments (file names)</label>
+    <textarea id="attachments" placeholder="IMG_1021.jpg – Before; VID_0004.mp4 – Leak test"></textarea>
+  </div>
 
+  <div class="card">
+    <h3>Photos</h3>
+
+    <div class="photoGrid">
+      <div>
+        <label>Before Photos</label>
+        <div class="btns">
+          <button class="ghost" type="button" id="beforeGallery">Choose photos</button>
+          <button class="ghost" type="button" id="beforeCamera">Take photo</button>
+        </div>
+        <input id="beforePick" type="file" accept="image/*" multiple hidden>
+        <input id="beforeCam" type="file" accept="image/*" capture="environment" multiple hidden>
+        <div id="beforeThumbs" class="thumbs"></div>
+      </div>
+
+      <div>
+        <label>After Photos</label>
+        <div class="btns">
+          <button class="ghost" type="button" id="afterGallery">Choose photos</button>
+          <button class="ghost" type="button" id="afterCamera">Take photo</button>
+        </div>
+        <input id="afterPick" type="file" accept="image/*" multiple hidden>
+        <input id="afterCam" type="file" accept="image/*" capture="environment" multiple hidden>
+        <div id="afterThumbs" class="thumbs"></div>
+      </div>
+    </div>
+
+    <div class="small" style="margin-top:10px">
+      PDF includes up to 6 Before + 6 After photos.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Signature</h3>
+    <div class="small">Sign on screen with your finger. Signature is embedded into the PDF.</div>
+
+    <div class="sigWrap" style="margin-top:10px;">
+      <canvas id="sig"></canvas>
+    </div>
+
+    <div class="btns" style="margin-top:10px;">
+      <button class="ghost" type="button" id="sigClear">Clear signature</button>
+      <button class="ghost" type="button" id="sigUndo">Undo last stroke</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Export</h3>
+    <div class="row">
+      <button class="ghost" type="button" id="clearBtn">Clear</button>
+      <button class="primary" type="button" id="pdfBtn">Generate PDF</button>
+    </div>
+    <div class="small" style="margin-top:10px">
+      Android opens Print → choose <b>Save as PDF</b> → then share.
+    </div>
   </div>
 
   <script src="app.js"></script>
+</main>
 </body>
 </html>
