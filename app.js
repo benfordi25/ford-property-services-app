@@ -202,7 +202,7 @@ pdfBtn.onclick = async () => {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Condition Report</title>
+<title>Completion Report</title>
 <style>
   :root { --brand:#0b4aa2; --border:#cfd7e6; --muted:#5b667a; }
   body{font-family:Arial,Helvetica,sans-serif;margin:22px;color:#111}
