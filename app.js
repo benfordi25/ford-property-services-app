@@ -1,16 +1,20 @@
 // Ford Property Services – Completion Report App
-// Simple PDF export using the browser print-to-PDF (most reliable on Android)
+// Gallery + Camera pickers + print-to-PDF export (most reliable on Android)
 
 const $ = (id) => document.getElementById(id);
 
 const state = { before: [], after: [] };
 
-function readFiles(input, targetArr, thumbsEl) {
-  const files = Array.from(input.files || []);
-  targetArr.length = 0;
+function readFiles(fileList, targetArr, thumbsEl) {
+  const files = Array.from(fileList || []);
+  // append to existing so you can add in multiple taps
+  files.forEach((f) => targetArr.push(f));
+  renderThumbs(targetArr, thumbsEl);
+}
+
+function renderThumbs(files, thumbsEl) {
   thumbsEl.innerHTML = "";
   files.forEach((f) => {
-    targetArr.push(f);
     const img = document.createElement("img");
     img.alt = f.name;
     img.loading = "lazy";
@@ -19,19 +23,27 @@ function readFiles(input, targetArr, thumbsEl) {
   });
 }
 
-function escapeHtml(s="") {
-  return s.replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+function escapeHtml(s = "") {
+  return s.replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[m]));
 }
 
 function formatDate(d) {
   if (!d) return "";
-  try {
-    const dt = new Date(d);
-    return dt.toLocaleDateString();
-  } catch { return d; }
+  try { return new Date(d).toLocaleDateString(); }
+  catch { return d; }
 }
 
-function buildReportHtml() {
+function filesToDataUrls(files, limit = 6) {
+  return Promise.all(files.slice(0, limit).map(file => new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.readAsDataURL(file);
+  })));
+}
+
+async function buildReportHtml() {
   const agent = escapeHtml($("agent").value.trim());
   const address = escapeHtml($("address").value.trim());
   const ref = escapeHtml($("ref").value.trim());
@@ -41,20 +53,14 @@ function buildReportHtml() {
   const beforeTick = $("beforeTick").checked ? "✔" : "✘";
   const afterTick = $("afterTick").checked ? "✔" : "✘";
 
-  const imgToDataUrlPromises = (files) =>
-    files.slice(0, 6).map((file) => new Promise((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.readAsDataURL(file);
-    }));
+  const [beforeImgs, afterImgs] = await Promise.all([
+    filesToDataUrls(state.before, 6),
+    filesToDataUrls(state.after, 6),
+  ]);
 
-  return Promise.all([
-    Promise.all(imgToDataUrlPromises(state.before)),
-    Promise.all(imgToDataUrlPromises(state.after)),
-  ]).then(([beforeImgs, afterImgs]) => {
-    const imgGrid = (arr) => arr.map(src => `<img src="${src}" />`).join("");
+  const imgGrid = (arr) => arr.map(src => `<img src="${src}" />`).join("");
 
-    return `<!doctype html>
+  return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -105,12 +111,12 @@ function buildReportHtml() {
 
   <div class="box">
     <div class="label">Before Photos (up to 6)</div>
-    <div class="photos">${imgGrid(beforeImgs) || "<div class='val'>&nbsp;</div>"}</div>
+    <div class="photos">${beforeImgs.length ? imgGrid(beforeImgs) : "<div class='val'>&nbsp;</div>"}</div>
   </div>
 
   <div class="box">
     <div class="label">After Photos (up to 6)</div>
-    <div class="photos">${imgGrid(afterImgs) || "<div class='val'>&nbsp;</div>"}</div>
+    <div class="photos">${afterImgs.length ? imgGrid(afterImgs) : "<div class='val'>&nbsp;</div>"}</div>
   </div>
 
   <div class="box">
@@ -126,27 +132,42 @@ function buildReportHtml() {
   </div>
 
   <div class="noprint" style="margin-top:10px;color:#666;font-size:11px">
-    Tip: use your phone's Share button after saving the PDF.
+    Tip: Choose <b>Save as PDF</b> in Android Print, then share the saved PDF.
   </div>
 </body>
 </html>`;
-  });
 }
 
-$("beforePhotos").addEventListener("change", (e) => readFiles(e.target, state.before, $("beforeThumbs")));
-$("afterPhotos").addEventListener("change", (e) => readFiles(e.target, state.after, $("afterThumbs")));
+// Wire up buttons to hidden inputs
+$("beforePickBtn").addEventListener("click", () => $("beforePick").click());
+$("beforeCamBtn").addEventListener("click", () => $("beforeCam").click());
+$("afterPickBtn").addEventListener("click", () => $("afterPick").click());
+$("afterCamBtn").addEventListener("click", () => $("afterCam").click());
 
+// Handle selection
+$("beforePick").addEventListener("change", (e) => readFiles(e.target.files, state.before, $("beforeThumbs")));
+$("beforeCam").addEventListener("change", (e) => readFiles(e.target.files, state.before, $("beforeThumbs")));
+$("afterPick").addEventListener("change", (e) => readFiles(e.target.files, state.after, $("afterThumbs")));
+$("afterCam").addEventListener("change", (e) => readFiles(e.target.files, state.after, $("afterThumbs")));
+
+// Clear
 $("clearBtn").addEventListener("click", () => {
   ["agent","address","ref","date","works","attachments"].forEach(id => $(id).value = "");
   $("beforeTick").checked = false;
   $("afterTick").checked = false;
-  $("beforePhotos").value = "";
-  $("afterPhotos").value = "";
-  $("beforeThumbs").innerHTML = "";
-  $("afterThumbs").innerHTML = "";
-  state.before = []; state.after = [];
+
+  state.before.length = 0;
+  state.after.length = 0;
+  renderThumbs(state.before, $("beforeThumbs"));
+  renderThumbs(state.after, $("afterThumbs"));
+
+  $("beforePick").value = "";
+  $("beforeCam").value = "";
+  $("afterPick").value = "";
+  $("afterCam").value = "";
 });
 
+// Generate PDF
 $("pdfBtn").addEventListener("click", async () => {
   const html = await buildReportHtml();
   const w = window.open("", "_blank");
@@ -157,7 +178,6 @@ $("pdfBtn").addEventListener("click", async () => {
   w.document.open();
   w.document.write(html);
   w.document.close();
-  // Give the page a moment to render images
   setTimeout(() => w.print(), 350);
 });
 
