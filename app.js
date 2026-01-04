@@ -141,7 +141,7 @@ function photoGridHTML(dataUrls) {
   return dataUrls.map(src => `<div class="ph"><img src="${src}"></div>`).join("");
 }
 
-// ---------------- Report ID: UK Date + Random (never resets) ----------------
+// ---------------- Report ID: UK Date + Random (changes every time) ----------------
 function ukDateParts(d=new Date()){
   const dd = String(d.getDate()).padStart(2,"0");
   const mm = String(d.getMonth()+1).padStart(2,"0");
@@ -149,11 +149,11 @@ function ukDateParts(d=new Date()){
   return { dd, mm, yyyy };
 }
 function randomCode(len=5){
-  // avoids confusing characters
   const chars = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
   let out = "";
   const arr = new Uint32Array(len);
-  (crypto?.getRandomValues ? crypto.getRandomValues(arr) : arr.fill(Math.floor(Math.random()*0xffffffff)));
+  if (crypto?.getRandomValues) crypto.getRandomValues(arr);
+  else for (let i=0;i<len;i++) arr[i] = Math.floor(Math.random()*0xffffffff);
   for (let i=0;i<len;i++) out += chars[arr[i] % chars.length];
   return out;
 }
@@ -181,14 +181,17 @@ clearBtn.onclick = () => {
   redrawSig();
 };
 
-// ---------------- Professional PDF Export ----------------
+// ---------------- Professional PDF Export (with logo + Condition Report) ----------------
 pdfBtn.onclick = async () => {
   const beforeImgs = await filesToDataURLs(state.before, 6);
   const afterImgs  = await filesToDataURLs(state.after, 6);
   const sig = signatureDataUrl();
 
   const reportId = makeReportId();
-  const finalised = new Date().toLocaleString("en-GB"); // UK style date/time
+  const finalised = new Date().toLocaleString("en-GB");
+
+  // absolute URL so the print window can load it
+  const logoUrl = new URL("logo.png", window.location.href).href;
 
   const w = window.open("", "_blank");
   if (!w) {
@@ -207,8 +210,10 @@ pdfBtn.onclick = async () => {
   :root { --brand:#0b4aa2; --border:#cfd7e6; --muted:#5b667a; }
   body{font-family:Arial,Helvetica,sans-serif;margin:22px;color:#111}
   .hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}
-  .hdr .name{font-size:18px;font-weight:800;margin:0}
-  .hdr .sub{margin:4px 0 0;color:var(--muted);font-size:12px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand img{height:46px;width:auto;border:1px solid var(--border);border-radius:10px;padding:6px 8px;background:#fff}
+  .brand .name{font-size:16px;font-weight:800;margin:0}
+  .brand .sub{margin:4px 0 0;color:var(--muted);font-size:12px}
   .pill{border:1px solid var(--border);padding:8px 10px;border-radius:10px;font-size:12px;color:#111}
   .stamp{border:2px solid var(--brand); color:var(--brand); padding:6px 10px; border-radius:10px; font-weight:800; font-size:12px; text-align:center}
   .section{border:1px solid var(--border);border-radius:12px;padding:12px;margin:12px 0}
@@ -232,9 +237,12 @@ pdfBtn.onclick = async () => {
 <body>
 
 <div class="hdr">
-  <div>
-    <p class="name">FORD PROPERTY SERVICES</p>
-    <p class="sub">Condition Report</p>
+  <div class="brand">
+    <img src="${logoUrl}" alt="Ford Property Services logo">
+    <div>
+      <p class="name">FORD PROPERTY SERVICES</p>
+      <p class="sub">Condition Report</p>
+    </div>
   </div>
   <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
     <div class="stamp">FINAL / COMPLETED</div>
