@@ -12,55 +12,47 @@
   --bg:#f5f7fb;
   --card:#ffffff;
   --border:#d7deee;
+  --text:#0b1220;
+  --muted:#5b667a;
 }
 *{box-sizing:border-box}
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
   background:var(--bg);
+  color:var(--text);
 }
 header{
   background:var(--brand);
   color:#fff;
   padding:16px;
-  font-weight:900;
 }
-main{
-  max-width:820px;
-  margin:auto;
-  padding:14px;
-}
+header .t{font-weight:900;font-size:16px;line-height:1.1}
+header .s{opacity:.9;font-size:12px;margin-top:4px}
+main{max-width:880px;margin:0 auto;padding:14px}
 .card{
   background:var(--card);
+  border:1px solid var(--border);
   border-radius:14px;
   padding:14px;
   margin-bottom:12px;
+  box-shadow:0 6px 18px rgba(12,18,32,.08);
 }
-label{
-  font-size:12px;
-  font-weight:700;
-  display:block;
-  margin-top:10px;
-}
+h3{margin:0 0 10px}
+label{display:block;font-size:12px;font-weight:750;margin:10px 0 6px;color:#1b2433}
 input, textarea{
   width:100%;
   padding:11px;
   border-radius:10px;
   border:1px solid var(--border);
   font-size:14px;
+  background:#fff;
 }
-textarea{min-height:90px}
+textarea{min-height:100px;resize:vertical}
 
-.row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-@media(max-width:600px){
-  .row{grid-template-columns:1fr}
-}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:640px){.row{grid-template-columns:1fr}}
 
-/* Tick box alignment */
 .tickrow{
   display:flex;
   align-items:center;
@@ -68,72 +60,72 @@ textarea{min-height:90px}
   margin-top:10px;
   font-size:14px;
   font-weight:700;
+  color:#1b2433;
 }
 .tickrow input{
-  width:20px;
-  height:20px;
-  margin:0;
+  width:20px;height:20px;margin:0;
 }
 
-/* Photo buttons */
-.btns{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  margin-top:8px;
-}
+.photoGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.photoGrid{grid-template-columns:1fr}}
+
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 button{
   padding:11px;
   border-radius:10px;
-  border:0;
-  font-weight:800;
+  border:1px solid var(--border);
+  background:#fff;
+  font-weight:850;
   font-size:14px;
 }
-.primary{
+button.primary{
+  border:0;
   background:var(--brand);
   color:#fff;
 }
-.ghost{
+button.ghost{
   background:#e9eefb;
+  border:1px solid #d7deee;
 }
 
-/* Thumbnails */
-.thumbs{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:6px;
-  margin-top:8px;
-}
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
 .thumbs img{
   width:100%;
-  height:90px;
+  height:96px;
   object-fit:cover;
-  border-radius:8px;
+  border-radius:10px;
+  border:1px solid var(--border);
 }
+
+.small{font-size:12px;color:var(--muted)}
 </style>
 </head>
 
 <body>
-
 <header>
-  FORD PROPERTY SERVICES<br>
-  Completion Report
+  <div class="t">FORD PROPERTY SERVICES</div>
+  <div class="s">Completion Report (Mobile App)</div>
 </header>
 
 <main>
 
-<!-- JOB DETAILS -->
 <div class="card">
+  <div class="small">Tip: In Chrome tap <b>⋮</b> → <b>Add to Home screen</b> to install.</div>
+</div>
+
+<div class="card">
+  <h3>Job Details</h3>
+
   <label>Letting Agent</label>
-  <input id="agent">
+  <input id="agent" placeholder="e.g. ABC Lettings">
 
   <label>Property Address</label>
-  <input id="address">
+  <input id="address" placeholder="e.g. 12 High St, London">
 
   <div class="row">
     <div>
       <label>Job Reference</label>
-      <input id="ref">
+      <input id="ref" placeholder="e.g. FPS-00123">
     </div>
     <div>
       <label>Date Completed</label>
@@ -142,7 +134,7 @@ button{
   </div>
 
   <label>Works Carried Out</label>
-  <textarea id="works"></textarea>
+  <textarea id="works" placeholder="Describe works carried out, parts fitted, tests done, etc."></textarea>
 
   <div class="tickrow">
     <input type="checkbox" id="beforeTick">
@@ -155,46 +147,53 @@ button{
   </div>
 
   <label>Extra Photo / Video Attachments (file names)</label>
-  <textarea id="attachments"></textarea>
+  <textarea id="attachments" placeholder="IMG_1021.jpg – Before; VID_0004.mp4 – Leak test"></textarea>
 </div>
 
-<!-- BEFORE PHOTOS -->
 <div class="card">
-  <strong>Before Photos</strong>
+  <h3>Photos</h3>
 
-  <div class="btns">
-    <button class="ghost" id="beforeGallery">Choose photos</button>
-    <button class="ghost" id="beforeCamera">Take photo</button>
+  <div class="photoGrid">
+    <div>
+      <label>Before Photos</label>
+      <div class="btns">
+        <button class="ghost" type="button" id="beforeGallery">Choose photos</button>
+        <button class="ghost" type="button" id="beforeCamera">Take photo</button>
+      </div>
+      <input id="beforePick" type="file" accept="image/*" multiple hidden>
+      <input id="beforeCam" type="file" accept="image/*" capture="environment" multiple hidden>
+      <div id="beforeThumbs" class="thumbs"></div>
+    </div>
+
+    <div>
+      <label>After Photos</label>
+      <div class="btns">
+        <button class="ghost" type="button" id="afterGallery">Choose photos</button>
+        <button class="ghost" type="button" id="afterCamera">Take photo</button>
+      </div>
+      <input id="afterPick" type="file" accept="image/*" multiple hidden>
+      <input id="afterCam" type="file" accept="image/*" capture="environment" multiple hidden>
+      <div id="afterThumbs" class="thumbs"></div>
+    </div>
   </div>
 
-  <input id="beforePick" type="file" accept="image/*" multiple hidden>
-  <input id="beforeCam" type="file" accept="image/*" capture="environment" multiple hidden>
-
-  <div id="beforeThumbs" class="thumbs"></div>
-</div>
-
-<!-- AFTER PHOTOS -->
-<div class="card">
-  <strong>After Photos</strong>
-
-  <div class="btns">
-    <button class="ghost" id="afterGallery">Choose photos</button>
-    <button class="ghost" id="afterCamera">Take photo</button>
+  <div class="small" style="margin-top:10px">
+    Photos stay on your phone until you generate the PDF. (PDF includes up to 6 Before + 6 After.)
   </div>
-
-  <input id="afterPick" type="file" accept="image/*" multiple hidden>
-  <input id="afterCam" type="file" accept="image/*" capture="environment" multiple hidden>
-
-  <div id="afterThumbs" class="thumbs"></div>
 </div>
 
-<!-- EXPORT -->
 <div class="card">
-  <button class="primary" id="pdfBtn">Generate PDF</button>
+  <h3>Export</h3>
+  <div class="row">
+    <button class="ghost" type="button" id="clearBtn">Clear</button>
+    <button class="primary" type="button" id="pdfBtn">Generate PDF</button>
+  </div>
+  <div class="small" style="margin-top:10px">
+    Android will open Print → choose <b>Save as PDF</b> → then share the saved file.
+  </div>
 </div>
-
-</main>
 
 <script src="app.js"></script>
+</main>
 </body>
 </html>
