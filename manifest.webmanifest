@@ -1,0 +1,9 @@
+{
+  "name": "Ford Property Services – Completion Report",
+  "short_name": "FPS Report",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#0b4aa2",
+  "icons": []
+}
