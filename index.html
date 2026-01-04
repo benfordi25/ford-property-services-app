@@ -1,230 +1,190 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="theme-color" content="#0b4aa2" />
-<title>Ford Property Services – Condition Report</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b3a78" />
+  <title>Ford Property Services - Condition Report</title>
 
-<style>
-:root{
-  --brand:#0b4aa2;
-  --bg:#f5f7fb;
-  --card:#ffffff;
-  --border:#d7deee;
-  --text:#0b1220;
-  --muted:#5b667a;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  background:var(--bg);
-  color:var(--text);
-}
-header{
-  background:var(--brand);
-  color:#fff;
-  padding:14px 16px;
-}
-.brandRow{
-  display:flex;
-  align-items:center;
-  gap:12px;
-}
-.brandRow img{
-  height:42px;
-  width:auto;
-  background:#fff;
-  border-radius:10px;
-  padding:6px 8px;
-}
-.brandText .t{font-weight:900;font-size:16px;line-height:1.1;margin:0}
-.brandText .s{opacity:.92;font-size:12px;margin:4px 0 0}
+  <style>
+    :root{
+      --ink:#111;
+      --bg:#f6f7f9;
+      --card:#fff;
+      --accent:#0b3a78;
+      --radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--ink);
+    }
+    .wrap{
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 14px;
+    }
 
-main{max-width:920px;margin:0 auto;padding:14px}
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:12px;
-  box-shadow:0 6px 18px rgba(12,18,32,.08);
-}
-h3{margin:0 0 10px}
-label{display:block;font-size:12px;font-weight:750;margin:10px 0 6px;color:#1b2433}
-input, textarea{
-  width:100%;
-  padding:11px;
-  border-radius:10px;
-  border:1px solid var(--border);
-  font-size:14px;
-  background:#fff;
-}
-textarea{min-height:100px;resize:vertical}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:640px){.row{grid-template-columns:1fr}}
+    /* HEADER (logo + name + Condition Report) */
+    .report-header{
+      background:var(--card);
+      border:2px solid var(--ink);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.05);
+    }
+    .logo-box{
+      width: 78px;
+      height: 78px;
+      border:2px solid var(--ink);
+      border-radius: var(--radius);
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      flex: 0 0 auto;
+      padding: 6px;
+    }
+    .logo-box img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+    }
+    .brand-text{
+      display:flex;
+      flex-direction:column;
+      line-height:1.1;
+      min-width: 0;
+    }
+    .company-name{
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing:.2px;
+      word-break: break-word;
+    }
+    .report-title{
+      margin-top:6px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .meta{
+      margin-left:auto;
+      text-align:right;
+      line-height:1.2;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .meta .pill{
+      display:inline-block;
+      padding:6px 10px;
+      border:2px solid var(--ink);
+      border-radius: 999px;
+      background:#fff;
+      margin-top:6px;
+      font-weight:900;
+    }
 
-.tickrow{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-top:10px;
-  font-size:14px;
-  font-weight:750;
-  color:#1b2433;
-}
-.tickrow input{width:20px;height:20px;margin:0}
-
-.photoGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:640px){.photoGrid{grid-template-columns:1fr}}
-
-.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-button{
-  padding:11px;
-  border-radius:10px;
-  border:1px solid var(--border);
-  background:#fff;
-  font-weight:850;
-  font-size:14px;
-}
-button.primary{border:0;background:var(--brand);color:#fff}
-button.ghost{background:#e9eefb;border:1px solid #d7deee}
-
-.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
-.thumbs img{
-  width:100%;
-  height:96px;
-  object-fit:cover;
-  border-radius:10px;
-  border:1px solid var(--border);
-}
-
-.small{font-size:12px;color:var(--muted)}
-.sigWrap{
-  border:1px solid var(--border);
-  border-radius:12px;
-  overflow:hidden;
-  background:#fff;
-}
-#sig{
-  width:100%;
-  height:180px;
-  display:block;
-  touch-action:none;
-}
-</style>
+    /* CONTENT */
+    .card{
+      margin-top: 12px;
+      background:var(--card);
+      border:2px solid var(--ink);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.05);
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    .field{flex:1 1 220px; display:flex; flex-direction:column; gap:6px}
+    label{font-size:12px; font-weight:800}
+    input, textarea, select{
+      border:2px solid var(--ink);
+      border-radius: 10px;
+      padding:10px;
+      font-size:14px;
+      background:#fff;
+    }
+    textarea{min-height:90px; resize:vertical}
+    .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    button{
+      border:2px solid var(--ink);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 900;
+      background:#fff;
+      cursor:pointer;
+    }
+    button.primary{
+      background: var(--accent);
+      color:#fff;
+      border-color: var(--accent);
+    }
+    .hint{font-size:12px; opacity:.8; margin-top:8px}
+  </style>
 </head>
 
 <body>
-<header>
-  <div class="brandRow">
-    <img src="logo.png" alt="Ford Property Services logo">
-    <div class="brandText">
-      <p class="t">FORD PROPERTY SERVICES</p>
-      <p class="s">Condition Report</p>
-    </div>
-  </div>
-</header>
+  <div class="wrap">
 
-<main>
-  <div class="card">
-    <div class="small">Tip: In Chrome tap <b>⋮</b> → <b>Add to Home screen</b> to install.</div>
-  </div>
-
-  <div class="card">
-    <h3>Job Details</h3>
-
-    <label>Letting Agent</label>
-    <input id="agent" placeholder="e.g. ABC Lettings">
-
-    <label>Property Address</label>
-    <input id="address" placeholder="e.g. 12 High St, London">
-
-    <div class="row">
-      <div>
-        <label>Job Reference</label>
-        <input id="ref" placeholder="e.g. FPS-00123">
+    <header class="report-header">
+      <div class="logo-box">
+        <img id="companyLogo" src="assets/logo.png" alt="Ford Property Services" />
       </div>
-      <div>
-        <label>Date Completed</label>
-        <input id="date" type="date">
+
+      <div class="brand-text">
+        <div class="company-name" id="companyName">Ford Property Services</div>
+        <div class="report-title">Condition Report</div>
       </div>
-    </div>
 
-    <label>Works / Condition Notes</label>
-    <textarea id="works" placeholder="Describe condition, defects, work completed, parts fitted, tests done, etc."></textarea>
+      <div class="meta">
+        <div id="todayUk"></div>
+        <div class="pill" id="reportId">Report ID: —</div>
+      </div>
+    </header>
 
-    <div class="tickrow">
-      <input type="checkbox" id="beforeTick">
-      <label for="beforeTick" style="margin:0">Before photos taken</label>
-    </div>
-
-    <div class="tickrow">
-      <input type="checkbox" id="afterTick">
-      <label for="afterTick" style="margin:0">After photos taken</label>
-    </div>
-
-    <label>Extra Photo / Video Attachments (file names)</label>
-    <textarea id="attachments" placeholder="IMG_1021.jpg – Before; VID_0004.mp4 – Leak test"></textarea>
-  </div>
-
-  <div class="card">
-    <h3>Photos</h3>
-
-    <div class="photoGrid">
-      <div>
-        <label>Before Photos</label>
-        <div class="btns">
-          <button class="ghost" type="button" id="beforeGallery">Choose photos</button>
-          <button class="ghost" type="button" id="beforeCamera">Take photo</button>
+    <section class="card">
+      <div class="row">
+        <div class="field">
+          <label for="propertyAddress">Property address</label>
+          <input id="propertyAddress" placeholder="e.g. 10 High Street, London" />
         </div>
-        <input id="beforePick" type="file" accept="image/*" multiple hidden>
-        <input id="beforeCam" type="file" accept="image/*" capture="environment" multiple hidden>
-        <div id="beforeThumbs" class="thumbs"></div>
-      </div>
 
-      <div>
-        <label>After Photos</label>
-        <div class="btns">
-          <button class="ghost" type="button" id="afterGallery">Choose photos</button>
-          <button class="ghost" type="button" id="afterCamera">Take photo</button>
+        <div class="field">
+          <label for="agentName">Letting agent</label>
+          <input id="agentName" placeholder="e.g. ABC Lettings" />
         </div>
-        <input id="afterPick" type="file" accept="image/*" multiple hidden>
-        <input id="afterCam" type="file" accept="image/*" capture="environment" multiple hidden>
-        <div id="afterThumbs" class="thumbs"></div>
+
+        <div class="field">
+          <label for="reportDate">Report date (UK)</label>
+          <input id="reportDate" />
+        </div>
       </div>
-    </div>
 
-    <div class="small" style="margin-top:10px">PDF includes up to 6 Before + 6 After photos.</div>
-  </div>
+      <div class="field" style="margin-top:10px;">
+        <label for="notes">Notes</label>
+        <textarea id="notes" placeholder="Add any notes here…"></textarea>
+      </div>
 
-  <div class="card">
-    <h3>Signature</h3>
-    <div class="small">Sign on screen with your finger. Signature is embedded into the PDF.</div>
+      <div class="btns">
+        <button id="saveBtn">Save</button>
+        <button class="primary" id="generateBtn">Generate PDF (next step)</button>
+      </div>
 
-    <div class="sigWrap" style="margin-top:10px;">
-      <canvas id="sig"></canvas>
-    </div>
+      <div class="hint">
+        Logo path used: <b>assets/logo.png</b> — If you see text instead of the logo, the image isn’t in the right folder or the name doesn’t match.
+      </div>
+    </section>
 
-    <div class="btns" style="margin-top:10px;">
-      <button class="ghost" type="button" id="sigClear">Clear signature</button>
-      <button class="ghost" type="button" id="sigUndo">Undo last stroke</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>Export</h3>
-    <div class="row">
-      <button class="ghost" type="button" id="clearBtn">Clear</button>
-      <button class="primary" type="button" id="pdfBtn">Generate PDF</button>
-    </div>
-    <div class="small" style="margin-top:10px">
-      Android opens Print → choose <b>Save as PDF</b> → then share.
-    </div>
   </div>
 
   <script src="app.js"></script>
-</main>
 </body>
 </html>
