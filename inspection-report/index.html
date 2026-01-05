@@ -16,7 +16,6 @@
   <style>
     :root{
       --bg:#0b1220;
-      --card:#0f1b33;
       --text:#e7eefc;
       --muted:#a9b7d3;
       --line:rgba(255,255,255,.14);
@@ -34,6 +33,7 @@
         var(--bg);
       color:var(--text);
     }
+
     header{
       position:sticky; top:0; z-index:10;
       background: rgba(11,18,32,.84);
@@ -92,6 +92,7 @@
       padding: 14px;
     }
     .stack{display:grid;gap:14px}
+
     label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px 2px}
     input, textarea{
       width:100%;
@@ -104,6 +105,7 @@
     }
     textarea{min-height:110px;resize:vertical}
     .divider{height:1px;background:var(--line);margin:12px 0}
+
     .sectionTitle{
       font-weight:900; letter-spacing:.4px; font-size:12px;
       color: var(--text); opacity:.95;
@@ -135,6 +137,7 @@
 
     .grid2{display:grid;grid-template-columns:1fr;gap:10px}
     @media(min-width:720px){ .grid2{grid-template-columns:1fr 1fr} }
+
     .kv{
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.04);
@@ -142,7 +145,6 @@
       padding:10px;
     }
     .kv .k{color:var(--muted);font-size:12px}
-    .kv .v{color:var(--text);font-weight:800;margin-top:4px;word-break:break-word}
 
     .chip{
       display:inline-flex; gap:10px; align-items:center;
@@ -310,11 +312,12 @@
             Estimate Required
           </label>
           <div style="flex:1;min-width:180px;max-width:320px">
-            <label>Estimate Amount (£)</label>
-            <input id="estimateAmount" inputmode="decimal" placeholder="e.g., 250.00" />
+            <label>Estimate Number</label>
+            <input id="estimateNumber" placeholder="e.g., EST-1007" />
           </div>
         </div>
       </div>
+      <div class="hint">Tip: You can type the numbers even if the ticks are off. The PDF will still include what you type.</div>
     </div>
 
     <div>
@@ -322,26 +325,28 @@
       <div class="grid2">
         <div class="kv">
           <div class="k">Letting Agent</div>
-          <div class="v"><input id="lettingAgent" placeholder="e.g., Romans" /></div>
-        </div>
-        <div class="kv">
-          <div class="k">Job Reference</div>
-          <div class="v"><input id="jobRef" placeholder="Optional" /></div>
-        </div>
-        <div class="kv" style="grid-column:1/-1;">
-          <div class="k">Property Address</div>
-          <div class="v"><input id="propertyAddress" placeholder="Full address" /></div>
+          <input id="lettingAgent" placeholder="e.g., Romans" />
         </div>
 
         <div class="kv">
-          <div class="k">Date Completed (UK format)</div>
-          <div class="v"><input id="dateCompletedUK" inputmode="numeric" placeholder="DD/MM/YYYY" /></div>
-          <div class="hint">Type date as DD/MM/YYYY (e.g., 05/01/2026).</div>
+          <div class="k">Job Reference</div>
+          <input id="jobRef" placeholder="Optional" />
+        </div>
+
+        <div class="kv" style="grid-column:1/-1;">
+          <div class="k">Property Address</div>
+          <input id="propertyAddress" placeholder="Full address" />
+        </div>
+
+        <div class="kv">
+          <div class="k">Date Completed (tap calendar)</div>
+          <input id="dateCompletedISO" type="date" />
+          <div class="hint">Select date using calendar. It prints as UK format (DD/MM/YYYY).</div>
         </div>
 
         <div class="kv">
           <div class="k">Completed By</div>
-          <div class="v" style="padding-top:10px;font-weight:950;">Ford Property Services</div>
+          <div style="padding:10px 2px 2px;font-weight:950;">Ford Property Services</div>
         </div>
       </div>
     </div>
@@ -362,7 +367,7 @@
 
     <div>
       <div class="sectionTitle">Works / Inspection Notes</div>
-      <textarea id="worksNotes" placeholder="Type inspection notes / works / condition notes here..."></textarea>
+      <textarea id="worksNotes" placeholder="Type inspection notes / works / notes here..."></textarea>
     </div>
 
     <div class="photoCols">
@@ -432,7 +437,7 @@
 <footer>Ford Property Services • Inspection Report</footer>
 
 <script>
-  // Register SW (PWA)
+  // PWA Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
   }
@@ -441,13 +446,17 @@
   function pad2(n){ return String(n).padStart(2,'0'); }
   function ukDate(d){ return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`; }
   function ukDateTime(d){ return `${ukDate(d)}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; }
-  function isValidUKDate(s){
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((s||"").trim());
-    if(!m) return false;
-    const dd = +m[1], mm = +m[2], yyyy = +m[3];
-    const d = new Date(yyyy, mm-1, dd);
-    return d.getFullYear()===yyyy && (d.getMonth()+1)===mm && d.getDate()===dd;
+  function ukFromISO(iso){
+    if(!iso) return "";
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if(!m) return "";
+    return `${m[3]}/${m[2]}/${m[1]}`; // DD/MM/YYYY
   }
+  function todayISO(){
+    const d = new Date();
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+
   function makeReportId(){
     const d = new Date();
     const dd = pad2(d.getDate());
@@ -458,6 +467,7 @@
     for(let i=0;i<5;i++) tail += letters[Math.floor(Math.random()*letters.length)];
     return `FPS-${dd}-${mm}-${yyyy}-${tail}`;
   }
+
   async function fileToDataURL(file, maxDim=1400, quality=0.80){
     const img = await new Promise((res, rej)=>{
       const i = new Image();
@@ -477,6 +487,7 @@
     return dataUrl;
   }
 
+  // State
   const state = { reportId: makeReportId(), finalised: null, beforePhotos: [], afterPhotos: [], logoDataUrl: null };
 
   // Elements
@@ -503,12 +514,12 @@
   const lettingAgent = document.getElementById('lettingAgent');
   const jobRef = document.getElementById('jobRef');
   const propertyAddress = document.getElementById('propertyAddress');
-  const dateCompletedUK = document.getElementById('dateCompletedUK');
+  const dateCompletedISO = document.getElementById('dateCompletedISO');
 
   const invoiceRequired = document.getElementById('invoiceRequired');
   const invoiceNumber = document.getElementById('invoiceNumber');
   const estimateRequired = document.getElementById('estimateRequired');
-  const estimateAmount = document.getElementById('estimateAmount');
+  const estimateNumber = document.getElementById('estimateNumber');
 
   const worksNotes = document.getElementById('worksNotes');
   const extraAttachments = document.getElementById('extraAttachments');
@@ -534,7 +545,16 @@
   const loadLocalBtn = document.getElementById('loadLocalBtn');
 
   // Defaults
-  dateCompletedUK.value = ukDate(new Date());
+  dateCompletedISO.value = todayISO();
+
+  // Auto-load saved logo (persistent)
+  const savedLogo = localStorage.getItem('fps_logo_v1');
+  if(savedLogo){
+    state.logoDataUrl = savedLogo;
+    logoImg.src = state.logoDataUrl;
+    logoImg.style.display = 'block';
+    logoFallback.style.display = 'none';
+  }
 
   // UI
   function setFinalisedUI(){
@@ -549,7 +569,8 @@
     sigReportId.textContent = state.reportId;
   }
   function setDateCompletedUI(){
-    dateCompletedText.textContent = isValidUKDate(dateCompletedUK.value) ? dateCompletedUK.value.trim() : "—";
+    const uk = ukFromISO(dateCompletedISO.value);
+    dateCompletedText.textContent = uk ? uk : "—";
   }
   function updateEvidenceMarks(){
     beforeMark.textContent = beforeTick.checked ? "✔" : "✘";
@@ -563,11 +584,11 @@
   }
 
   setReportIdUI(); setFinalisedUI(); setDateCompletedUI(); updateEvidenceMarks(); updatePhotoCounts();
-  dateCompletedUK.addEventListener('input', setDateCompletedUI);
+  dateCompletedISO.addEventListener('input', setDateCompletedUI);
   beforeTick.addEventListener('change', updateEvidenceMarks);
   afterTick.addEventListener('change', updateEvidenceMarks);
 
-  // Logo
+  // Logo upload (tap logo square)
   logoBox.addEventListener('click', ()=> logoInput.click());
   logoInput.addEventListener('change', async (e)=>{
     const file = e.target.files && e.target.files[0];
@@ -576,6 +597,8 @@
     logoImg.src = state.logoDataUrl;
     logoImg.style.display = 'block';
     logoFallback.style.display = 'none';
+    // Save logo permanently for this device
+    localStorage.setItem('fps_logo_v1', state.logoDataUrl);
   });
 
   // Photos
@@ -688,18 +711,17 @@
         reportId: state.reportId,
         finalised: state.finalised ? state.finalised.toISOString() : null,
         beforePhotos: state.beforePhotos,
-        afterPhotos: state.afterPhotos,
-        logoDataUrl: state.logoDataUrl
+        afterPhotos: state.afterPhotos
       },
       fields: {
         lettingAgent: lettingAgent.value || "",
         jobRef: jobRef.value || "",
         propertyAddress: propertyAddress.value || "",
-        dateCompletedUK: dateCompletedUK.value || "",
+        dateCompletedISO: dateCompletedISO.value || "",
         invoiceRequired: !!invoiceRequired.checked,
         invoiceNumber: invoiceNumber.value || "",
         estimateRequired: !!estimateRequired.checked,
-        estimateAmount: estimateAmount.value || "",
+        estimateNumber: estimateNumber.value || "",
         beforeTick: !!beforeTick.checked,
         afterTick: !!afterTick.checked,
         worksNotes: worksNotes.value || "",
@@ -716,18 +738,17 @@
       state.finalised = d.state.finalised ? new Date(d.state.finalised) : null;
       state.beforePhotos = d.state.beforePhotos || [];
       state.afterPhotos = d.state.afterPhotos || [];
-      state.logoDataUrl = d.state.logoDataUrl || null;
     }
     if(d.fields){
       lettingAgent.value = d.fields.lettingAgent ?? "";
       jobRef.value = d.fields.jobRef ?? "";
       propertyAddress.value = d.fields.propertyAddress ?? "";
-      dateCompletedUK.value = d.fields.dateCompletedUK ?? dateCompletedUK.value;
+      dateCompletedISO.value = d.fields.dateCompletedISO ?? dateCompletedISO.value;
 
       invoiceRequired.checked = !!d.fields.invoiceRequired;
       invoiceNumber.value = d.fields.invoiceNumber ?? "";
       estimateRequired.checked = !!d.fields.estimateRequired;
-      estimateAmount.value = d.fields.estimateAmount ?? "";
+      estimateNumber.value = d.fields.estimateNumber ?? "";
 
       beforeTick.checked = !!d.fields.beforeTick;
       afterTick.checked = !!d.fields.afterTick;
@@ -744,15 +765,6 @@
       }
     }
 
-    if(state.logoDataUrl){
-      logoImg.src = state.logoDataUrl;
-      logoImg.style.display = 'block';
-      logoFallback.style.display = 'none';
-    }else{
-      logoImg.style.display = 'none';
-      logoFallback.style.display = 'block';
-    }
-
     setReportIdUI(); setFinalisedUI(); setDateCompletedUI();
     renderThumbs(state.beforePhotos, beforeThumbs, (i)=>{ state.beforePhotos.splice(i,1); renderThumbs(state.beforePhotos,beforeThumbs,arguments.callee); autoTickFromPhotos(); updatePhotoCounts(); });
     renderThumbs(state.afterPhotos, afterThumbs, (i)=>{ state.afterPhotos.splice(i,1); renderThumbs(state.afterPhotos,afterThumbs,arguments.callee); autoTickFromPhotos(); updatePhotoCounts(); });
@@ -760,19 +772,19 @@
   }
 
   saveLocalBtn.addEventListener('click', ()=>{
-    localStorage.setItem('fps_inspection_report_pwa_v3', JSON.stringify(collectDraft()));
+    localStorage.setItem('fps_inspection_report_pwa_v4', JSON.stringify(collectDraft()));
     alert('Draft saved on this device.');
   });
   loadLocalBtn.addEventListener('click', ()=>{
-    const raw = localStorage.getItem('fps_inspection_report_pwa_v3');
+    const raw = localStorage.getItem('fps_inspection_report_pwa_v4');
     if(!raw){ alert('No saved draft found.'); return; }
     applyDraft(JSON.parse(raw));
     alert('Draft loaded.');
   });
 
-  // New report
+  // New report reset
   newBtn.addEventListener('click', ()=>{
-    if(!confirm('Start a new report? This clears fields + photos (logo kept).')) return;
+    if(!confirm('Start a new report? This clears fields + photos (logo stays).')) return;
 
     state.reportId = makeReportId();
     state.finalised = null;
@@ -782,12 +794,12 @@
     lettingAgent.value = "";
     jobRef.value = "";
     propertyAddress.value = "";
-    dateCompletedUK.value = ukDate(new Date());
+    dateCompletedISO.value = todayISO();
 
     invoiceRequired.checked = false;
     invoiceNumber.value = "";
     estimateRequired.checked = false;
-    estimateAmount.value = "";
+    estimateNumber.value = "";
 
     beforeTick.checked = false;
     afterTick.checked = false;
@@ -802,7 +814,7 @@
     renderThumbs(state.afterPhotos, afterThumbs, ()=>{});
   });
 
-  // PDF
+  // PDF helpers
   function tickLine(doc, label, checked, x, y){
     doc.setDrawColor(80);
     doc.rect(x, y-4, 4, 4);
@@ -818,9 +830,10 @@
     doc.text(label, x+6, y-0.6);
   }
 
+  // Generate PDF
   pdfBtn.addEventListener('click', async ()=>{
-    if(!isValidUKDate(dateCompletedUK.value)){
-      alert("Please enter Date Completed in UK format DD/MM/YYYY (e.g., 05/01/2026).");
+    if(!dateCompletedISO.value){
+      alert("Please choose a Date Completed.");
       return;
     }
 
@@ -840,11 +853,11 @@
       lettingAgent: (lettingAgent.value || "").trim() || "-",
       jobRef: (jobRef.value || "").trim() || "-",
       propertyAddress: (propertyAddress.value || "").trim() || "-",
-      dateCompleted: dateCompletedUK.value.trim(),
+      dateCompleted: ukFromISO(dateCompletedISO.value),
       invoiceRequired: !!invoiceRequired.checked,
       invoiceNumber: (invoiceNumber.value || "").trim() || "-",
       estimateRequired: !!estimateRequired.checked,
-      estimateAmount: (estimateAmount.value || "").trim() || "-",
+      estimateNumber: (estimateNumber.value || "").trim() || "-",
       completedBy: "Ford Property Services",
       beforeTaken: !!beforeTick.checked,
       afterTaken: !!afterTick.checked,
@@ -908,7 +921,7 @@
     doc.text('Invoice', margin+110, y+24);
     doc.text('Invoice Number', margin+110, y+34);
     doc.text('Estimate', margin+110, y+44);
-    doc.text('Estimate Amount (£)', margin+110, y+54);
+    doc.text('Estimate Number', margin+110, y+54);
 
     doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
     doc.text(data.lettingAgent, margin+45, y+10);
@@ -921,7 +934,7 @@
     doc.text(data.invoiceNumber, margin+150, y+34);
 
     tickLine(doc, 'Required', data.estimateRequired, margin+150, y+44);
-    doc.text(data.estimateAmount, margin+150, y+54);
+    doc.text(data.estimateNumber, margin+150, y+54);
 
     y += jobH + 10;
 
