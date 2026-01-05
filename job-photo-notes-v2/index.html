@@ -90,10 +90,12 @@ textarea{min-height:90px;white-space:pre-wrap}
 
 <script>
 const $=id=>document.getElementById(id);
-const STORE="fps_photo_notes_final_v10";
+const STORE="fps_photo_notes_final_v11_pdfspacing";
 
 let state={address:"",date:"",photos:[]};
-let rec=null,wantRecording=false;
+
+// Dictation
+let rec=null;
 let finalBuffer="",interimBuffer="",silenceTimer=null;
 let activeItem=null,activeTa=null,activeBtn=null,activeLive=null;
 
@@ -115,99 +117,252 @@ function render(){
     const d=document.createElement("div");
     d.className="photo";
     d.innerHTML=`
-      <div class="thumb"><img src="${p.img}"></div>
-      <textarea>${p.note||""}</textarea>
+      <div class="thumb"><img src="${p.img}" alt="Photo ${i+1}"></div>
+      <textarea placeholder="Notes...">${p.note||""}</textarea>
       <div class="live"></div>
       <div class="row" style="margin-top:6px">
-        <button class="good">🎤 Dictate</button>
-        <button>↩ Undo</button>
-        <button class="bad">🗑️ Delete</button>
+        <button class="good" type="button">🎤 Dictate</button>
+        <button type="button">↩ Undo</button>
+        <button class="bad" type="button">🗑️ Delete</button>
       </div>`;
     const ta=d.querySelector("textarea");
     const live=d.querySelector(".live");
+    const dictBtn=d.querySelector(".good");
+    const undoBtn=d.querySelectorAll("button")[1];
+    const delBtn=d.querySelector(".bad");
+
     ta.oninput=e=>{p.note=e.target.value;save()};
 
-    d.querySelector(".good").onclick=()=>toggleDictation(p,ta,d.querySelector(".good"),live);
-    d.querySelectorAll("button")[1].onclick=()=>{
-      const lines=p.note.split("\n");lines.pop();
-      p.note=lines.join("\n");ta.value=p.note;save()
+    dictBtn.onclick=()=>toggleDictation(p,ta,dictBtn,live);
+
+    undoBtn.onclick=()=>{
+      const lines=(p.note||"").split("\n");
+      lines.pop();
+      p.note=lines.join("\n");
+      ta.value=p.note;
+      save();
     };
-    d.querySelector(".bad").onclick=()=>{
-      state.photos.splice(i,1);save();render()
+
+    delBtn.onclick=()=>{
+      state.photos.splice(i,1);
+      save();render();
     };
-    box.appendChild(d)
-  })
+
+    box.appendChild(d);
+  });
 }
 
 $("openCamera").onclick=async()=>{
-  const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
-  const v=document.createElement("video");v.srcObject=s;await v.play();
-  setTimeout(()=>{
-    const c=document.createElement("canvas");
-    c.width=v.videoWidth;c.height=v.videoHeight;
-    c.getContext("2d").drawImage(v,0,0);
-    s.getTracks().forEach(t=>t.stop());
-    state.photos.push({img:c.toDataURL("image/jpeg",0.95),note:""});
-    save();render()
-  },700)
+  // quick camera capture (takes photo after 0.7s)
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    const v=document.createElement("video");
+    v.srcObject=s; await v.play();
+
+    setTimeout(()=>{
+      const c=document.createElement("canvas");
+      c.width=v.videoWidth; c.height=v.videoHeight;
+      c.getContext("2d").drawImage(v,0,0);
+
+      s.getTracks().forEach(t=>t.stop());
+
+      state.photos.push({img:c.toDataURL("image/jpeg",0.95),note:""});
+      save();render();
+    },700);
+  }catch(e){
+    alert("Camera permission blocked or camera failed.");
+  }
 };
 
 $("openGallery").onclick=()=>$("galleryInput").click();
 $("galleryInput").onchange=async e=>{
   for(const f of e.target.files){
-    const img=new Image();img.src=URL.createObjectURL(f);await img.decode();
+    const img=new Image();
+    img.src=URL.createObjectURL(f);
+    await img.decode();
     const c=document.createElement("canvas");
-    c.width=img.width;c.height=img.height;
+    c.width=img.width; c.height=img.height;
     c.getContext("2d").drawImage(img,0,0);
-    state.photos.push({img:c.toDataURL("image/jpeg",0.95),note:""})
+    URL.revokeObjectURL(img.src);
+    state.photos.push({img:c.toDataURL("image/jpeg",0.95),note:""});
   }
-  save();render()
+  e.target.value="";
+  save();render();
 };
 
+// Dictation (buffered)
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 
+function setStatus(t){ $("speechStatus").textContent=t||""; }
+
 function toggleDictation(item,ta,btn,live){
-  if(rec){rec.stop();return}
-  activeItem=item;activeTa=ta;activeBtn=btn;activeLive=live;
-  btn.textContent="⏹ Stop";btn.classList.add("rec");
-  finalBuffer="";interimBuffer="";
-  rec=new SR();rec.lang="en-GB";rec.interimResults=true;rec.continuous=true;
-  rec.onresult=e=>{
-    for(const r of e.results){
-      if(r.isFinal){finalBuffer+=" "+r[0].transcript}
-      else{interimBuffer=r[0].transcript;live.textContent="… "+interimBuffer}
-    }
+  if(!SR){ alert("Dictation not supported on this browser. Use Chrome on Android."); return; }
+
+  // Stop current recording
+  if(rec){
+    try{ rec.stop(); }catch(e){}
+    return;
+  }
+
+  activeItem=item; activeTa=ta; activeBtn=btn; activeLive=live;
+  finalBuffer=""; interimBuffer="";
+  btn.textContent="⏹ Stop"; btn.classList.add("rec");
+  setStatus("Recording… speak normally. Pause to finish.");
+
+  rec=new SR();
+  rec.lang="en-GB";
+  rec.interimResults=true;
+  rec.continuous=true;
+
+  rec.onresult=(ev)=>{
+    // reset silence timer anytime we hear anything
     clearTimeout(silenceTimer);
-    silenceTimer=setTimeout(()=>rec.stop(),2500)
-  };
-  rec.onend=()=>{
-    const t=(finalBuffer+" "+interimBuffer).trim();
-    if(t){
-      ta.value+=(ta.value?"\n":"")+"• "+t;
-      item.note=ta.value;save()
+    silenceTimer=setTimeout(()=>{ try{ rec.stop(); }catch(e){} }, 2500);
+
+    for(let i=ev.resultIndex;i<ev.results.length;i++){
+      const r=ev.results[i];
+      const txt=(r[0]?.transcript||"").trim();
+      if(!txt) continue;
+
+      if(r.isFinal){
+        finalBuffer = (finalBuffer + " " + txt).trim();
+        interimBuffer="";
+        live.textContent="";
+      }else{
+        interimBuffer=txt;
+        live.textContent="… " + interimBuffer;
+      }
     }
-    btn.textContent="🎤 Dictate";btn.classList.remove("rec");
-    live.textContent="";rec=null
   };
-  rec.start()
+
+  rec.onerror=(e)=>{
+    setStatus("Dictation error: " + (e?.error||"unknown"));
+  };
+
+  rec.onend=()=>{
+    clearTimeout(silenceTimer);
+    const t=(finalBuffer+" "+interimBuffer).replace(/\s+/g," ").trim();
+
+    if(t){
+      const line="• " + t;
+      ta.value = (ta.value.trim() ? (ta.value.replace(/\s+$/,"") + "\n" + line) : line);
+      item.note = ta.value;
+      save();
+    }
+
+    btn.textContent="🎤 Dictate"; btn.classList.remove("rec");
+    live.textContent="";
+    setStatus("");
+    rec=null;
+  };
+
+  try{
+    rec.start();
+  }catch(e){
+    btn.textContent="🎤 Dictate"; btn.classList.remove("rec");
+    setStatus("Mic blocked. Chrome: ⋮ → Site settings → Microphone → Allow.");
+    rec=null;
+  }
 }
 
-$("createPdf").onclick=()=>{
+/* =======================
+   PDF (FIXED SPACING / NO OVERLAP)
+======================= */
+$("createPdf").onclick=async()=>{
+  if(!state.address || !state.address.trim()){
+    alert("Enter the Property address first.");
+    return;
+  }
+  if(!state.photos.length){
+    alert("Add at least 1 photo first.");
+    return;
+  }
+
   const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF();let y=15;
-  pdf.text("Ford Property Services",10,y);y+=8;
-  pdf.text("Address: "+state.address,10,y);y+=6;
-  pdf.text("Date: "+state.date.split("-").reverse().join("/"),10,y);y+=10;
-  state.photos.forEach((p,i)=>{
-    if(y>230){pdf.addPage();y=15}
-    pdf.text("Photo "+(i+1),10,y);y+=6;
-    pdf.addImage(p.img,"JPEG",10,y,90,60);y+=65;
-    pdf.text(pdf.splitTextToSize(p.note||"—",180),10,y);y+=10
-  });
-  pdf.save(`Photo Notes ${state.address} ${state.date}.pdf`)
+  const pdf=new jsPDF({unit:"mm",format:"a4"});
+
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 10;
+  const maxTextW = pageW - margin*2;
+
+  const titleLH = 7;
+  const textLH = 5.2;
+
+  function ensure(h){
+    if(y + h > pageH - margin){
+      pdf.addPage();
+      y = margin;
+    }
+  }
+
+  // Header
+  let y = margin;
+  pdf.setFont("helvetica","bold");
+  pdf.setFontSize(14);
+  pdf.text("Ford Property Services", margin, y); y += titleLH;
+
+  pdf.setFontSize(12);
+  pdf.text("Photo Notes", margin, y); y += titleLH;
+
+  pdf.setFont("helvetica","normal");
+  pdf.setFontSize(11);
+
+  const dateUK = (state.date||"").split("-").reverse().join("/");
+  const addrLines = pdf.splitTextToSize("Address: " + state.address, maxTextW);
+  ensure(addrLines.length*textLH + 6);
+  pdf.text(addrLines, margin, y); y += addrLines.length*textLH + 4;
+
+  ensure(textLH + 6);
+  pdf.text("Date: " + dateUK, margin, y); y += textLH + 8;
+
+  // Photos
+  for(let i=0;i<state.photos.length;i++){
+    const p = state.photos[i];
+
+    // Photo heading
+    pdf.setFont("helvetica","bold");
+    pdf.setFontSize(12);
+    ensure(10);
+    pdf.text(`Photo ${i+1}`, margin, y);
+    y += 8; // ✅ bigger gap so notes can never overlap this line
+
+    // Image
+    const imgW = 95;
+    const imgH = 63; // 4:3-ish
+    ensure(imgH + 6);
+    pdf.addImage(p.img, "JPEG", margin, y, imgW, imgH);
+    y += imgH + 6;
+
+    // Notes
+    pdf.setFont("helvetica","normal");
+    pdf.setFontSize(11);
+
+    const noteText = (p.note && p.note.trim()) ? p.note.trim() : "—";
+    const noteLines = pdf.splitTextToSize(noteText, maxTextW);
+
+    // ✅ Ensure space for ALL wrapped lines, otherwise add new page
+    ensure(noteLines.length*textLH + 10);
+    pdf.text(noteLines, margin, y);
+    y += noteLines.length*textLH + 10;
+
+    // if near bottom, push next photo to new page
+    if(i < state.photos.length-1 && y > pageH - margin - 40){
+      pdf.addPage();
+      y = margin;
+    }
+  }
+
+  const filename = `Photo Notes ${state.address} ${state.date}.pdf`
+    .replace(/[\/\\:*?"<>|]/g,"-")
+    .replace(/\s+/g," ")
+    .trim();
+
+  pdf.save(filename);
 };
 
-load();render();
+load();
+render();
 </script>
 </body>
 </html>
