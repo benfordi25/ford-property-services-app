@@ -36,6 +36,7 @@ button.rec{
   border-color:rgba(239,68,68,.75);
   box-shadow: 0 0 0 2px rgba(239,68,68,.15) inset;
 }
+button:disabled{opacity:.55; cursor:not-allowed}
 input,textarea{
   width:100%;background:rgba(0,0,0,.2);color:var(--text);
   border:1px solid var(--line);border-radius:14px;padding:10px 12px
@@ -74,6 +75,7 @@ video{width:100%;height:100%;object-fit:cover}
 }
 .fileActions{display:flex;gap:8px;flex-wrap:wrap}
 .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; font-size:12px; color:var(--muted)}
+hr{border:none;border-top:1px solid var(--line);margin:12px 0}
 </style>
 </head>
 
@@ -107,8 +109,14 @@ video{width:100%;height:100%;object-fit:cover}
       <button id="newForm" class="bad" type="button">🆕 New form</button>
       <button id="openCamera" class="good" type="button">📷 Open camera</button>
       <button id="chooseGallery" type="button">🖼️ Gallery</button>
-      <button id="savePdfNamed" class="good" type="button">🧾 Save PDF (named)</button>
+      <button id="createPdf" class="good" type="button">🧾 Create PDF</button>
+      <button id="sharePdf" type="button" disabled>📤 Share PDF</button>
+      <button id="downloadPdf" type="button" disabled>⬇️ Download PDF</button>
       <button id="openFiles" type="button">📁 Downloaded files</button>
+    </div>
+
+    <div class="small" style="margin-top:6px">
+      1) Create PDF → 2) Share PDF (WhatsApp/Email) or Download PDF.
     </div>
 
     <div id="speechStatus" class="small" style="margin-top:8px"></div>
@@ -122,7 +130,9 @@ video{width:100%;height:100%;object-fit:cover}
 
     <div id="list" class="grid"></div>
 
-    <div class="small" style="margin-top:10px">
+    <hr>
+
+    <div class="small">
       “Downloaded files” shows PDFs created by this app (saved in-app). Browsers can’t list your whole phone Downloads folder.
     </div>
 
@@ -180,12 +190,16 @@ const $ = (id) => document.getElementById(id);
 const STORE = "fps_photo_notes_v2_state";
 let state = { address:"", date:"", general:"", items:[] };
 
+// current generated PDF (for share/download after create)
+let currentPdfBlob = null;
+let currentPdfFilename = "";
+
 function showToast(msg){
   const t = $("toast");
   t.textContent = msg;
   t.style.display = "block";
   clearTimeout(showToast._tm);
-  showToast._tm = setTimeout(()=>t.style.display="none", 1400);
+  showToast._tm = setTimeout(()=>t.style.display="none", 1600);
 }
 
 function ukDateFromInput(value){
@@ -216,6 +230,8 @@ function syncHeader(){
 function saveState(){
   localStorage.setItem(STORE, JSON.stringify(state));
   syncHeader();
+  // If the form changes, we invalidate the current PDF (so you don't share old one)
+  invalidateCurrentPdf();
 }
 
 function loadState(){
@@ -228,6 +244,13 @@ function loadState(){
   $("general").value = state.general || "";
   syncHeader();
   render();
+}
+
+function invalidateCurrentPdf(){
+  currentPdfBlob = null;
+  currentPdfFilename = "";
+  $("sharePdf").disabled = true;
+  $("downloadPdf").disabled = true;
 }
 
 $("address").addEventListener("input", (e)=>{ state.address = e.target.value; saveState(); });
@@ -317,8 +340,8 @@ async function toggleDictation(targetTextarea, dictButton){
 
   rec = new SR();
   rec.lang = "en-GB";
-  rec.interimResults = true;  // allows partials while speaking
-  rec.continuous = true;      // captures longer speech reliably
+  rec.interimResults = true;
+  rec.continuous = true;
 
   rec.onstart = ()=> setSpeechStatus("Recording… speak now.");
 
@@ -339,7 +362,7 @@ async function toggleDictation(targetTextarea, dictButton){
   rec.onerror = (ev)=>{
     const err = ev && ev.error ? ev.error : "unknown";
     if(err === "not-allowed" || err === "service-not-allowed"){
-      setSpeechStatus("Mic blocked. Chrome → padlock → Microphone → Allow.");
+      setSpeechStatus("Mic blocked. Chrome → padlock → Site settings → Microphone → Allow.");
     }else if(err === "no-speech"){
       setSpeechStatus("No speech detected. Try again.");
     }else{
@@ -565,7 +588,7 @@ async function deletePdfRecord(id){
 }
 
 /* =======================
-   PDF GENERATION (named)
+   PDF GENERATION (CREATE → SHARE/DOWNLOAD)
 ======================= */
 async function dataUrlToImageDims(dataUrl){
   return new Promise((resolve, reject)=>{
@@ -675,28 +698,43 @@ async function shareBlob(blob, filename){
   }
 }
 
-$("savePdfNamed").addEventListener("click", async ()=>{
+function makeFilename(){
+  const safeAddr = cleanForFilename(state.address);
+  const dateFile = ukDateForFilename(state.date) || "No-Date";
+  return `Photo-Notes_${safeAddr}_${dateFile}.pdf`;
+}
+
+function validateForPdf(){
   if(!state.address || !state.address.trim()){
     alert("Please enter the Property address first (so the PDF can be named).");
-    return;
+    return false;
   }
   if(!state.date){
     alert("Please select a date first.");
-    return;
+    return false;
   }
   if(!state.items.length){
-    alert("Please add at least 1 photo before saving PDF.");
-    return;
+    alert("Please add at least 1 photo before creating PDF.");
+    return false;
   }
+  return true;
+}
+
+/* Create PDF (stores in app library + enables Share/Download buttons) */
+$("createPdf").addEventListener("click", async ()=>{
+  if(!validateForPdf()) return;
 
   try{
+    $("createPdf").disabled = true;
     showToast("Creating PDF…");
+
     const blob = await buildPdfBlob();
+    const filename = makeFilename();
 
-    const safeAddr = cleanForFilename(state.address);
-    const dateFile = ukDateForFilename(state.date) || "No-Date";
-    const filename = `Photo-Notes_${safeAddr}_${dateFile}.pdf`;
+    currentPdfBlob = blob;
+    currentPdfFilename = filename;
 
+    // Save into in-app library
     const id = "pdf_" + Date.now();
     await savePdfRecord({
       id,
@@ -707,11 +745,34 @@ $("savePdfNamed").addEventListener("click", async ()=>{
       blob
     });
 
-    downloadBlob(blob, filename);
-    showToast("PDF saved ✅");
+    $("sharePdf").disabled = false;
+    $("downloadPdf").disabled = false;
+
+    showToast("PDF created ✅ Now tap Share or Download");
   }catch(err){
     alert("PDF creation failed:\n\n" + err);
+  }finally{
+    $("createPdf").disabled = false;
   }
+});
+
+/* Share PDF (uses last created PDF) */
+$("sharePdf").addEventListener("click", async ()=>{
+  if(!currentPdfBlob){
+    alert("Please tap Create PDF first.");
+    return;
+  }
+  await shareBlob(currentPdfBlob, currentPdfFilename);
+});
+
+/* Download PDF (uses last created PDF) */
+$("downloadPdf").addEventListener("click", ()=>{
+  if(!currentPdfBlob){
+    alert("Please tap Create PDF first.");
+    return;
+  }
+  downloadBlob(currentPdfBlob, currentPdfFilename);
+  showToast("Downloaded ✅");
 });
 
 /* =======================
@@ -736,7 +797,7 @@ async function renderFiles(){
   try{
     const rows = await listPdfRecords();
     if(!rows.length){
-      box.innerHTML = "<div class='small'>No PDFs saved yet. Use “Save PDF (named)”.</div>";
+      box.innerHTML = "<div class='small'>No PDFs saved yet. Use “Create PDF”.</div>";
       return;
     }
 
@@ -760,6 +821,7 @@ async function renderFiles(){
       `;
 
       const [bDown, bShare, bDel] = row.querySelectorAll("button");
+
       bDown.addEventListener("click", ()=> downloadBlob(r.blob, r.filename));
       bShare.addEventListener("click", ()=> shareBlob(r.blob, r.filename));
       bDel.addEventListener("click", async ()=>{
@@ -796,3 +858,4 @@ async function renderFiles(){
 
 </body>
 </html>
+```0
