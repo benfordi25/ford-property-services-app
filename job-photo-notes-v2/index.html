@@ -119,7 +119,7 @@ video{width:100%;height:100%;object-fit:cover}
         <div class="small">Photo Notes</div>
       </div>
     </div>
-    <!-- IMPORTANT: since this file is /job-photo-notes/, dashboard is usually ../dashboard/ -->
+    <!-- If your dashboard is root, change to ../ -->
     <a class="back" href="../dashboard/">← Dashboard</a>
   </div>
 </header>
@@ -132,7 +132,7 @@ video{width:100%;height:100%;object-fit:cover}
     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end">
       <div>
         <div style="font-weight:950;font-size:16px">Photo Report</div>
-        <div class="small">Address and date will be added to the PDF filename.</div>
+        <div class="small">Address + date will be used on the PDF filename.</div>
       </div>
       <div class="row">
         <button id="newForm" class="bad" type="button">🆕 New form</button>
@@ -159,7 +159,8 @@ video{width:100%;height:100%;object-fit:cover}
     <div id="list" class="grid"></div>
 
     <div class="small" style="margin-top:10px">
-      Tip: If dictation doesn’t type, open this page in <strong>Chrome</strong> and allow Microphone permission (padlock icon).
+      Dictation tip: Tap <strong>Dictate</strong>, speak one bullet, tap <strong>Stop</strong>. Tap <strong>Dictate</strong> again for the next bullet.
+      (Now unlimited bullets.)
     </div>
 
   </div>
@@ -188,12 +189,13 @@ video{width:100%;height:100%;object-fit:cover}
 <script>
 const $ = (id)=>document.getElementById(id);
 
-const STORE = "fps_job_photo_notes_v3";
+const STORE = "fps_job_photo_notes_v4";
 let state = { address:"", date:"", general:"", items:[] };
 
 let currentPdfBlob = null;
 let currentPdfFilename = "";
 
+/* ---------- helpers ---------- */
 function showToast(msg){
   const t = $("toast");
   t.textContent = msg;
@@ -201,7 +203,6 @@ function showToast(msg){
   clearTimeout(showToast._tm);
   showToast._tm = setTimeout(()=>t.style.display="none", 1400);
 }
-
 function ukDateFromInput(value){
   if(!value) return "";
   const [y,m,d] = value.split("-").map(Number);
@@ -221,45 +222,53 @@ function cleanForFilename(s){
     .replace(/[\/\\:*?"<>|]/g,"-")
     .slice(0, 60);
 }
-
 function invalidatePdf(){
   currentPdfBlob = null;
   currentPdfFilename = "";
   $("sharePdf").disabled = true;
   $("downloadPdf").disabled = true;
 }
-
 function saveState(){
   localStorage.setItem(STORE, JSON.stringify(state));
   invalidatePdf();
 }
 
+/* ---------- auto-populate date for editing form ---------- */
+/* If there's no saved date yet, set it to today. */
+(function ensureDate(){
+  const d = new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const day=String(d.getDate()).padStart(2,"0");
+  const today = `${y}-${m}-${day}`;
+
+  // Set input immediately (so when you open the form it’s filled)
+  $("date").value = today;
+
+  // If state already has a date, we will override this after loadState()
+})();
+
+/* ---------- load/save bindings ---------- */
 function loadState(){
   try{
     const raw = localStorage.getItem(STORE);
     if(raw) state = JSON.parse(raw);
   }catch(e){}
   $("address").value = state.address || "";
-  $("date").value = state.date || "";
   $("general").value = state.general || "";
+
+  // ✅ If editing an existing draft, keep its date.
+  // ✅ If empty, auto fill today.
+  if(state.date){
+    $("date").value = state.date;
+  }else{
+    const today = $("date").value;
+    state.date = today;
+    saveState();
+  }
+
   render();
 }
-
-/* default date today */
-(function initDate(){
-  const d = new Date();
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,"0");
-  const day=String(d.getDate()).padStart(2,"0");
-  const today = `${y}-${m}-${day}`;
-  if(!localStorage.getItem(STORE)){
-    state.date = today;
-    $("date").value = today;
-    saveState();
-  }else{
-    if(!$("date").value) $("date").value = today;
-  }
-})();
 
 $("address").addEventListener("input", (e)=>{ state.address = e.target.value; saveState(); });
 $("date").addEventListener("change", (e)=>{ state.date = e.target.value; saveState(); });
@@ -297,7 +306,6 @@ $("openCamera").addEventListener("click", async ()=>{
 });
 $("closeCam").addEventListener("click", closeCam);
 $("closeCamTop").addEventListener("click", closeCam);
-
 $("snap").addEventListener("click", ()=>{
   const v = $("video");
   if(!v.videoWidth) return;
@@ -324,7 +332,8 @@ $("galleryInput").addEventListener("change", async (e)=>{
     img.src = URL.createObjectURL(f);
     await img.decode();
 
-    const max = 1800;
+    // keep clarity: minimal compression/resizing
+    const max = 2200;
     const scale = Math.min(1, max / Math.max(img.width, img.height));
     const w = Math.round(img.width * scale);
     const h = Math.round(img.height * scale);
@@ -333,7 +342,7 @@ $("galleryInput").addEventListener("change", async (e)=>{
     c.width = w; c.height = h;
     c.getContext("2d").drawImage(img,0,0,w,h);
 
-    state.items.push({ img: c.toDataURL("image/jpeg",0.94), note:"" });
+    state.items.push({ img: c.toDataURL("image/jpeg",0.95), note:"" });
     URL.revokeObjectURL(img.src);
   }
 
@@ -344,7 +353,9 @@ $("galleryInput").addEventListener("change", async (e)=>{
 });
 
 /* =======================
-   DICTATION (Android-robust + live preview + always commits)
+   DICTATION (Unlimited bullets)
+   - Tap Dictate: it records ONE bullet and stops automatically.
+   - Tap Dictate again for next bullet.
 ======================= */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -356,9 +367,7 @@ let activeTarget = null;
 let activeLiveLine = null;
 
 let lastInterim = "";
-let addedFinalThisSession = false;
-let gotAnyAudioSignal = false;
-let startedAt = 0;
+let addedSomethingThisSession = false;
 
 function setSpeechStatus(msg){ $("speechStatus").textContent = msg || ""; }
 
@@ -402,31 +411,18 @@ function appendBullet(targetTextarea, text){
     targetTextarea.value = cur.replace(/\s+$/,"") + "\n" + bulletLine;
   }
   targetTextarea.dispatchEvent(new Event("input", { bubbles:true }));
-}
-
-function commitInterimIfNeeded(){
-  if(!activeTarget) return;
-  if(!addedFinalThisSession && lastInterim.trim()){
-    appendBullet(activeTarget, lastInterim);
-    lastInterim = "";
-  }
-}
-
-function stopDictation(){
-  if(rec){
-    try{ rec.stop(); }catch(e){}
-  }
-  setDictButtonState(activeDictBtn, "idle");
-  setSpeechStatus("Stopping…");
+  addedSomethingThisSession = true;
 }
 
 async function toggleDictation(targetTextarea, dictButton, liveLineEl){
+  // If already recording on this note: stop
   if(rec && activeTarget === targetTextarea){
-    stopDictation();
+    try{ rec.stop(); }catch(e){}
     return;
   }
+  // If recording somewhere else, stop that first
   if(rec){
-    stopDictation();
+    try{ rec.stop(); }catch(e){}
     return;
   }
 
@@ -440,13 +436,11 @@ async function toggleDictation(targetTextarea, dictButton, liveLineEl){
   activeLiveLine = liveLineEl || null;
 
   lastInterim = "";
-  addedFinalThisSession = false;
-  gotAnyAudioSignal = false;
-  startedAt = Date.now();
+  addedSomethingThisSession = false;
 
   setDictButtonState(activeDictBtn, "recording");
   setLive("Listening…");
-  setSpeechStatus("Requesting microphone…");
+  setSpeechStatus("Recording… speak one bullet.");
 
   const ok = await warmUpMicPermission();
   if(!ok){
@@ -458,14 +452,18 @@ async function toggleDictation(targetTextarea, dictButton, liveLineEl){
   rec = new SR();
   rec.lang = "en-GB";
   rec.interimResults = true;
-
-  // More reliable on Android/PWA than continuous=true
-  rec.continuous = false;
+  rec.continuous = false; // reliable for single bullet
   rec.maxAlternatives = 1;
 
-  rec.onaudiostart = ()=>{ gotAnyAudioSignal = true; setSpeechStatus("Recording…"); };
-  rec.onspeechstart = ()=>{ gotAnyAudioSignal = true; setLive("Hearing you…"); };
-  rec.onstart = ()=>{ setSpeechStatus("Recording… speak now."); };
+  let stopTimer = null;
+  const scheduleAutoStop = ()=>{
+    clearTimeout(stopTimer);
+    // Stop shortly after speech ends so it commits 1 bullet cleanly
+    stopTimer = setTimeout(()=>{ try{ rec && rec.stop(); }catch(e){} }, 900);
+  };
+
+  rec.onspeechstart = ()=>{ setLive("Hearing you…"); clearTimeout(stopTimer); };
+  rec.onspeechend = ()=>{ scheduleAutoStop(); };
 
   rec.onresult = (ev)=>{
     for(let i = ev.resultIndex; i < ev.results.length; i++){
@@ -476,25 +474,21 @@ async function toggleDictation(targetTextarea, dictButton, liveLineEl){
 
       if(res.isFinal){
         appendBullet(activeTarget, transcript);
-        addedFinalThisSession = true;
         lastInterim = "";
         setLive("");
+        // We got a final bullet — stop shortly after
+        scheduleAutoStop();
       }else{
         lastInterim = transcript;
         setLive("… " + transcript.trim());
       }
-    }
-    if(addedFinalThisSession){
-      setSpeechStatus("Recorded ✅ (tap Dictate again for another bullet)");
-    }else{
-      setSpeechStatus(lastInterim ? "Recording… (hearing you)" : "Recording…");
     }
   };
 
   rec.onerror = (ev)=>{
     const err = ev && ev.error ? ev.error : "unknown";
     if(err === "not-allowed" || err === "service-not-allowed"){
-      setSpeechStatus("Mic blocked. Chrome → padlock → Site settings → Microphone → Allow.");
+      setSpeechStatus("Mic blocked. Chrome → padlock → Microphone → Allow.");
     }else if(err === "no-speech"){
       setSpeechStatus("No speech detected. Try again.");
     }else{
@@ -503,41 +497,30 @@ async function toggleDictation(targetTextarea, dictButton, liveLineEl){
   };
 
   rec.onend = ()=>{
-    commitInterimIfNeeded();
+    clearTimeout(stopTimer);
 
-    const elapsed = Date.now() - startedAt;
-    if(!addedFinalThisSession && !lastInterim.trim()){
-      if(!gotAnyAudioSignal && elapsed > 1200){
-        setSpeechStatus("No audio captured. Check Microphone permission (Chrome padlock → Microphone → Allow).");
-      }else{
-        setSpeechStatus("Stopped (no speech captured). Try again.");
-      }
-    }else{
-      setSpeechStatus("Stopped.");
+    // If Android never delivered final, commit interim
+    if(!addedSomethingThisSession && lastInterim.trim()){
+      appendBullet(activeTarget, lastInterim);
+      lastInterim = "";
     }
 
-    setLive("");
     setDictButtonState(activeDictBtn, "idle");
+    setLive("");
+
+    // Unlimited bullets: you just tap Dictate again for next bullet
+    setSpeechStatus("Stopped. Tap Dictate again for the next bullet.");
 
     rec = null;
     activeDictBtn = null;
     activeTarget = null;
     activeLiveLine = null;
-    lastInterim = "";
-    addedFinalThisSession = false;
-    gotAnyAudioSignal = false;
-    startedAt = 0;
 
-    setTimeout(()=> setSpeechStatus(""), 1200);
+    setTimeout(()=> setSpeechStatus(""), 1600);
   };
 
   try{
     rec.start();
-    setTimeout(()=>{
-      if(rec && !gotAnyAudioSignal && !lastInterim && !addedFinalThisSession){
-        setSpeechStatus("Not picking up audio. Use Chrome (not Samsung Internet) and allow Microphone permission.");
-      }
-    }, 2000);
   }catch(e){
     setSpeechStatus("Could not start dictation. Try Chrome + allow microphone.");
     rec = null;
@@ -570,6 +553,7 @@ function render(){
 
     const ta = box.querySelector("textarea");
     const liveLine = box.querySelector(".liveLine");
+
     ta.value = it.note || "";
     ta.addEventListener("input", (e)=>{ it.note = e.target.value; saveState(); });
 
@@ -601,11 +585,17 @@ function render(){
 ======================= */
 $("newForm").addEventListener("click", ()=>{
   if(!confirm("Start a NEW form? This clears address/date/notes/photos on this device.")) return;
+
+  // stop any dictation
+  if(rec){ try{ rec.stop(); }catch(e){} }
+
   state = { address:"", date:"", general:"", items:[] };
   localStorage.removeItem(STORE);
 
   $("address").value="";
   $("general").value="";
+
+  // ✅ Auto-populate date again (today) for the new form
   const d = new Date();
   const y=d.getFullYear();
   const m=String(d.getMonth()+1).padStart(2,"0");
@@ -775,11 +765,10 @@ $("downloadPdf").addEventListener("click", ()=>{
   showToast("Downloaded");
 });
 
-/* =======================
-   START
-======================= */
+/* ---------- start ---------- */
 loadState();
 render();
 </script>
 </body>
 </html>
+```0
