@@ -10,6 +10,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
 
+  <!-- PDF export -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
   <style>
     :root{
       --bg:#0b1220;
@@ -221,6 +224,7 @@
         <button id="newJobBtn" class="danger" type="button">New Job</button>
         <button id="saveBtn" class="ok" type="button">Save Draft</button>
         <button id="loadBtn" type="button">Load Draft</button>
+        <button id="exportPdfBtn" class="primary" type="button">Save to Phone (PDF)</button>
       </div>
     </div>
   </div>
@@ -350,6 +354,7 @@
   const newJobBtn = document.getElementById('newJobBtn');
   const saveBtn = document.getElementById('saveBtn');
   const loadBtn = document.getElementById('loadBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
 
   const logoBox = document.getElementById('logoBox');
   const logoInput = document.getElementById('logoInput');
@@ -393,15 +398,14 @@
     showToast('Logo saved on this device.');
   });
 
-  // Speech recognition (Voice dictation)
-  // FIX: append ONLY FINAL results to prevent duplication.
+  // Voice dictation (final-only)
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   function canDictate(){ return !!SpeechRecognition; }
 
   function createRecognition({ onStatus, onFinalText, lang='en-GB' }){
     const rec = new SpeechRecognition();
     rec.lang = lang;
-    rec.interimResults = false; // IMPORTANT: no interim text (stops repeats)
+    rec.interimResults = false;
     rec.continuous = true;
 
     rec.onstart = ()=> onStatus && onStatus("Listening…");
@@ -409,7 +413,6 @@
     rec.onend = ()=> onStatus && onStatus("Idle");
 
     rec.onresult = (event)=>{
-      // Only final results are provided when interimResults=false
       for(let i=event.resultIndex; i<event.results.length; i++){
         const res = event.results[i];
         const txt = (res[0]?.transcript || "").trim();
@@ -569,7 +572,7 @@
     cameraInput.value = "";
   });
 
-  // Global dictation to General Notes (also fixed)
+  // Global dictation to General Notes
   let globalRec = null;
 
   function setGlobalIdle(){
@@ -584,7 +587,6 @@
       return;
     }
 
-    // If already running, stop it
     if(globalRec){
       try{ globalRec.stop(); }catch(e){}
       setGlobalIdle();
@@ -663,6 +665,149 @@
     generalNotes.value = "";
     render();
     showToast("New job started.");
+  });
+
+  // ------- PDF EXPORT: Save to phone -------
+  function safeFileName(name){
+    return String(name || "fps-job")
+      .replace(/[/\\?%*:|"<>]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  async function toJpegDataUrl(dataUrl){
+    // Ensure JPEG for jsPDF image insertion
+    if(dataUrl.startsWith("data:image/jpeg")) return dataUrl;
+    const img = await new Promise((res, rej)=>{
+      const i = new Image();
+      i.onload=()=>res(i);
+      i.onerror=rej;
+      i.src = dataUrl;
+    });
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img,0,0);
+    return c.toDataURL("image/jpeg", 0.86);
+  }
+
+  exportPdfBtn.addEventListener('click', async ()=>{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({unit:'mm', format:'a4'});
+
+    const margin = 12;
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const contentW = pageW - margin*2;
+
+    const now = new Date();
+    const stamp = `${pad2(now.getDate())}/${pad2(now.getMonth()+1)}/${now.getFullYear()} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+
+    const jobData = {
+      jobId: state.jobId,
+      lettingAgent: (lettingAgent.value || "").trim() || "-",
+      jobRef: (jobRef.value || "").trim() || "-",
+      address: (propertyAddress.value || "").trim() || "-",
+      generalNotes: (generalNotes.value || "").trim() || "-"
+    };
+
+    function setHeader(){
+      doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(20);
+      doc.text('FORD PROPERTY SERVICES', margin, 16);
+      doc.setFontSize(12);
+      doc.text('Job Photo Notes', margin, 23);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(60);
+      doc.text(`Job ID: ${jobData.jobId}`, pageW - margin, 16, {align:'right'});
+      doc.text(`Saved: ${stamp}`, pageW - margin, 22, {align:'right'});
+      doc.setDrawColor(200); doc.setLineWidth(0.35);
+      doc.line(margin, 26, pageW - margin, 26);
+    }
+
+    function wrapText(text, width){
+      return doc.splitTextToSize(String(text || ""), width);
+    }
+
+    setHeader();
+
+    // Job details block
+    let y = 34;
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20);
+    doc.text('Job Details', margin, y);
+    y += 6;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
+    doc.text(`Letting Agent: ${jobData.lettingAgent}`, margin, y); y += 6;
+    doc.text(`Job Reference: ${jobData.jobRef}`, margin, y); y += 6;
+
+    const addrLines = wrapText(`Address: ${jobData.address}`, contentW);
+    doc.text(addrLines, margin, y); y += addrLines.length * 5 + 2;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20);
+    doc.text('General Notes', margin, y); y += 6;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
+    const genLines = wrapText(jobData.generalNotes, contentW);
+    doc.text(genLines, margin, y);
+    y += genLines.length * 5 + 6;
+
+    // Photos + per-photo notes
+    for(let i=0;i<state.photos.length;i++){
+      const p = state.photos[i];
+
+      // new page if needed
+      const neededMin = 10 + 70 + 10; // heading + photo + some notes
+      if(y + neededMin > pageH - 14){
+        doc.addPage();
+        setHeader();
+        y = 34;
+      }
+
+      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20);
+      doc.text(`Photo ${i+1}`, margin, y);
+      y += 6;
+
+      // Photo box sizing
+      const boxW = contentW;
+      const boxH = 78;
+      doc.setDrawColor(200); doc.setLineWidth(0.35);
+      doc.roundedRect(margin, y, boxW, boxH, 2, 2);
+
+      try{
+        const jpeg = await toJpegDataUrl(p.dataUrl);
+        // fit image inside box with small padding
+        doc.addImage(jpeg, 'JPEG', margin+2, y+2, boxW-4, boxH-4, undefined, 'FAST');
+      }catch(e){
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(120);
+        doc.text('Image error', margin+4, y+10);
+        doc.setTextColor(40);
+      }
+
+      y += boxH + 6;
+
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20);
+      doc.text('Notes:', margin, y);
+      y += 5;
+
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
+      const noteText = (p.note || "").trim() || "-";
+      const noteLines = wrapText(noteText, contentW);
+      doc.text(noteLines, margin, y);
+      y += noteLines.length * 5 + 8;
+    }
+
+    // Footer page numbers
+    const total = doc.getNumberOfPages();
+    for(let p=1;p<=total;p++){
+      doc.setPage(p);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(9);
+      doc.setTextColor(130);
+      doc.text(`Job ID: ${jobData.jobId}`, margin, pageH - 8);
+      doc.text(`Page ${p} of ${total}`, pageW - margin, pageH - 8, {align:'right'});
+    }
+
+    const filename = safeFileName(`${jobData.jobId} Photo Notes`) + ".pdf";
+    doc.save(filename); // downloads to phone
   });
 
   if(!canDictate()){
