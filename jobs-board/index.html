@@ -1,1 +1,925 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Ford Property Services • Jobs Board</title>
 
+  <!-- PWA -->
+  <meta name="theme-color" content="#0b1220" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <style>
+    :root{
+      --bg:#0b1220;
+      --text:#e7eefc;
+      --muted:#a9b7d3;
+      --line:rgba(255,255,255,.14);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+      --radius2: 14px;
+      --blue: rgba(74,163,255,.95);
+      --ok: rgba(34,197,94,.9);
+      --warn: rgba(245,158,11,.9);
+      --bad: rgba(239,68,68,.9);
+      --purple: rgba(168,85,247,.9);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(74,163,255,.20), transparent 60%),
+        radial-gradient(1000px 600px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
+        var(--bg);
+      color:var(--text);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      background: rgba(11,18,32,.84);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{max-width:1400px;margin:0 auto;padding:14px 16px}
+    .top{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+    .brand{display:flex; align-items:center; gap:12px;}
+    .logo{
+      width:56px;height:56px;border-radius:14px;
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow: var(--shadow);
+      display:grid; place-items:center;
+      overflow:hidden;
+      cursor:pointer;
+      padding:7px;
+    }
+    .logo img{width:100%;height:100%;object-fit:contain;display:none}
+    .brand h1{margin:0;font-size:16px;line-height:1.1}
+    .brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
+
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .pill{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:8px 10px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-size:12px;color:var(--muted);
+    }
+    .pill strong{color:var(--text)}
+    button{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    button.primary{
+      background: linear-gradient(135deg, var(--blue), rgba(74,163,255,.35));
+      border-color: rgba(74,163,255,.5);
+    }
+    button.ok{
+      background: linear-gradient(135deg, var(--ok), rgba(34,197,94,.25));
+      border-color: rgba(34,197,94,.45);
+    }
+    button.warn{
+      background: linear-gradient(135deg, var(--warn), rgba(245,158,11,.25));
+      border-color: rgba(245,158,11,.45);
+    }
+    button.danger{
+      background: linear-gradient(135deg, var(--bad), rgba(239,68,68,.25));
+      border-color: rgba(239,68,68,.45);
+    }
+    button.purple{
+      background: linear-gradient(135deg, var(--purple), rgba(168,85,247,.25));
+      border-color: rgba(168,85,247,.45);
+    }
+
+    main{max-width:1400px;margin:0 auto;padding:16px}
+    .card{
+      background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .toolbar{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      margin-bottom:12px;
+    }
+    input, textarea, select{
+      width:100%;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 14px;
+      outline:none;
+    }
+    textarea{min-height:90px;resize:vertical}
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px 2px}
+    .hint{color:var(--muted);font-size:12px;margin:8px 0 0}
+    .small{font-size:12px;color:var(--muted)}
+
+    .board{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    @media(min-width:980px){
+      .board{ grid-template-columns: repeat(4, 1fr); }
+    }
+    @media(min-width:1320px){
+      .board{ grid-template-columns: repeat(8, 1fr); }
+    }
+
+    .col{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      border-radius: var(--radius2);
+      padding:10px;
+      min-height:180px;
+    }
+    .colHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-bottom:10px;
+    }
+    .colTitle{font-weight:950; letter-spacing:.3px; font-size:12px; text-transform:uppercase}
+    .count{color:var(--muted); font-size:12px}
+
+    .job{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding:10px;
+      margin-bottom:10px;
+    }
+    .jobTop{
+      display:flex; justify-content:space-between; align-items:flex-start; gap:10px;
+    }
+    .jobTitle{
+      font-weight:950;
+      margin:0;
+      font-size:13px;
+    }
+    .meta{color:var(--muted);font-size:12px;margin-top:4px}
+    .jobBtns{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center}
+    .chip{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:6px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size:12px;
+      margin-top:8px;
+    }
+
+    .bookings{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      border-radius: var(--radius2);
+      padding:10px;
+      margin-bottom:12px;
+    }
+    .bookingsHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .bookingsList{
+      display:grid; gap:8px;
+    }
+    .bookingItem{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      border-radius: 12px;
+      padding:8px 10px;
+      display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;
+    }
+    .bookingItem b{font-size:12px}
+    .bookingItem .small{margin-top:2px}
+
+    /* Modal */
+    .modalBack{
+      position:fixed; inset:0; background: rgba(0,0,0,.55);
+      display:none; align-items:center; justify-content:center;
+      padding:16px; z-index:50;
+    }
+    .modal{
+      width:min(820px, 100%);
+      background: linear-gradient(180deg, rgba(15,27,51,.98), rgba(12,23,48,.98));
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    .modalHead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}
+    .modalHead h2{margin:0;font-size:16px}
+    .grid2{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:720px){ .grid2{grid-template-columns:1fr 1fr} }
+    .modalActions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px}
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo" id="logoBox" title="Tap to upload logo">
+          <span id="logoFallback" style="font-weight:950;letter-spacing:.4px;color:#0b1220;">FPS</span>
+          <img id="logoImg" alt="Company logo" />
+        </div>
+        <div>
+          <h1>Ford Property Services</h1>
+          <p>Jobs Board</p>
+        </div>
+      </div>
+
+      <div class="row" style="flex:1; justify-content:flex-end">
+        <input id="search" placeholder="Search jobs..." style="max-width:360px" />
+        <button id="addBtn" class="primary" type="button">Add Job</button>
+        <button id="exportBtn" type="button">Export CSV</button>
+        <button id="wipeBtn" class="danger" type="button">Clear All</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<input id="logoInput" type="file" accept="image/*" style="display:none" />
+
+<main>
+  <div class="card">
+    <div class="toolbar">
+      <div class="row">
+        <span class="pill"><strong>Total Jobs:</strong> <span id="totalCount">0</span></span>
+        <span class="pill"><strong>Saved:</strong> <span id="savedStatus">—</span></span>
+      </div>
+      <div class="small">Use the buttons on each job to move it through the workflow.</div>
+    </div>
+
+    <div class="bookings">
+      <div class="bookingsHead">
+        <div style="font-weight:950; letter-spacing:.3px">Booked In List (Upcoming)</div>
+        <div class="small">Includes normal bookings + estimate bookings</div>
+      </div>
+      <div id="bookingsList" class="bookingsList"></div>
+      <div id="bookingsEmpty" class="small" style="display:none">No upcoming bookings yet.</div>
+    </div>
+
+    <div class="board" id="board"></div>
+    <div class="hint">Everything saves on your phone. Install to Home Screen for app mode.</div>
+  </div>
+</main>
+
+<!-- Add/Edit Modal -->
+<div class="modalBack" id="modalBack">
+  <div class="modal">
+    <div class="modalHead">
+      <h2 id="modalTitle">Add Job</h2>
+      <button type="button" id="closeModal">Close</button>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <label>Letting Agent</label>
+        <input id="mAgent" placeholder="e.g., Romans" />
+      </div>
+      <div>
+        <label>Job Reference</label>
+        <input id="mRef" placeholder="Optional" />
+      </div>
+      <div style="grid-column:1/-1">
+        <label>Property Address</label>
+        <input id="mAddress" placeholder="Full address" />
+      </div>
+
+      <div>
+        <label>Status Folder</label>
+        <select id="mStatus"></select>
+      </div>
+
+      <div>
+        <label>Booked In (Date + Time)</label>
+        <input id="mBookedDT" type="datetime-local" />
+      </div>
+
+      <div>
+        <label>Estimate Booked In (Date + Time)</label>
+        <input id="mEstBookedDT" type="datetime-local" />
+      </div>
+
+      <div>
+        <label>Quote Ref (optional)</label>
+        <input id="mQuoteRef" placeholder="e.g., EST-1007" />
+      </div>
+
+      <div>
+        <label>Invoice Ref (optional)</label>
+        <input id="mInvRef" placeholder="e.g., INV-1007" />
+      </div>
+
+      <div style="grid-column:1/-1">
+        <label>Notes</label>
+        <textarea id="mNotes" placeholder="Access info, parts needed, tenant details, etc."></textarea>
+      </div>
+    </div>
+
+    <div class="modalActions">
+      <button id="deleteBtn" class="danger" type="button" style="display:none">Delete Job</button>
+      <button id="saveJobBtn" class="ok" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Book Modal -->
+<div class="modalBack" id="quickBack">
+  <div class="modal" style="width:min(520px, 100%)">
+    <div class="modalHead">
+      <h2 id="quickTitle">Set Booking</h2>
+      <button type="button" id="quickClose">Close</button>
+    </div>
+
+    <div>
+      <label id="quickLabel">Choose date + time</label>
+      <input id="quickDT" type="datetime-local" />
+      <div class="small" style="margin-top:8px">
+        Tip: if you want “today”, pick today’s date then choose the time.
+      </div>
+    </div>
+
+    <div class="modalActions">
+      <button id="quickSave" class="ok" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // PWA Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  }
+
+  // Workflow columns
+  const STATUSES = [
+    { key: "quote", label: "Quote Provided" },
+    { key: "booked", label: "Booked In" },
+    { key: "work_done", label: "Work Completed" },
+    { key: "req_est", label: "Requires Estimate" },
+    { key: "est_done", label: "Estimates Complete" },
+    { key: "est_accepted", label: "Estimate Accepted" },
+    { key: "est_not_accepted", label: "Estimate Not Accepted" },
+    { key: "est_booked", label: "Estimate Booked In" }
+  ];
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function nowStamp(){
+    const d = new Date();
+    return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+  function uid(){
+    return "job_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+  }
+  function escapeHtml(str){
+    return String(str ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  // Date/time display (UK)
+  function ukDT(dtLocal){
+    // dtLocal format: YYYY-MM-DDTHH:mm
+    if(!dtLocal) return "";
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(dtLocal);
+    if(!m) return "";
+    return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+  }
+  function toMillis(dtLocal){
+    if(!dtLocal) return null;
+    const d = new Date(dtLocal);
+    const t = d.getTime();
+    return Number.isFinite(t) ? t : null;
+  }
+
+  // Elements
+  const boardEl = document.getElementById('board');
+  const totalCountEl = document.getElementById('totalCount');
+  const savedStatusEl = document.getElementById('savedStatus');
+  const searchEl = document.getElementById('search');
+
+  const bookingsListEl = document.getElementById('bookingsList');
+  const bookingsEmptyEl = document.getElementById('bookingsEmpty');
+
+  const addBtn = document.getElementById('addBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const wipeBtn = document.getElementById('wipeBtn');
+
+  const modalBack = document.getElementById('modalBack');
+  const closeModal = document.getElementById('closeModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const saveJobBtn = document.getElementById('saveJobBtn');
+
+  const mAgent = document.getElementById('mAgent');
+  const mRef = document.getElementById('mRef');
+  const mAddress = document.getElementById('mAddress');
+  const mStatus = document.getElementById('mStatus');
+  const mBookedDT = document.getElementById('mBookedDT');
+  const mEstBookedDT = document.getElementById('mEstBookedDT');
+  const mQuoteRef = document.getElementById('mQuoteRef');
+  const mInvRef = document.getElementById('mInvRef');
+  const mNotes = document.getElementById('mNotes');
+
+  const logoBox = document.getElementById('logoBox');
+  const logoInput = document.getElementById('logoInput');
+  const logoImg = document.getElementById('logoImg');
+  const logoFallback = document.getElementById('logoFallback');
+
+  // Quick booking modal
+  const quickBack = document.getElementById('quickBack');
+  const quickClose = document.getElementById('quickClose');
+  const quickTitle = document.getElementById('quickTitle');
+  const quickLabel = document.getElementById('quickLabel');
+  const quickDT = document.getElementById('quickDT');
+  const quickSave = document.getElementById('quickSave');
+
+  // Populate status select
+  STATUSES.forEach(s=>{
+    const o = document.createElement('option');
+    o.value = s.key;
+    o.textContent = s.label;
+    mStatus.appendChild(o);
+  });
+
+  // Shared logo (same key as your other apps)
+  const savedLogo = localStorage.getItem('fps_logo_v1');
+  if(savedLogo){
+    logoImg.src = savedLogo;
+    logoImg.style.display = 'block';
+    logoFallback.style.display = 'none';
+  }
+  async function fileToDataURL(file, maxDim=900, quality=0.90){
+    const img = await new Promise((res, rej)=>{
+      const i = new Image();
+      i.onload=()=>res(i);
+      i.onerror=rej;
+      i.src = URL.createObjectURL(file);
+    });
+    const c = document.createElement('canvas');
+    let {width:w, height:h} = img;
+    const scale = Math.min(1, maxDim / Math.max(w,h));
+    w = Math.round(w*scale); h = Math.round(h*scale);
+    c.width=w; c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    const url = c.toDataURL('image/jpeg', quality);
+    URL.revokeObjectURL(img.src);
+    return url;
+  }
+  logoBox.addEventListener('click', ()=> logoInput.click());
+  logoInput.addEventListener('change', async (e)=>{
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const url = await fileToDataURL(f, 900, 0.90);
+    localStorage.setItem('fps_logo_v1', url);
+    logoImg.src = url;
+    logoImg.style.display = 'block';
+    logoFallback.style.display = 'none';
+  });
+
+  // Data
+  const STORAGE_KEY = "fps_jobs_board_v2_workflow";
+  let jobs = [];
+  let editingId = null;
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+    savedStatusEl.textContent = nowStamp();
+  }
+  function load(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    jobs = raw ? JSON.parse(raw) : [];
+    savedStatusEl.textContent = raw ? "Loaded" : "—";
+  }
+
+  function norm(s){ return String(s||"").toLowerCase(); }
+  function matches(job, q){
+    if(!q) return true;
+    q = norm(q);
+    return [
+      job.agent, job.ref, job.address, job.notes, job.quoteRef, job.invRef,
+      job.bookedDT, job.estBookedDT
+    ].some(x => norm(x).includes(q));
+  }
+
+  function statusLabel(key){
+    return (STATUSES.find(s=>s.key===key)?.label) || key;
+  }
+
+  function openModal(){
+    modalBack.style.display = 'flex';
+  }
+  function closeModalFn(){
+    modalBack.style.display = 'none';
+  }
+  function clearModal(){
+    editingId = null;
+    modalTitle.textContent = "Add Job";
+    deleteBtn.style.display = 'none';
+
+    mAgent.value = "";
+    mRef.value = "";
+    mAddress.value = "";
+    mStatus.value = "quote";
+    mBookedDT.value = "";
+    mEstBookedDT.value = "";
+    mQuoteRef.value = "";
+    mInvRef.value = "";
+    mNotes.value = "";
+  }
+  function openAdd(){
+    clearModal();
+    openModal();
+  }
+  function openEdit(id){
+    const job = jobs.find(j=>j.id===id);
+    if(!job) return;
+    editingId = id;
+    modalTitle.textContent = "Edit Job";
+    deleteBtn.style.display = 'inline-block';
+
+    mAgent.value = job.agent || "";
+    mRef.value = job.ref || "";
+    mAddress.value = job.address || "";
+    mStatus.value = job.status || "quote";
+    mBookedDT.value = job.bookedDT || "";
+    mEstBookedDT.value = job.estBookedDT || "";
+    mQuoteRef.value = job.quoteRef || "";
+    mInvRef.value = job.invRef || "";
+    mNotes.value = job.notes || "";
+
+    openModal();
+  }
+
+  function upsertJob(){
+    const payload = {
+      id: editingId || uid(),
+      agent: mAgent.value.trim(),
+      ref: mRef.value.trim(),
+      address: mAddress.value.trim(),
+      status: mStatus.value,
+      bookedDT: mBookedDT.value || "",
+      estBookedDT: mEstBookedDT.value || "",
+      quoteRef: mQuoteRef.value.trim(),
+      invRef: mInvRef.value.trim(),
+      notes: mNotes.value.trim(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if(!payload.address){
+      if(!confirm("No address entered. Save anyway?")) return;
+    }
+
+    if(editingId){
+      const i = jobs.findIndex(j=>j.id===editingId);
+      if(i>=0) jobs[i] = { ...jobs[i], ...payload };
+    }else{
+      payload.createdAt = new Date().toISOString();
+      jobs.unshift(payload);
+    }
+
+    save();
+    renderAll();
+    closeModalFn();
+  }
+
+  function deleteJob(){
+    if(!editingId) return;
+    if(!confirm("Delete this job?")) return;
+    jobs = jobs.filter(j=>j.id!==editingId);
+    save(); renderAll(); closeModalFn();
+  }
+
+  // Quick booking modal logic
+  let quickJobId = null;
+  let quickMode = null; // "bookedDT" | "estBookedDT"
+  function openQuick(jobId, mode){
+    const job = jobs.find(j=>j.id===jobId);
+    if(!job) return;
+
+    quickJobId = jobId;
+    quickMode = mode;
+
+    if(mode === "bookedDT"){
+      quickTitle.textContent = "Book In Job";
+      quickLabel.textContent = "Choose job booking date + time";
+      quickDT.value = job.bookedDT || "";
+    }else{
+      quickTitle.textContent = "Book In Accepted Estimate";
+      quickLabel.textContent = "Choose estimate booking date + time";
+      quickDT.value = job.estBookedDT || "";
+    }
+
+    quickBack.style.display = "flex";
+  }
+  function closeQuick(){
+    quickBack.style.display = "none";
+    quickJobId = null;
+    quickMode = null;
+    quickDT.value = "";
+  }
+  quickClose.addEventListener('click', closeQuick);
+  quickBack.addEventListener('click', (e)=>{ if(e.target===quickBack) closeQuick(); });
+
+  quickSave.addEventListener('click', ()=>{
+    const job = jobs.find(j=>j.id===quickJobId);
+    if(!job) return closeQuick();
+
+    if(!quickDT.value){
+      alert("Please choose a date and time.");
+      return;
+    }
+
+    if(quickMode === "bookedDT"){
+      job.bookedDT = quickDT.value;
+      job.status = "booked";
+    }else{
+      job.estBookedDT = quickDT.value;
+      job.status = "est_booked";
+    }
+
+    job.updatedAt = new Date().toISOString();
+    save();
+    renderAll();
+    closeQuick();
+  });
+
+  // Workflow button actions
+  function doAction(job, act){
+    if(act === "book_in_job"){
+      openQuick(job.id, "bookedDT");
+      return;
+    }
+
+    if(act === "work_completed"){
+      job.status = "work_done";
+      job.updatedAt = new Date().toISOString();
+    }
+
+    if(act === "complete_to_requires_est"){
+      job.status = "req_est";
+      job.updatedAt = new Date().toISOString();
+    }
+
+    if(act === "estimate_complete_to_est_done"){
+      job.status = "est_done";
+      job.updatedAt = new Date().toISOString();
+    }
+
+    if(act === "estimate_accepted"){
+      job.status = "est_accepted";
+      job.updatedAt = new Date().toISOString();
+    }
+
+    if(act === "estimate_not_accepted"){
+      job.status = "est_not_accepted";
+      job.updatedAt = new Date().toISOString();
+    }
+
+    if(act === "book_in_estimate"){
+      openQuick(job.id, "estBookedDT");
+      return;
+    }
+
+    save();
+    renderAll();
+  }
+
+  // Bookings list
+  function renderBookings(filteredJobs){
+    const now = Date.now();
+    const items = [];
+
+    for(const j of filteredJobs){
+      const t1 = toMillis(j.bookedDT);
+      if(t1 && t1 >= now){
+        items.push({
+          when: t1,
+          kind: "Job Booking",
+          dt: j.bookedDT,
+          job: j
+        });
+      }
+      const t2 = toMillis(j.estBookedDT);
+      if(t2 && t2 >= now){
+        items.push({
+          when: t2,
+          kind: "Estimate Booking",
+          dt: j.estBookedDT,
+          job: j
+        });
+      }
+    }
+
+    items.sort((a,b)=>a.when-b.when);
+
+    bookingsListEl.innerHTML = "";
+    if(items.length === 0){
+      bookingsEmptyEl.style.display = "block";
+      return;
+    }
+    bookingsEmptyEl.style.display = "none";
+
+    items.slice(0, 12).forEach(it=>{
+      const title = it.job.address?.trim() ? it.job.address.trim() : "(No address)";
+      const agent = it.job.agent?.trim() ? it.job.agent.trim() : "-";
+      const ref = it.job.ref?.trim() ? it.job.ref.trim() : "-";
+
+      const el = document.createElement("div");
+      el.className = "bookingItem";
+      el.innerHTML = `
+        <div>
+          <b>${escapeHtml(it.kind)} • ${escapeHtml(ukDT(it.dt))}</b>
+          <div class="small">${escapeHtml(title)}</div>
+          <div class="small">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
+        </div>
+        <div class="row">
+          <button type="button">Open</button>
+        </div>
+      `;
+      el.querySelector("button").addEventListener("click", ()=> openEdit(it.job.id));
+      bookingsListEl.appendChild(el);
+    });
+  }
+
+  function renderBoard(filteredJobs){
+    boardEl.innerHTML = "";
+
+    STATUSES.forEach(status=>{
+      const col = document.createElement('div');
+      col.className = 'col';
+
+      const list = filteredJobs.filter(j=>j.status===status.key);
+
+      const head = document.createElement('div');
+      head.className = 'colHead';
+      head.innerHTML = `<div class="colTitle">${status.label}</div><div class="count">${list.length}</div>`;
+      col.appendChild(head);
+
+      // Sort: bookings first when available
+      list.sort((a,b)=>{
+        const ta = toMillis(a.bookedDT) ?? 9e15;
+        const tb = toMillis(b.bookedDT) ?? 9e15;
+        return ta - tb;
+      });
+
+      list.forEach(job=>{
+        const j = document.createElement('div');
+        j.className = 'job';
+
+        const title = job.address?.trim() ? job.address.trim() : "(No address)";
+        const agent = job.agent?.trim() ? job.agent.trim() : "-";
+        const ref = job.ref?.trim() ? job.ref.trim() : "-";
+
+        const chips = [];
+        if(job.bookedDT) chips.push(`Booked: ${ukDT(job.bookedDT)}`);
+        if(job.estBookedDT) chips.push(`Est booked: ${ukDT(job.estBookedDT)}`);
+        if(job.quoteRef) chips.push(`Quote: ${job.quoteRef}`);
+        if(job.invRef) chips.push(`Invoice: ${job.invRef}`);
+
+        // Buttons by status
+        const btns = [];
+        btns.push(`<button type="button" data-act="edit">Edit</button>`);
+
+        if(job.status === "quote"){
+          btns.push(`<button type="button" class="primary" data-act="book_in_job">Book In</button>`);
+        }
+
+        if(job.status === "booked"){
+          btns.push(`<button type="button" class="ok" data-act="work_completed">Work Completed</button>`);
+        }
+
+        if(job.status === "work_done"){
+          btns.push(`<button type="button" class="purple" data-act="complete_to_requires_est">Complete → Requires Estimate</button>`);
+        }
+
+        if(job.status === "req_est"){
+          btns.push(`<button type="button" class="purple" data-act="estimate_complete_to_est_done">Estimate Complete → Estimates Complete</button>`);
+        }
+
+        if(job.status === "est_done"){
+          btns.push(`<button type="button" class="ok" data-act="estimate_accepted">Accepted</button>`);
+          btns.push(`<button type="button" class="danger" data-act="estimate_not_accepted">Not Accepted</button>`);
+        }
+
+        if(job.status === "est_accepted"){
+          btns.push(`<button type="button" class="primary" data-act="book_in_estimate">Book In Estimate</button>`);
+        }
+
+        j.innerHTML = `
+          <div class="jobTop">
+            <div>
+              <div class="jobTitle">${escapeHtml(title)}</div>
+              <div class="meta">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
+              ${job.notes ? `<div class="meta" style="margin-top:6px">${escapeHtml(job.notes).slice(0,160)}${job.notes.length>160?'…':''}</div>` : ""}
+              ${chips.length ? `<div class="chip">${escapeHtml(chips.join(" • "))}</div>` : ""}
+            </div>
+            <div class="jobBtns">${btns.join("")}</div>
+          </div>
+        `;
+
+        j.querySelector('[data-act="edit"]').addEventListener('click', ()=> openEdit(job.id));
+
+        const acts = j.querySelectorAll('[data-act]');
+        acts.forEach(el=>{
+          const act = el.getAttribute('data-act');
+          if(act === "edit") return;
+          el.addEventListener('click', ()=> doAction(job, act));
+        });
+
+        col.appendChild(j);
+      });
+
+      boardEl.appendChild(col);
+    });
+  }
+
+  function renderAll(){
+    const q = searchEl.value.trim();
+    const filtered = jobs.filter(j => matches(j, q));
+    totalCountEl.textContent = String(filtered.length);
+
+    renderBookings(filtered);
+    renderBoard(filtered);
+  }
+
+  // CSV export
+  function csvEscape(v){
+    const s = String(v ?? "");
+    if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+    return s;
+  }
+  function exportCsv(){
+    const header = [
+      "id","status","status_label","letting_agent","job_ref","address",
+      "booked_dt","estimate_booked_dt","quote_ref","invoice_ref","notes",
+      "created_at","updated_at"
+    ];
+
+    const rows = jobs.map(j=>[
+      j.id,
+      j.status,
+      statusLabel(j.status),
+      j.agent || "",
+      j.ref || "",
+      j.address || "",
+      j.bookedDT || "",
+      j.estBookedDT || "",
+      j.quoteRef || "",
+      j.invRef || "",
+      (j.notes || "").replace(/\n/g," "),
+      j.createdAt || "",
+      j.updatedAt || ""
+    ]);
+
+    const csv = [header, ...rows].map(r=>r.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "fps_jobs_board.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Wire UI
+  addBtn.addEventListener('click', openAdd);
+  closeModal.addEventListener('click', closeModalFn);
+  modalBack.addEventListener('click', (e)=>{ if(e.target === modalBack) closeModalFn(); });
+  saveJobBtn.addEventListener('click', upsertJob);
+  deleteBtn.addEventListener('click', deleteJob);
+
+  exportBtn.addEventListener('click', exportCsv);
+
+  wipeBtn.addEventListener('click', ()=>{
+    if(!confirm("Clear ALL jobs from this device?")) return;
+    jobs = [];
+    save(); renderAll();
+  });
+
+  searchEl.addEventListener('input', renderAll);
+
+  // Init
+  load();
+  renderAll();
+</script>
+</body>
+</html>
