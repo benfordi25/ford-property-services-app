@@ -140,7 +140,7 @@ video{width:100%;height:100%;object-fit:cover}
     <div id="list" class="grid"></div>
 
     <div class="small" style="margin-top:10px">
-      Dictation: tap <strong>Dictate</strong>, speak, then pause. It auto-stops and writes a bullet.
+      Dictation: tap <strong>Dictate</strong>, speak normally. Pause ~2–3 seconds to finish and it will save a bullet.
     </div>
   </div>
 </main>
@@ -165,7 +165,7 @@ video{width:100%;height:100%;object-fit:cover}
 
 <script>
 const $ = (id)=>document.getElementById(id);
-const STORE = "fps_job_photo_notes_v8_autostop_pdf";
+const STORE = "fps_job_photo_notes_v9_buffered_pdf";
 
 /* =======================
    STATE
@@ -314,7 +314,7 @@ $("galleryInput").addEventListener("change", async (e)=>{
 });
 
 /* =======================
-   DICTATION (AUTO-STOP ON SILENCE + ALWAYS WRITES)
+   DICTATION (BUFFERED + MORE RELIABLE)
 ======================= */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -322,7 +322,8 @@ let rec = null;
 let activeItem=null, activeTa=null, activeBtn=null, activeLive=null;
 let wantRecording=false;
 
-let lastHeard = "";
+let finalBuffer = "";
+let interimBuffer = "";
 let silenceTimer = null;
 
 function setSpeechStatus(msg){ $("speechStatus").textContent = msg || ""; }
@@ -356,18 +357,16 @@ function overlapDelta(prev, next){
   const b = normalise(next);
   if(!a) return next;
 
-  // If new begins with old, only add extra words
   if(b.startsWith(a)){
     const extra = next.slice(prev.length).trim();
     return extra;
   }
 
-  // If extremely similar to last line, treat as duplicate
   const lastLine = (activeItem?.note || "").trim().split("\n").slice(-1)[0] || "";
   const lastNorm = normalise(lastLine.replace(/^•\s*/,""));
   const nextNorm = normalise(next);
   if(lastNorm && nextNorm){
-    const closeLen = Math.abs(lastNorm.length - nextNorm.length) <= 8;
+    const closeLen = Math.abs(lastNorm.length - nextNorm.length) <= 10;
     if(closeLen && (lastNorm.includes(nextNorm) || nextNorm.includes(lastNorm))) return "";
   }
 
@@ -413,7 +412,11 @@ function armAutoStop(){
     if(rec && wantRecording){
       try{ rec.stop(); }catch(e){}
     }
-  }, 1200);
+  }, 2500);
+}
+
+function combinedBuffer(){
+  return (finalBuffer + " " + interimBuffer).replace(/\s+/g," ").trim();
 }
 
 async function startRec(){
@@ -423,10 +426,11 @@ async function startRec(){
   rec.continuous = true;
   rec.maxAlternatives = 1;
 
-  lastHeard = "";
+  finalBuffer = "";
+  interimBuffer = "";
 
   rec.onstart = ()=>{
-    setSpeechStatus("Recording… speak now.");
+    setSpeechStatus("Recording… speak normally.");
     setLive("Listening…");
     armAutoStop();
   };
@@ -436,25 +440,25 @@ async function startRec(){
     clearSilence();
   };
 
-  rec.onspeechend = ()=>{
-    armAutoStop();
-  };
-
   rec.onresult = (ev)=>{
+    armAutoStop();
     for(let i=ev.resultIndex;i<ev.results.length;i++){
       const res = ev.results[i];
-      const txt = res?.[0]?.transcript || "";
-      if(!txt.trim()) continue;
-
-      lastHeard = txt;
+      const txt = (res?.[0]?.transcript || "").trim();
+      if(!txt) continue;
 
       if(res.isFinal){
-        appendBullet(activeItem, txt);
+        const normSeg = normalise(txt);
+        const normAll = normalise(finalBuffer);
+        if(!normAll.endsWith(normSeg)){
+          finalBuffer = (finalBuffer + " " + txt).trim();
+        }
+        interimBuffer = "";
         setLive("");
-        setSpeechStatus("Recorded ✅ (pause to finish)");
+        setSpeechStatus("Recording… (pause to finish)");
       }else{
-        setLive("… " + txt.trim());
-        armAutoStop();
+        interimBuffer = txt;
+        setLive("… " + txt);
       }
     }
   };
@@ -476,10 +480,9 @@ async function startRec(){
   rec.onend = ()=>{
     clearSilence();
 
-    // If Android never delivered a final, still write the last heard text
-    if(wantRecording && activeItem){
-      const t = (lastHeard || "").trim();
-      if(t) appendBullet(activeItem, t);
+    const all = combinedBuffer();
+    if(wantRecording && activeItem && all){
+      appendBullet(activeItem, all);
     }
 
     rec = null;
@@ -491,6 +494,7 @@ async function startRec(){
     setTimeout(()=>setSpeechStatus(""), 900);
 
     activeItem=null; activeTa=null; activeBtn=null; activeLive=null;
+    finalBuffer=""; interimBuffer="";
   };
 
   try{
@@ -504,7 +508,6 @@ async function startRec(){
 }
 
 async function toggleDictation(item, textarea, btn, live){
-  // If already recording -> stop
   if(rec && wantRecording){
     wantRecording=false;
     try{ rec.stop(); }catch(e){}
