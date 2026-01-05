@@ -6,91 +6,121 @@
 <title>Ford Property Services • Photo Notes</title>
 <meta name="theme-color" content="#0b1220">
 
-<!-- jsPDF (creates real PDFs with file names) -->
+<!-- jsPDF -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <style>
 :root{
-  --bg:#0b1220; --line:rgba(255,255,255,.14);
-  --text:#e7eefc; --muted:#a9b7d3;
-  --good:#22c55e; --bad:#ef4444;
+  --bg:#0b1220; --text:#e7eefc; --muted:#a9b7d3;
+  --line:rgba(255,255,255,.14); --shadow:0 10px 30px rgba(0,0,0,.35);
+  --good:#22c55e; --bad:#ef4444; --info:#7dd3fc;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:var(--bg)}
-header{position:sticky;top:0;z-index:10;background:#0b1220;border-bottom:1px solid var(--line)}
+body{
+  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.18), transparent 60%),
+    radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.10), transparent 55%),
+    var(--bg);
+}
+header{
+  position:sticky;top:0;z-index:10;
+  background: rgba(11,18,32,.86);
+  backdrop-filter: blur(10px);
+  border-bottom:1px solid var(--line);
+}
 .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .brand{display:flex;gap:12px;align-items:center}
-.logo{width:54px;height:54px;border-radius:14px;background:#fff;color:#000;display:grid;place-items:center;font-weight:900}
+.logo{
+  width:54px;height:54px;border-radius:14px;background:#fff;color:#0b1220;
+  display:grid;place-items:center;font-weight:950;letter-spacing:.4px;
+  box-shadow:var(--shadow);
+}
+a.back{color:#9ecbff;text-decoration:none;font-weight:900}
 main{max-width:1100px;margin:0 auto;padding:16px}
-.card{border:1px solid var(--line);border-radius:18px;padding:14px}
+.card{
+  background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  box-shadow: var(--shadow);
+  padding:14px;
+}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 button{
-  background:rgba(255,255,255,.06);color:var(--text);
-  border:1px solid var(--line);border-radius:14px;
-  padding:10px 12px;font-weight:900;cursor:pointer
+  border:1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.06);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:14px;
+  cursor:pointer;
+  font-weight:900;
 }
 button.good{border-color:rgba(34,197,94,.55)}
 button.bad{border-color:rgba(239,68,68,.55)}
 button.rec{
-  border-color:rgba(239,68,68,.75);
-  box-shadow: 0 0 0 2px rgba(239,68,68,.15) inset;
+  border-color:rgba(239,68,68,.8);
+  box-shadow: 0 0 0 2px rgba(239,68,68,.18) inset;
 }
-button:disabled{opacity:.55; cursor:not-allowed}
+button:disabled{opacity:.55;cursor:not-allowed}
 input,textarea{
-  width:100%;background:rgba(0,0,0,.2);color:var(--text);
-  border:1px solid var(--line);border-radius:14px;padding:10px 12px
+  width:100%;
+  background: rgba(0,0,0,.22);
+  color:var(--text);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:14px;
+  padding:10px 12px;
 }
 textarea{min-height:90px;white-space:pre-wrap}
-.grid{display:grid;gap:12px;margin-top:12px}
-@media(min-width:800px){.grid{grid-template-columns:1fr 1fr}}
-.item{border:1px solid var(--line);border-radius:18px;padding:12px}
-.thumb{aspect-ratio:4/3;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:8px;background:#000}
-.thumb img{width:100%;height:100%;object-fit:contain}
 .small{font-size:12px;color:var(--muted)}
+#speechStatus{font-size:12px;color:#b9d6ff;margin-top:8px}
+
+.grid{display:grid;gap:12px;margin-top:12px;grid-template-columns:1fr}
+@media(min-width:800px){.grid{grid-template-columns:1fr 1fr}}
+.item{
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  padding:12px;
+  background: rgba(0,0,0,.16);
+}
+.thumb{
+  aspect-ratio:4/3;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  overflow:hidden;
+  background:#000;
+  margin-bottom:8px;
+}
+.thumb img{width:100%;height:100%;object-fit:contain}
+.liveLine{font-size:12px;color:var(--info);min-height:16px;margin-top:6px}
+
 .toast{
   position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
-  background:#000;color:#fff;padding:10px 14px;border-radius:14px;display:none;font-weight:900;z-index:100
+  background:#000;color:#fff;padding:10px 14px;border-radius:14px;display:none;
+  font-weight:900;z-index:100;border:1px solid rgba(255,255,255,.12)
 }
 
-/* CAMERA MODAL */
+/* camera modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:50;padding:14px}
-.panel{background:#0b1220;border:1px solid var(--line);border-radius:18px;padding:12px;width:min(960px,96%)}
-.videoWrap{aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+.panel{background:#0b1220;border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:12px;width:min(960px,96%)}
+.videoWrap{aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.14)}
 video{width:100%;height:100%;object-fit:cover}
-
-/* Files modal */
-.filesModal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:60;padding:14px}
-.filesPanel{background:#0b1220;border:1px solid var(--line);border-radius:18px;padding:12px;width:min(980px,96%);max-height:90vh;overflow:auto}
-.fileRow{
-  border:1px solid var(--line);
-  border-radius:16px;
-  padding:12px;
-  margin-top:10px;
-  display:flex;
-  gap:10px;
-  justify-content:space-between;
-  align-items:flex-start;
-  flex-wrap:wrap;
-}
-.fileActions{display:flex;gap:8px;flex-wrap:wrap}
-.mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; font-size:12px; color:var(--muted)}
-hr{border:none;border-top:1px solid var(--line);margin:12px 0}
 </style>
 </head>
 
 <body>
-
 <header>
   <div class="wrap top">
     <div class="brand">
       <div class="logo">FPS</div>
       <div>
-        <strong>Ford Property Services</strong><br>
-        <span class="small">Photo Notes</span>
+        <div style="font-weight:950">Ford Property Services</div>
+        <div class="small">Photo Notes</div>
       </div>
     </div>
-    <a href="/app/dashboard/" style="color:#9ecbff;text-decoration:none">← Dashboard</a>
+    <!-- IMPORTANT: since this file is /job-photo-notes/, dashboard is usually ../dashboard/ -->
+    <a class="back" href="../dashboard/">← Dashboard</a>
   </div>
 </header>
 
@@ -99,41 +129,37 @@ hr{border:none;border-top:1px solid var(--line);margin:12px 0}
 <main>
   <div class="card">
 
-    <div style="margin-bottom:10px">
-      <div style="font-weight:900;font-size:16px">Photo Report</div>
-      <div style="margin-top:6px"><strong>Property Address:</strong> <span id="pdfAddress">—</span></div>
-      <div class="small">Date: <span id="pdfDate">—</span></div>
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <div style="font-weight:950;font-size:16px">Photo Report</div>
+        <div class="small">Address and date will be added to the PDF filename.</div>
+      </div>
+      <div class="row">
+        <button id="newForm" class="bad" type="button">🆕 New form</button>
+      </div>
     </div>
 
-    <div class="row">
-      <button id="newForm" class="bad" type="button">🆕 New form</button>
+    <div class="row" style="margin-top:12px">
+      <input id="address" placeholder="Property address">
+      <input id="date" type="date" style="max-width:220px">
+    </div>
+
+    <div class="row" style="margin-top:10px">
       <button id="openCamera" class="good" type="button">📷 Open camera</button>
       <button id="chooseGallery" type="button">🖼️ Gallery</button>
       <button id="createPdf" class="good" type="button">🧾 Create PDF</button>
       <button id="sharePdf" type="button" disabled>📤 Share PDF</button>
       <button id="downloadPdf" type="button" disabled>⬇️ Download PDF</button>
-      <button id="openFiles" type="button">📁 Downloaded files</button>
     </div>
 
-    <div class="small" style="margin-top:6px">
-      1) Create PDF → 2) Share PDF (WhatsApp/Email) or Download PDF.
-    </div>
-
-    <div id="speechStatus" class="small" style="margin-top:8px"></div>
-
-    <div class="row" style="margin-top:12px">
-      <input id="address" placeholder="Property address">
-      <input id="date" type="date">
-    </div>
+    <div id="speechStatus"></div>
 
     <textarea id="general" placeholder="General notes (optional)" style="margin-top:12px"></textarea>
 
     <div id="list" class="grid"></div>
 
-    <hr>
-
-    <div class="small">
-      “Downloaded files” shows PDFs created by this app (saved in-app). Browsers can’t list your whole phone Downloads folder.
+    <div class="small" style="margin-top:10px">
+      Tip: If dictation doesn’t type, open this page in <strong>Chrome</strong> and allow Microphone permission (padlock icon).
     </div>
 
   </div>
@@ -153,44 +179,18 @@ hr{border:none;border-top:1px solid var(--line);margin:12px 0}
       <button id="snap" class="good" type="button">📸 Take photo</button>
       <button id="closeCam" class="bad" type="button">✕ Close</button>
     </div>
-    <div class="small" style="margin-top:8px">If prompted, tap <strong>Allow</strong> to give camera & microphone access.</div>
-  </div>
-</div>
-
-<!-- Files modal -->
-<div id="filesModal" class="filesModal" aria-hidden="true">
-  <div class="filesPanel">
-    <div class="row" style="justify-content:space-between">
-      <div>
-        <strong>Downloaded files</strong><br>
-        <span class="small">Your saved PDFs (address + date filename)</span>
-      </div>
-      <div class="row">
-        <button id="refreshFiles" type="button">↻ Refresh</button>
-        <button id="closeFiles" class="bad" type="button">✕ Close</button>
-      </div>
-    </div>
-
-    <div id="filesList" style="margin-top:10px"></div>
-
-    <div class="small" style="margin-top:10px">
-      Tip: If you need more storage, delete old PDFs here.
-    </div>
+    <div class="small" style="margin-top:8px">Photos stay inside the app unless you export a PDF.</div>
   </div>
 </div>
 
 <div id="toast" class="toast">Saved</div>
 
 <script>
-const $ = (id) => document.getElementById(id);
+const $ = (id)=>document.getElementById(id);
 
-/* =======================
-   STATE (autosaves)
-======================= */
-const STORE = "fps_photo_notes_v2_state";
+const STORE = "fps_job_photo_notes_v3";
 let state = { address:"", date:"", general:"", items:[] };
 
-// current generated PDF (for share/download after create)
 let currentPdfBlob = null;
 let currentPdfFilename = "";
 
@@ -199,7 +199,7 @@ function showToast(msg){
   t.textContent = msg;
   t.style.display = "block";
   clearTimeout(showToast._tm);
-  showToast._tm = setTimeout(()=>t.style.display="none", 1600);
+  showToast._tm = setTimeout(()=>t.style.display="none", 1400);
 }
 
 function ukDateFromInput(value){
@@ -222,12 +222,7 @@ function cleanForFilename(s){
     .slice(0, 60);
 }
 
-function syncHeader(){
-  $("pdfAddress").textContent = state.address || "—";
-  $("pdfDate").textContent = ukDateFromInput(state.date) || "—";
-}
-
-function invalidateCurrentPdf(){
+function invalidatePdf(){
   currentPdfBlob = null;
   currentPdfFilename = "";
   $("sharePdf").disabled = true;
@@ -236,8 +231,7 @@ function invalidateCurrentPdf(){
 
 function saveState(){
   localStorage.setItem(STORE, JSON.stringify(state));
-  syncHeader();
-  invalidateCurrentPdf();
+  invalidatePdf();
 }
 
 function loadState(){
@@ -248,27 +242,123 @@ function loadState(){
   $("address").value = state.address || "";
   $("date").value = state.date || "";
   $("general").value = state.general || "";
-  syncHeader();
   render();
 }
+
+/* default date today */
+(function initDate(){
+  const d = new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const day=String(d.getDate()).padStart(2,"0");
+  const today = `${y}-${m}-${day}`;
+  if(!localStorage.getItem(STORE)){
+    state.date = today;
+    $("date").value = today;
+    saveState();
+  }else{
+    if(!$("date").value) $("date").value = today;
+  }
+})();
 
 $("address").addEventListener("input", (e)=>{ state.address = e.target.value; saveState(); });
 $("date").addEventListener("change", (e)=>{ state.date = e.target.value; saveState(); });
 $("general").addEventListener("input", (e)=>{ state.general = e.target.value; saveState(); });
 
 /* =======================
-   DICTATION (BULLETS — robust on Android, no missing text)
+   CAMERA
+======================= */
+let stream = null;
+function openCam(){
+  $("camModal").style.display="flex";
+  $("camModal").setAttribute("aria-hidden","false");
+}
+function closeCam(){
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream=null;
+  }
+  $("camModal").style.display="none";
+  $("camModal").setAttribute("aria-hidden","true");
+}
+$("openCamera").addEventListener("click", async ()=>{
+  openCam();
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:"environment" }, width:{ideal:1920}, height:{ideal:1080} },
+      audio:false
+    });
+    $("video").srcObject = stream;
+    await $("video").play();
+  }catch(err){
+    alert("Camera failed to start. Please allow camera permission.\n\n" + err);
+    closeCam();
+  }
+});
+$("closeCam").addEventListener("click", closeCam);
+$("closeCamTop").addEventListener("click", closeCam);
+
+$("snap").addEventListener("click", ()=>{
+  const v = $("video");
+  if(!v.videoWidth) return;
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth;
+  c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v,0,0);
+  state.items.push({ img: c.toDataURL("image/jpeg",0.94), note:"" });
+  saveState();
+  render();
+  showToast("Photo added");
+});
+
+/* =======================
+   GALLERY
+======================= */
+$("chooseGallery").addEventListener("click", ()=> $("galleryInput").click());
+$("galleryInput").addEventListener("change", async (e)=>{
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+
+  for(const f of files){
+    const img = new Image();
+    img.src = URL.createObjectURL(f);
+    await img.decode();
+
+    const max = 1800;
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img,0,0,w,h);
+
+    state.items.push({ img: c.toDataURL("image/jpeg",0.94), note:"" });
+    URL.revokeObjectURL(img.src);
+  }
+
+  e.target.value="";
+  saveState();
+  render();
+  showToast("Added from gallery");
+});
+
+/* =======================
+   DICTATION (Android-robust + live preview + always commits)
 ======================= */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
 let rec = null;
 let micWarmStream = null;
 
 let activeDictBtn = null;
 let activeTarget = null;
+let activeLiveLine = null;
 
-// track interim + whether we added any final text during this session
 let lastInterim = "";
 let addedFinalThisSession = false;
+let gotAnyAudioSignal = false;
+let startedAt = 0;
 
 function setSpeechStatus(msg){ $("speechStatus").textContent = msg || ""; }
 
@@ -295,6 +385,10 @@ async function warmUpMicPermission(){
   }
 }
 
+function setLive(text){
+  if(activeLiveLine) activeLiveLine.textContent = text || "";
+}
+
 function appendBullet(targetTextarea, text){
   const clean = (text || "").trim();
   if(!clean) return;
@@ -310,6 +404,14 @@ function appendBullet(targetTextarea, text){
   targetTextarea.dispatchEvent(new Event("input", { bubbles:true }));
 }
 
+function commitInterimIfNeeded(){
+  if(!activeTarget) return;
+  if(!addedFinalThisSession && lastInterim.trim()){
+    appendBullet(activeTarget, lastInterim);
+    lastInterim = "";
+  }
+}
+
 function stopDictation(){
   if(rec){
     try{ rec.stop(); }catch(e){}
@@ -318,7 +420,7 @@ function stopDictation(){
   setSpeechStatus("Stopping…");
 }
 
-async function toggleDictation(targetTextarea, dictButton){
+async function toggleDictation(targetTextarea, dictButton, liveLineEl){
   if(rec && activeTarget === targetTextarea){
     stopDictation();
     return;
@@ -333,30 +435,42 @@ async function toggleDictation(targetTextarea, dictButton){
     return;
   }
 
-  setSpeechStatus("Requesting microphone…");
-  const ok = await warmUpMicPermission();
-  if(!ok) return;
-
   activeDictBtn = dictButton;
   activeTarget = targetTextarea;
+  activeLiveLine = liveLineEl || null;
 
   lastInterim = "";
   addedFinalThisSession = false;
+  gotAnyAudioSignal = false;
+  startedAt = Date.now();
 
   setDictButtonState(activeDictBtn, "recording");
-  setSpeechStatus("Recording… speak now.");
+  setLive("Listening…");
+  setSpeechStatus("Requesting microphone…");
+
+  const ok = await warmUpMicPermission();
+  if(!ok){
+    setDictButtonState(activeDictBtn, "idle");
+    setLive("");
+    return;
+  }
 
   rec = new SR();
   rec.lang = "en-GB";
   rec.interimResults = true;
-  rec.continuous = true;
+
+  // More reliable on Android/PWA than continuous=true
+  rec.continuous = false;
   rec.maxAlternatives = 1;
+
+  rec.onaudiostart = ()=>{ gotAnyAudioSignal = true; setSpeechStatus("Recording…"); };
+  rec.onspeechstart = ()=>{ gotAnyAudioSignal = true; setLive("Hearing you…"); };
+  rec.onstart = ()=>{ setSpeechStatus("Recording… speak now."); };
 
   rec.onresult = (ev)=>{
     for(let i = ev.resultIndex; i < ev.results.length; i++){
       const res = ev.results[i];
       if(!res) continue;
-
       const transcript = (res[0] && res[0].transcript) ? res[0].transcript : "";
       if(!transcript.trim()) continue;
 
@@ -364,13 +478,14 @@ async function toggleDictation(targetTextarea, dictButton){
         appendBullet(activeTarget, transcript);
         addedFinalThisSession = true;
         lastInterim = "";
+        setLive("");
       }else{
         lastInterim = transcript;
+        setLive("… " + transcript.trim());
       }
     }
-
     if(addedFinalThisSession){
-      setSpeechStatus("Recorded ✅ (tap Stop or keep talking)");
+      setSpeechStatus("Recorded ✅ (tap Dictate again for another bullet)");
     }else{
       setSpeechStatus(lastInterim ? "Recording… (hearing you)" : "Recording…");
     }
@@ -388,38 +503,51 @@ async function toggleDictation(targetTextarea, dictButton){
   };
 
   rec.onend = ()=>{
-    // KEY FIX: if Android gave only interim, add it as bullet now
-    if(!addedFinalThisSession && lastInterim.trim()){
-      appendBullet(activeTarget, lastInterim);
+    commitInterimIfNeeded();
+
+    const elapsed = Date.now() - startedAt;
+    if(!addedFinalThisSession && !lastInterim.trim()){
+      if(!gotAnyAudioSignal && elapsed > 1200){
+        setSpeechStatus("No audio captured. Check Microphone permission (Chrome padlock → Microphone → Allow).");
+      }else{
+        setSpeechStatus("Stopped (no speech captured). Try again.");
+      }
+    }else{
+      setSpeechStatus("Stopped.");
     }
 
+    setLive("");
     setDictButtonState(activeDictBtn, "idle");
-    setSpeechStatus("Stopped.");
 
     rec = null;
     activeDictBtn = null;
     activeTarget = null;
+    activeLiveLine = null;
     lastInterim = "";
     addedFinalThisSession = false;
+    gotAnyAudioSignal = false;
+    startedAt = 0;
 
     setTimeout(()=> setSpeechStatus(""), 1200);
   };
 
   try{
     rec.start();
+    setTimeout(()=>{
+      if(rec && !gotAnyAudioSignal && !lastInterim && !addedFinalThisSession){
+        setSpeechStatus("Not picking up audio. Use Chrome (not Samsung Internet) and allow Microphone permission.");
+      }
+    }, 2000);
   }catch(e){
-    setDictButtonState(activeDictBtn, "idle");
     setSpeechStatus("Could not start dictation. Try Chrome + allow microphone.");
     rec = null;
-    activeDictBtn = null;
-    activeTarget = null;
-    lastInterim = "";
-    addedFinalThisSession = false;
+    setDictButtonState(activeDictBtn, "idle");
+    setLive("");
   }
 }
 
 /* =======================
-   RENDER PHOTOS
+   RENDER
 ======================= */
 function render(){
   const list = $("list");
@@ -432,30 +560,36 @@ function render(){
       <div class="thumb"><img src="${it.img}" alt="Photo ${idx+1}"></div>
       <div class="small" style="margin-bottom:6px"><strong>Photo ${idx+1}</strong></div>
       <textarea placeholder="Notes for this photo..."></textarea>
+      <div class="liveLine"></div>
       <div class="row" style="margin-top:6px">
         <button type="button" class="good">🎤 Dictate</button>
-        <button type="button" class="bad">⌫ Clear</button>
+        <button type="button">⌫ Clear</button>
         <button type="button" class="bad">🗑️ Delete</button>
       </div>
     `;
 
     const ta = box.querySelector("textarea");
+    const liveLine = box.querySelector(".liveLine");
     ta.value = it.note || "";
     ta.addEventListener("input", (e)=>{ it.note = e.target.value; saveState(); });
 
-    const [bDict,bClear,bDel] = box.querySelectorAll("button");
+    const [bDict, bClear, bDel] = box.querySelectorAll("button");
 
-    bDict.addEventListener("click", ()=> toggleDictation(ta, bDict));
+    bDict.addEventListener("click", ()=> toggleDictation(ta, bDict, liveLine));
 
     bClear.addEventListener("click", ()=>{
-      ta.value=""; it.note=""; saveState(); showToast("Note cleared");
+      ta.value = "";
+      it.note = "";
+      saveState();
+      showToast("Cleared");
     });
 
     bDel.addEventListener("click", ()=>{
       if(!confirm("Delete this photo?")) return;
-      if(activeTarget === ta) stopDictation();
       state.items.splice(idx,1);
-      saveState(); render(); showToast("Photo deleted");
+      saveState();
+      render();
+      showToast("Deleted");
     });
 
     list.appendChild(box);
@@ -463,95 +597,15 @@ function render(){
 }
 
 /* =======================
-   CAMERA
-======================= */
-let stream = null;
-
-function openCam(){
-  $("camModal").style.display="flex";
-  $("camModal").setAttribute("aria-hidden","false");
-}
-function closeCam(){
-  if(stream){
-    stream.getTracks().forEach(t=>t.stop());
-    stream=null;
-  }
-  $("camModal").style.display="none";
-  $("camModal").setAttribute("aria-hidden","true");
-}
-
-$("openCamera").addEventListener("click", async ()=>{
-  openCam();
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{ ideal:"environment" }, width:{ideal:1920}, height:{ideal:1080} },
-      audio:false
-    });
-    $("video").srcObject = stream;
-    await $("video").play();
-  }catch(err){
-    alert("Camera failed to start. Please allow camera permission.\n\n" + err);
-    closeCam();
-  }
-});
-$("closeCam").addEventListener("click", closeCam);
-$("closeCamTop").addEventListener("click", closeCam);
-
-$("snap").addEventListener("click", ()=>{
-  const v = $("video");
-  if(!v.videoWidth) return;
-  const c = document.createElement("canvas");
-  c.width=v.videoWidth; c.height=v.videoHeight;
-  c.getContext("2d").drawImage(v,0,0);
-
-  state.items.push({ img:c.toDataURL("image/jpeg",0.94), note:"" });
-  saveState(); render(); showToast("Photo added");
-});
-
-/* =======================
-   GALLERY IMPORT
-======================= */
-$("chooseGallery").addEventListener("click", ()=> $("galleryInput").click());
-
-$("galleryInput").addEventListener("change", async (e)=>{
-  const files = Array.from(e.target.files || []);
-  if(!files.length) return;
-
-  for(const f of files){
-    const img = new Image();
-    img.src = URL.createObjectURL(f);
-    await img.decode();
-
-    const max = 1800;
-    const scale = Math.min(1, max / Math.max(img.width, img.height));
-    const w = Math.round(img.width * scale);
-    const h = Math.round(img.height * scale);
-
-    const c = document.createElement("canvas");
-    c.width=w; c.height=h;
-    c.getContext("2d").drawImage(img,0,0,w,h);
-
-    state.items.push({ img:c.toDataURL("image/jpeg",0.94), note:"" });
-    URL.revokeObjectURL(img.src);
-  }
-
-  e.target.value="";
-  saveState(); render(); showToast("Added from gallery");
-});
-
-/* =======================
    NEW FORM
 ======================= */
 $("newForm").addEventListener("click", ()=>{
   if(!confirm("Start a NEW form? This clears address/date/notes/photos on this device.")) return;
-  if(rec) stopDictation();
-
   state = { address:"", date:"", general:"", items:[] };
   localStorage.removeItem(STORE);
 
   $("address").value="";
   $("general").value="";
-
   const d = new Date();
   const y=d.getFullYear();
   const m=String(d.getMonth()+1).padStart(2,"0");
@@ -559,74 +613,18 @@ $("newForm").addEventListener("click", ()=>{
   $("date").value = `${y}-${m}-${day}`;
   state.date = $("date").value;
 
-  saveState(); render(); showToast("New form ready");
+  saveState();
+  render();
+  showToast("New form ready");
 });
 
 /* =======================
-   PDF LIBRARY (IndexedDB)
+   PDF
 ======================= */
-const DB_NAME = "fps_pdfs_db";
-const DB_STORE = "pdfs";
-const DB_VER = 1;
-
-function openDB(){
-  return new Promise((resolve, reject)=>{
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = ()=>{
-      const db = req.result;
-      if(!db.objectStoreNames.contains(DB_STORE)){
-        const store = db.createObjectStore(DB_STORE, { keyPath:"id" });
-        store.createIndex("createdAt", "createdAt");
-      }
-    };
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
-  });
-}
-
-async function savePdfRecord(record){
-  const db = await openDB();
-  return new Promise((resolve, reject)=>{
-    const tx = db.transaction(DB_STORE, "readwrite");
-    tx.objectStore(DB_STORE).put(record);
-    tx.oncomplete = ()=>{ db.close(); resolve(true); };
-    tx.onerror = ()=>{ db.close(); reject(tx.error); };
-  });
-}
-
-async function listPdfRecords(){
-  const db = await openDB();
-  return new Promise((resolve, reject)=>{
-    const tx = db.transaction(DB_STORE, "readonly");
-    const store = tx.objectStore(DB_STORE);
-    const req = store.getAll();
-    req.onsuccess = ()=>{
-      const rows = req.result || [];
-      rows.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
-      db.close();
-      resolve(rows);
-    };
-    req.onerror = ()=>{ db.close(); reject(req.error); };
-  });
-}
-
-async function deletePdfRecord(id){
-  const db = await openDB();
-  return new Promise((resolve, reject)=>{
-    const tx = db.transaction(DB_STORE, "readwrite");
-    tx.objectStore(DB_STORE).delete(id);
-    tx.oncomplete = ()=>{ db.close(); resolve(true); };
-    tx.onerror = ()=>{ db.close(); reject(tx.error); };
-  });
-}
-
-/* =======================
-   PDF GENERATION (CREATE → SHARE/DOWNLOAD)
-======================= */
-async function dataUrlToImageDims(dataUrl){
-  return new Promise((resolve, reject)=>{
+async function dataUrlToDims(dataUrl){
+  return new Promise((resolve,reject)=>{
     const img = new Image();
-    img.onload = ()=> resolve({ w: img.width, h: img.height });
+    img.onload = ()=> resolve({w:img.width,h:img.height});
     img.onerror = reject;
     img.src = dataUrl;
   });
@@ -634,16 +632,15 @@ async function dataUrlToImageDims(dataUrl){
 
 async function buildPdfBlob(){
   const { jsPDF } = window.jspdf;
-  if(!jsPDF) throw new Error("jsPDF not loaded");
-
-  const addr = state.address || "No Address";
-  const dateUK = ukDateFromInput(state.date) || "No Date";
-
   const doc = new jsPDF({ unit:"mm", format:"a4" });
+
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 12;
   let y = margin;
+
+  const addr = state.address || "No Address";
+  const dateUK = ukDateFromInput(state.date) || "No Date";
 
   doc.setFont("helvetica","bold");
   doc.setFontSize(14);
@@ -651,13 +648,11 @@ async function buildPdfBlob(){
   y += 7;
   doc.setFontSize(12);
   doc.text("Photo Notes", margin, y);
-  y += 8;
+  y += 9;
 
   doc.setFont("helvetica","normal");
   doc.setFontSize(11);
-  doc.text("Property Address:", margin, y);
-  y += 6;
-
+  doc.text("Property Address:", margin, y); y += 6;
   doc.setFont("helvetica","bold");
   doc.text(doc.splitTextToSize(addr, pageW - margin*2), margin, y);
   y += 10;
@@ -667,7 +662,8 @@ async function buildPdfBlob(){
   y += 10;
 
   if(state.general && state.general.trim()){
-    doc.setFont("helvetica","bold"); doc.text("General notes:", margin, y); y += 6;
+    doc.setFont("helvetica","bold");
+    doc.text("General notes:", margin, y); y += 6;
     doc.setFont("helvetica","normal");
     const lines = doc.splitTextToSize(state.general.trim(), pageW - margin*2);
     doc.text(lines, margin, y);
@@ -677,7 +673,7 @@ async function buildPdfBlob(){
   for(let i=0;i<state.items.length;i++){
     const it = state.items[i];
 
-    if(y > pageH - 60){
+    if(y > pageH - 70){
       doc.addPage();
       y = margin;
     }
@@ -686,15 +682,15 @@ async function buildPdfBlob(){
     doc.text(`Photo ${i+1}`, margin, y);
     y += 6;
 
-    const dims = await dataUrlToImageDims(it.img);
+    const dims = await dataUrlToDims(it.img);
     const maxW = pageW - margin*2;
-    const maxH = 90;
-    const ratio = Math.min(maxW / dims.w, maxH / dims.h);
-    const drawW = dims.w * ratio;
-    const drawH = dims.h * ratio;
+    const maxH = 95;
+    const ratio = Math.min(maxW/dims.w, maxH/dims.h);
+    const w = dims.w * ratio;
+    const h = dims.h * ratio;
 
-    doc.addImage(it.img, "JPEG", margin, y, drawW, drawH);
-    y += drawH + 6;
+    doc.addImage(it.img, "JPEG", margin, y, w, h);
+    y += h + 6;
 
     doc.setFont("helvetica","normal");
     const note = (it.note && it.note.trim()) ? it.note.trim() : "—";
@@ -738,22 +734,12 @@ function makeFilename(){
 }
 
 function validateForPdf(){
-  if(!state.address || !state.address.trim()){
-    alert("Please enter the Property address first (so the PDF can be named).");
-    return false;
-  }
-  if(!state.date){
-    alert("Please select a date first.");
-    return false;
-  }
-  if(!state.items.length){
-    alert("Please add at least 1 photo before creating PDF.");
-    return false;
-  }
+  if(!state.address || !state.address.trim()){ alert("Enter the Property address first."); return false; }
+  if(!state.date){ alert("Select the date first."); return false; }
+  if(!state.items.length){ alert("Add at least 1 photo first."); return false; }
   return true;
 }
 
-/* Create PDF (stores in app library + enables Share/Download buttons) */
 $("createPdf").addEventListener("click", async ()=>{
   if(!validateForPdf()) return;
 
@@ -767,21 +753,10 @@ $("createPdf").addEventListener("click", async ()=>{
     currentPdfBlob = blob;
     currentPdfFilename = filename;
 
-    // Save into in-app library
-    const id = "pdf_" + Date.now();
-    await savePdfRecord({
-      id,
-      filename,
-      createdAt: Date.now(),
-      address: state.address,
-      date: state.date,
-      blob
-    });
-
     $("sharePdf").disabled = false;
     $("downloadPdf").disabled = false;
 
-    showToast("PDF created ✅ Now tap Share or Download");
+    showToast("PDF created ✅");
   }catch(err){
     alert("PDF creation failed:\n\n" + err);
   }finally{
@@ -789,105 +764,22 @@ $("createPdf").addEventListener("click", async ()=>{
   }
 });
 
-/* Share PDF (uses last created PDF) */
 $("sharePdf").addEventListener("click", async ()=>{
-  if(!currentPdfBlob){
-    alert("Please tap Create PDF first.");
-    return;
-  }
+  if(!currentPdfBlob){ alert("Tap Create PDF first."); return; }
   await shareBlob(currentPdfBlob, currentPdfFilename);
 });
 
-/* Download PDF (uses last created PDF) */
 $("downloadPdf").addEventListener("click", ()=>{
-  if(!currentPdfBlob){
-    alert("Please tap Create PDF first.");
-    return;
-  }
+  if(!currentPdfBlob){ alert("Tap Create PDF first."); return; }
   downloadBlob(currentPdfBlob, currentPdfFilename);
-  showToast("Downloaded ✅");
+  showToast("Downloaded");
 });
 
 /* =======================
-   FILES MODAL
+   START
 ======================= */
-function openFiles(){
-  $("filesModal").style.display="flex";
-  $("filesModal").setAttribute("aria-hidden","false");
-  renderFiles();
-}
-function closeFiles(){
-  $("filesModal").style.display="none";
-  $("filesModal").setAttribute("aria-hidden","true");
-}
-$("openFiles").addEventListener("click", openFiles);
-$("closeFiles").addEventListener("click", closeFiles);
-$("refreshFiles").addEventListener("click", renderFiles);
-
-async function renderFiles(){
-  const box = $("filesList");
-  box.innerHTML = "<div class='small'>Loading…</div>";
-  try{
-    const rows = await listPdfRecords();
-    if(!rows.length){
-      box.innerHTML = "<div class='small'>No PDFs saved yet. Use “Create PDF”.</div>";
-      return;
-    }
-
-    box.innerHTML = "";
-    rows.forEach((r)=>{
-      const d = new Date(r.createdAt);
-      const when = d.toLocaleString("en-GB");
-      const row = document.createElement("div");
-      row.className = "fileRow";
-      row.innerHTML = `
-        <div>
-          <strong>${r.filename}</strong>
-          <div class="mono">${when}</div>
-          <div class="small">${r.address || ""}</div>
-        </div>
-        <div class="fileActions">
-          <button type="button" class="good">⬇️ Download</button>
-          <button type="button">📤 Share</button>
-          <button type="button" class="bad">🗑️ Delete</button>
-        </div>
-      `;
-
-      const [bDown, bShare, bDel] = row.querySelectorAll("button");
-
-      bDown.addEventListener("click", ()=> downloadBlob(r.blob, r.filename));
-      bShare.addEventListener("click", ()=> shareBlob(r.blob, r.filename));
-      bDel.addEventListener("click", async ()=>{
-        if(!confirm("Delete this saved PDF from the app library?")) return;
-        await deletePdfRecord(r.id);
-        renderFiles();
-      });
-
-      box.appendChild(row);
-    });
-  }catch(e){
-    box.innerHTML = "<div class='small'>Could not load saved PDFs.</div>";
-  }
-}
-
-/* =======================
-   INIT
-======================= */
-(function init(){
-  const d = new Date();
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,"0");
-  const day=String(d.getDate()).padStart(2,"0");
-  $("date").value = `${y}-${m}-${day}`;
-
-  loadState();
-
-  if(!state.date){
-    state.date = $("date").value;
-    saveState();
-  }
-})();
+loadState();
+render();
 </script>
-
 </body>
 </html>
