@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Ford Property Services • Jobs Board</title>
 
-  <!-- PWA -->
   <meta name="theme-color" content="#0b1220" />
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -41,7 +40,7 @@
       backdrop-filter: blur(10px);
       border-bottom:1px solid var(--line);
     }
-    .wrap{max-width:1400px;margin:0 auto;padding:14px 16px}
+    .wrap{max-width:1500px;margin:0 auto;padding:14px 16px}
     .top{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
     .brand{display:flex; align-items:center; gap:12px;}
     .logo{
@@ -98,7 +97,7 @@
       border-color: rgba(168,85,247,.45);
     }
 
-    main{max-width:1400px;margin:0 auto;padding:16px}
+    main{max-width:1500px;margin:0 auto;padding:16px}
     .card{
       background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
       border: 1px solid rgba(255,255,255,.12);
@@ -125,6 +124,27 @@
     .hint{color:var(--muted);font-size:12px;margin:8px 0 0}
     .small{font-size:12px;color:var(--muted)}
 
+    .bookings{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      border-radius: var(--radius2);
+      padding:10px;
+      margin-bottom:12px;
+    }
+    .bookingsHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .bookingsList{display:grid; gap:8px}
+    .bookingItem{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      border-radius: 12px;
+      padding:8px 10px;
+      display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;
+    }
+    .bookingItem b{font-size:12px}
+
     .board{
       display:grid;
       grid-template-columns: 1fr;
@@ -133,8 +153,8 @@
     @media(min-width:980px){
       .board{ grid-template-columns: repeat(4, 1fr); }
     }
-    @media(min-width:1320px){
-      .board{ grid-template-columns: repeat(8, 1fr); }
+    @media(min-width:1400px){
+      .board{ grid-template-columns: repeat(11, 1fr); }
     }
 
     .col{
@@ -142,7 +162,7 @@
       background: rgba(255,255,255,.04);
       border-radius: var(--radius2);
       padding:10px;
-      min-height:180px;
+      min-height:170px;
     }
     .colHead{
       display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -165,6 +185,7 @@
       font-weight:950;
       margin:0;
       font-size:13px;
+      line-height:1.2;
     }
     .meta{color:var(--muted);font-size:12px;margin-top:4px}
     .jobBtns{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center}
@@ -179,38 +200,14 @@
       margin-top:8px;
     }
 
-    .bookings{
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      border-radius: var(--radius2);
-      padding:10px;
-      margin-bottom:12px;
-    }
-    .bookingsHead{
-      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
-      margin-bottom:8px;
-    }
-    .bookingsList{
-      display:grid; gap:8px;
-    }
-    .bookingItem{
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
-      border-radius: 12px;
-      padding:8px 10px;
-      display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;
-    }
-    .bookingItem b{font-size:12px}
-    .bookingItem .small{margin-top:2px}
-
-    /* Modal */
+    /* Modals */
     .modalBack{
       position:fixed; inset:0; background: rgba(0,0,0,.55);
       display:none; align-items:center; justify-content:center;
       padding:16px; z-index:50;
     }
     .modal{
-      width:min(820px, 100%);
+      width:min(860px, 100%);
       background: linear-gradient(180deg, rgba(15,27,51,.98), rgba(12,23,48,.98));
       border:1px solid rgba(255,255,255,.14);
       border-radius: 18px;
@@ -259,13 +256,13 @@
         <span class="pill"><strong>Total Jobs:</strong> <span id="totalCount">0</span></span>
         <span class="pill"><strong>Saved:</strong> <span id="savedStatus">—</span></span>
       </div>
-      <div class="small">Use the buttons on each job to move it through the workflow.</div>
+      <div class="small">Use “Move Back” to undo a stage change. Estimate No. shows next to address.</div>
     </div>
 
     <div class="bookings">
       <div class="bookingsHead">
         <div style="font-weight:950; letter-spacing:.3px">Booked In List (Upcoming)</div>
-        <div class="small">Includes normal bookings + estimate bookings</div>
+        <div class="small">Job bookings + estimate visit bookings + estimate work bookings</div>
       </div>
       <div id="bookingsList" class="bookingsList"></div>
       <div id="bookingsEmpty" class="small" style="display:none">No upcoming bookings yet.</div>
@@ -293,9 +290,15 @@
         <label>Job Reference</label>
         <input id="mRef" placeholder="Optional" />
       </div>
+
       <div style="grid-column:1/-1">
         <label>Property Address</label>
         <input id="mAddress" placeholder="Full address" />
+      </div>
+
+      <div>
+        <label>Estimate Number (specific to this job)</label>
+        <input id="mEstNo" placeholder="e.g., EST-1021" />
       </div>
 
       <div>
@@ -304,23 +307,28 @@
       </div>
 
       <div>
-        <label>Booked In (Date + Time)</label>
+        <label>Job Booked In (Date + Time)</label>
         <input id="mBookedDT" type="datetime-local" />
       </div>
 
       <div>
-        <label>Estimate Booked In (Date + Time)</label>
-        <input id="mEstBookedDT" type="datetime-local" />
+        <label>Estimate Visit Booked In (Date + Time)</label>
+        <input id="mEstVisitDT" type="datetime-local" />
+      </div>
+
+      <div>
+        <label>Estimate Work Booked In (Date + Time)</label>
+        <input id="mEstWorkDT" type="datetime-local" />
       </div>
 
       <div>
         <label>Quote Ref (optional)</label>
-        <input id="mQuoteRef" placeholder="e.g., EST-1007" />
+        <input id="mQuoteRef" placeholder="Optional" />
       </div>
 
       <div>
         <label>Invoice Ref (optional)</label>
-        <input id="mInvRef" placeholder="e.g., INV-1007" />
+        <input id="mInvRef" placeholder="Optional" />
       </div>
 
       <div style="grid-column:1/-1">
@@ -336,7 +344,7 @@
   </div>
 </div>
 
-<!-- Quick Book Modal -->
+<!-- Quick Date/Time Modal -->
 <div class="modalBack" id="quickBack">
   <div class="modal" style="width:min(520px, 100%)">
     <div class="modalHead">
@@ -347,9 +355,7 @@
     <div>
       <label id="quickLabel">Choose date + time</label>
       <input id="quickDT" type="datetime-local" />
-      <div class="small" style="margin-top:8px">
-        Tip: if you want “today”, pick today’s date then choose the time.
-      </div>
+      <div class="small" style="margin-top:8px">Pick the date, then pick the time.</div>
     </div>
 
     <div class="modalActions">
@@ -359,22 +365,28 @@
 </div>
 
 <script>
-  // PWA Service Worker
+  // PWA service worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
   }
 
-  // Workflow columns
+  // Columns (folders)
   const STATUSES = [
     { key: "quote", label: "Quote Provided" },
     { key: "booked", label: "Booked In" },
     { key: "work_done", label: "Work Completed" },
     { key: "req_est", label: "Requires Estimate" },
+    { key: "est_visit_booked", label: "Estimate Visit Booked In" },
     { key: "est_done", label: "Estimates Complete" },
     { key: "est_accepted", label: "Estimate Accepted" },
     { key: "est_not_accepted", label: "Estimate Not Accepted" },
-    { key: "est_booked", label: "Estimate Booked In" }
+    { key: "est_work_booked", label: "Estimate Work Booked In" },
+    { key: "est_work_done", label: "Estimate Work Completed" },
+    { key: "invoice_sent", label: "Invoice Sent / Complete" }
   ];
+
+  // Stage order for Move Back
+  const STAGE_ORDER = STATUSES.map(s => s.key);
 
   function pad2(n){ return String(n).padStart(2,'0'); }
   function nowStamp(){
@@ -392,10 +404,7 @@
       .replaceAll('"',"&quot;")
       .replaceAll("'","&#039;");
   }
-
-  // Date/time display (UK)
   function ukDT(dtLocal){
-    // dtLocal format: YYYY-MM-DDTHH:mm
     if(!dtLocal) return "";
     const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(dtLocal);
     if(!m) return "";
@@ -406,6 +415,9 @@
     const d = new Date(dtLocal);
     const t = d.getTime();
     return Number.isFinite(t) ? t : null;
+  }
+  function statusLabel(key){
+    return (STATUSES.find(s=>s.key===key)?.label) || key;
   }
 
   // Elements
@@ -430,9 +442,11 @@
   const mAgent = document.getElementById('mAgent');
   const mRef = document.getElementById('mRef');
   const mAddress = document.getElementById('mAddress');
+  const mEstNo = document.getElementById('mEstNo');
   const mStatus = document.getElementById('mStatus');
   const mBookedDT = document.getElementById('mBookedDT');
-  const mEstBookedDT = document.getElementById('mEstBookedDT');
+  const mEstVisitDT = document.getElementById('mEstVisitDT');
+  const mEstWorkDT = document.getElementById('mEstWorkDT');
   const mQuoteRef = document.getElementById('mQuoteRef');
   const mInvRef = document.getElementById('mInvRef');
   const mNotes = document.getElementById('mNotes');
@@ -442,7 +456,7 @@
   const logoImg = document.getElementById('logoImg');
   const logoFallback = document.getElementById('logoFallback');
 
-  // Quick booking modal
+  // Quick modal
   const quickBack = document.getElementById('quickBack');
   const quickClose = document.getElementById('quickClose');
   const quickTitle = document.getElementById('quickTitle');
@@ -450,7 +464,7 @@
   const quickDT = document.getElementById('quickDT');
   const quickSave = document.getElementById('quickSave');
 
-  // Populate status select
+  // Populate status dropdown
   STATUSES.forEach(s=>{
     const o = document.createElement('option');
     o.value = s.key;
@@ -458,7 +472,7 @@
     mStatus.appendChild(o);
   });
 
-  // Shared logo (same key as your other apps)
+  // Shared logo (same key across your apps)
   const savedLogo = localStorage.getItem('fps_logo_v1');
   if(savedLogo){
     logoImg.src = savedLogo;
@@ -494,9 +508,32 @@
   });
 
   // Data
-  const STORAGE_KEY = "fps_jobs_board_v2_workflow";
+  const STORAGE_KEY = "fps_jobs_board_workflow_v4";
   let jobs = [];
   let editingId = null;
+
+  function migrateJob(j){
+    if(!j || typeof j !== "object") return j;
+    // Ensure estimate number
+    j.estNo = j.estNo || j.estimateNo || "";
+    // Old field names
+    if(j.estBookedDT && !j.estWorkDT) j.estWorkDT = j.estBookedDT;
+    // Ensure fields exist
+    j.bookedDT = j.bookedDT || "";
+    j.estVisitDT = j.estVisitDT || "";
+    j.estWorkDT = j.estWorkDT || "";
+    j.quoteRef = j.quoteRef || "";
+    j.invRef = j.invRef || "";
+    j.notes = j.notes || "";
+    j.agent = j.agent || "";
+    j.ref = j.ref || "";
+    j.address = j.address || "";
+    j.createdAt = j.createdAt || new Date().toISOString();
+    j.updatedAt = j.updatedAt || new Date().toISOString();
+    // Ensure status exists
+    if(!j.status || !STAGE_ORDER.includes(j.status)) j.status = "quote";
+    return j;
+  }
 
   function save(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
@@ -504,8 +541,25 @@
   }
   function load(){
     const raw = localStorage.getItem(STORAGE_KEY);
-    jobs = raw ? JSON.parse(raw) : [];
-    savedStatusEl.textContent = raw ? "Loaded" : "—";
+    if(raw){
+      jobs = JSON.parse(raw).map(migrateJob);
+      savedStatusEl.textContent = "Loaded";
+      return;
+    }
+
+    const fallbackKeys = ["fps_jobs_board_workflow_v3","fps_jobs_board_v2_workflow","fps_jobs_board_v1"];
+    for(const k of fallbackKeys){
+      const r = localStorage.getItem(k);
+      if(r){
+        jobs = JSON.parse(r).map(migrateJob);
+        savedStatusEl.textContent = "Loaded (migrated)";
+        save();
+        return;
+      }
+    }
+
+    jobs = [];
+    savedStatusEl.textContent = "—";
   }
 
   function norm(s){ return String(s||"").toLowerCase(); }
@@ -513,21 +567,14 @@
     if(!q) return true;
     q = norm(q);
     return [
-      job.agent, job.ref, job.address, job.notes, job.quoteRef, job.invRef,
-      job.bookedDT, job.estBookedDT
+      job.agent, job.ref, job.address, job.notes, job.quoteRef, job.invRef, job.estNo,
+      job.bookedDT, job.estVisitDT, job.estWorkDT
     ].some(x => norm(x).includes(q));
   }
 
-  function statusLabel(key){
-    return (STATUSES.find(s=>s.key===key)?.label) || key;
-  }
-
-  function openModal(){
-    modalBack.style.display = 'flex';
-  }
-  function closeModalFn(){
-    modalBack.style.display = 'none';
-  }
+  // Modals
+  function openModal(){ modalBack.style.display = 'flex'; }
+  function closeModalFn(){ modalBack.style.display = 'none'; }
   function clearModal(){
     editingId = null;
     modalTitle.textContent = "Add Job";
@@ -536,9 +583,11 @@
     mAgent.value = "";
     mRef.value = "";
     mAddress.value = "";
+    mEstNo.value = "";
     mStatus.value = "quote";
     mBookedDT.value = "";
-    mEstBookedDT.value = "";
+    mEstVisitDT.value = "";
+    mEstWorkDT.value = "";
     mQuoteRef.value = "";
     mInvRef.value = "";
     mNotes.value = "";
@@ -557,25 +606,28 @@
     mAgent.value = job.agent || "";
     mRef.value = job.ref || "";
     mAddress.value = job.address || "";
+    mEstNo.value = job.estNo || "";
     mStatus.value = job.status || "quote";
     mBookedDT.value = job.bookedDT || "";
-    mEstBookedDT.value = job.estBookedDT || "";
+    mEstVisitDT.value = job.estVisitDT || "";
+    mEstWorkDT.value = job.estWorkDT || "";
     mQuoteRef.value = job.quoteRef || "";
     mInvRef.value = job.invRef || "";
     mNotes.value = job.notes || "";
 
     openModal();
   }
-
   function upsertJob(){
     const payload = {
       id: editingId || uid(),
       agent: mAgent.value.trim(),
       ref: mRef.value.trim(),
       address: mAddress.value.trim(),
+      estNo: mEstNo.value.trim(),
       status: mStatus.value,
       bookedDT: mBookedDT.value || "",
-      estBookedDT: mEstBookedDT.value || "",
+      estVisitDT: mEstVisitDT.value || "",
+      estWorkDT: mEstWorkDT.value || "",
       quoteRef: mQuoteRef.value.trim(),
       invRef: mInvRef.value.trim(),
       notes: mNotes.value.trim(),
@@ -598,7 +650,6 @@
     renderAll();
     closeModalFn();
   }
-
   function deleteJob(){
     if(!editingId) return;
     if(!confirm("Delete this job?")) return;
@@ -606,9 +657,9 @@
     save(); renderAll(); closeModalFn();
   }
 
-  // Quick booking modal logic
+  // Quick date/time modal
   let quickJobId = null;
-  let quickMode = null; // "bookedDT" | "estBookedDT"
+  let quickMode = null; // "bookedDT" | "estVisitDT" | "estWorkDT"
   function openQuick(jobId, mode){
     const job = jobs.find(j=>j.id===jobId);
     if(!job) return;
@@ -620,10 +671,14 @@
       quickTitle.textContent = "Book In Job";
       quickLabel.textContent = "Choose job booking date + time";
       quickDT.value = job.bookedDT || "";
+    }else if(mode === "estVisitDT"){
+      quickTitle.textContent = "Book In Estimate Visit";
+      quickLabel.textContent = "Choose estimate visit date + time";
+      quickDT.value = job.estVisitDT || "";
     }else{
-      quickTitle.textContent = "Book In Accepted Estimate";
-      quickLabel.textContent = "Choose estimate booking date + time";
-      quickDT.value = job.estBookedDT || "";
+      quickTitle.textContent = "Book In Estimate Works";
+      quickLabel.textContent = "Choose estimate works date + time";
+      quickDT.value = job.estWorkDT || "";
     }
 
     quickBack.style.display = "flex";
@@ -640,7 +695,6 @@
   quickSave.addEventListener('click', ()=>{
     const job = jobs.find(j=>j.id===quickJobId);
     if(!job) return closeQuick();
-
     if(!quickDT.value){
       alert("Please choose a date and time.");
       return;
@@ -649,9 +703,12 @@
     if(quickMode === "bookedDT"){
       job.bookedDT = quickDT.value;
       job.status = "booked";
-    }else{
-      job.estBookedDT = quickDT.value;
-      job.status = "est_booked";
+    } else if(quickMode === "estVisitDT"){
+      job.estVisitDT = quickDT.value;
+      job.status = "est_visit_booked";
+    } else {
+      job.estWorkDT = quickDT.value;
+      job.status = "est_work_booked";
     }
 
     job.updatedAt = new Date().toISOString();
@@ -660,43 +717,56 @@
     closeQuick();
   });
 
-  // Workflow button actions
+  // Move back logic (go to previous stage)
+  function moveBack(job){
+    const idx = STAGE_ORDER.indexOf(job.status);
+    if(idx <= 0) return; // already at first stage
+    const prev = STAGE_ORDER[idx - 1];
+    job.status = prev;
+    job.updatedAt = new Date().toISOString();
+    save();
+    renderAll();
+  }
+
+  // Workflow actions
   function doAction(job, act){
-    if(act === "book_in_job"){
-      openQuick(job.id, "bookedDT");
-      return;
-    }
+    if(act === "move_back") return moveBack(job);
+
+    if(act === "book_in_job") return openQuick(job.id, "bookedDT");
 
     if(act === "work_completed"){
       job.status = "work_done";
-      job.updatedAt = new Date().toISOString();
     }
 
-    if(act === "complete_to_requires_est"){
+    if(act === "to_requires_est"){
       job.status = "req_est";
-      job.updatedAt = new Date().toISOString();
     }
 
-    if(act === "estimate_complete_to_est_done"){
+    if(act === "book_est_visit") return openQuick(job.id, "estVisitDT");
+
+    if(act === "attended_to_est_done"){
       job.status = "est_done";
-      job.updatedAt = new Date().toISOString();
     }
 
     if(act === "estimate_accepted"){
       job.status = "est_accepted";
-      job.updatedAt = new Date().toISOString();
     }
 
     if(act === "estimate_not_accepted"){
       job.status = "est_not_accepted";
-      job.updatedAt = new Date().toISOString();
     }
 
-    if(act === "book_in_estimate"){
-      openQuick(job.id, "estBookedDT");
-      return;
+    if(act === "book_est_works") return openQuick(job.id, "estWorkDT");
+
+    if(act === "est_work_completed"){
+      job.status = "est_work_done";
     }
 
+    if(act === "invoice_sent_complete"){
+      job.status = "invoice_sent";
+    }
+
+    job.updatedAt = new Date().toISOString();
     save();
     renderAll();
   }
@@ -708,23 +778,13 @@
 
     for(const j of filteredJobs){
       const t1 = toMillis(j.bookedDT);
-      if(t1 && t1 >= now){
-        items.push({
-          when: t1,
-          kind: "Job Booking",
-          dt: j.bookedDT,
-          job: j
-        });
-      }
-      const t2 = toMillis(j.estBookedDT);
-      if(t2 && t2 >= now){
-        items.push({
-          when: t2,
-          kind: "Estimate Booking",
-          dt: j.estBookedDT,
-          job: j
-        });
-      }
+      if(t1 && t1 >= now) items.push({ when: t1, kind: "Job Booking", dt: j.bookedDT, job: j });
+
+      const t2 = toMillis(j.estVisitDT);
+      if(t2 && t2 >= now) items.push({ when: t2, kind: "Estimate Visit", dt: j.estVisitDT, job: j });
+
+      const t3 = toMillis(j.estWorkDT);
+      if(t3 && t3 >= now) items.push({ when: t3, kind: "Estimate Works", dt: j.estWorkDT, job: j });
     }
 
     items.sort((a,b)=>a.when-b.when);
@@ -736,17 +796,18 @@
     }
     bookingsEmptyEl.style.display = "none";
 
-    items.slice(0, 12).forEach(it=>{
+    items.slice(0, 14).forEach(it=>{
       const title = it.job.address?.trim() ? it.job.address.trim() : "(No address)";
       const agent = it.job.agent?.trim() ? it.job.agent.trim() : "-";
       const ref = it.job.ref?.trim() ? it.job.ref.trim() : "-";
+      const estNo = it.job.estNo?.trim() ? it.job.estNo.trim() : "";
 
       const el = document.createElement("div");
       el.className = "bookingItem";
       el.innerHTML = `
         <div>
           <b>${escapeHtml(it.kind)} • ${escapeHtml(ukDT(it.dt))}</b>
-          <div class="small">${escapeHtml(title)}</div>
+          <div class="small">${escapeHtml(title)}${estNo ? " • Est: " + escapeHtml(estNo) : ""}</div>
           <div class="small">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
         </div>
         <div class="row">
@@ -772,13 +833,6 @@
       head.innerHTML = `<div class="colTitle">${status.label}</div><div class="count">${list.length}</div>`;
       col.appendChild(head);
 
-      // Sort: bookings first when available
-      list.sort((a,b)=>{
-        const ta = toMillis(a.bookedDT) ?? 9e15;
-        const tb = toMillis(b.bookedDT) ?? 9e15;
-        return ta - tb;
-      });
-
       list.forEach(job=>{
         const j = document.createElement('div');
         j.className = 'job';
@@ -786,16 +840,19 @@
         const title = job.address?.trim() ? job.address.trim() : "(No address)";
         const agent = job.agent?.trim() ? job.agent.trim() : "-";
         const ref = job.ref?.trim() ? job.ref.trim() : "-";
+        const estNo = job.estNo?.trim() ? job.estNo.trim() : "";
 
         const chips = [];
         if(job.bookedDT) chips.push(`Booked: ${ukDT(job.bookedDT)}`);
-        if(job.estBookedDT) chips.push(`Est booked: ${ukDT(job.estBookedDT)}`);
+        if(job.estVisitDT) chips.push(`Est visit: ${ukDT(job.estVisitDT)}`);
+        if(job.estWorkDT) chips.push(`Est works: ${ukDT(job.estWorkDT)}`);
+        if(estNo) chips.push(`Estimate No: ${estNo}`);
         if(job.quoteRef) chips.push(`Quote: ${job.quoteRef}`);
         if(job.invRef) chips.push(`Invoice: ${job.invRef}`);
 
-        // Buttons by status
         const btns = [];
         btns.push(`<button type="button" data-act="edit">Edit</button>`);
+        btns.push(`<button type="button" class="warn" data-act="move_back">Move Back</button>`);
 
         if(job.status === "quote"){
           btns.push(`<button type="button" class="primary" data-act="book_in_job">Book In</button>`);
@@ -806,11 +863,15 @@
         }
 
         if(job.status === "work_done"){
-          btns.push(`<button type="button" class="purple" data-act="complete_to_requires_est">Complete → Requires Estimate</button>`);
+          btns.push(`<button type="button" class="purple" data-act="to_requires_est">Complete → Requires Estimate</button>`);
         }
 
         if(job.status === "req_est"){
-          btns.push(`<button type="button" class="purple" data-act="estimate_complete_to_est_done">Estimate Complete → Estimates Complete</button>`);
+          btns.push(`<button type="button" class="primary" data-act="book_est_visit">Book In Estimate Visit</button>`);
+        }
+
+        if(job.status === "est_visit_booked"){
+          btns.push(`<button type="button" class="purple" data-act="attended_to_est_done">Attended → Estimate Complete</button>`);
         }
 
         if(job.status === "est_done"){
@@ -819,13 +880,23 @@
         }
 
         if(job.status === "est_accepted"){
-          btns.push(`<button type="button" class="primary" data-act="book_in_estimate">Book In Estimate</button>`);
+          btns.push(`<button type="button" class="primary" data-act="book_est_works">Book In Works</button>`);
+        }
+
+        if(job.status === "est_work_booked"){
+          btns.push(`<button type="button" class="ok" data-act="est_work_completed">Work Completed</button>`);
+        }
+
+        if(job.status === "est_work_done"){
+          btns.push(`<button type="button" class="ok" data-act="invoice_sent_complete">Invoice Sent & Complete</button>`);
         }
 
         j.innerHTML = `
           <div class="jobTop">
             <div>
-              <div class="jobTitle">${escapeHtml(title)}</div>
+              <div class="jobTitle">
+                ${escapeHtml(title)}${estNo ? ` <span style="color:var(--muted);font-weight:800">• Est: ${escapeHtml(estNo)}</span>` : ""}
+              </div>
               <div class="meta">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
               ${job.notes ? `<div class="meta" style="margin-top:6px">${escapeHtml(job.notes).slice(0,160)}${job.notes.length>160?'…':''}</div>` : ""}
               ${chips.length ? `<div class="chip">${escapeHtml(chips.join(" • "))}</div>` : ""}
@@ -835,9 +906,7 @@
         `;
 
         j.querySelector('[data-act="edit"]').addEventListener('click', ()=> openEdit(job.id));
-
-        const acts = j.querySelectorAll('[data-act]');
-        acts.forEach(el=>{
+        j.querySelectorAll('[data-act]').forEach(el=>{
           const act = el.getAttribute('data-act');
           if(act === "edit") return;
           el.addEventListener('click', ()=> doAction(job, act));
@@ -854,7 +923,6 @@
     const q = searchEl.value.trim();
     const filtered = jobs.filter(j => matches(j, q));
     totalCountEl.textContent = String(filtered.length);
-
     renderBookings(filtered);
     renderBoard(filtered);
   }
@@ -867,9 +935,9 @@
   }
   function exportCsv(){
     const header = [
-      "id","status","status_label","letting_agent","job_ref","address",
-      "booked_dt","estimate_booked_dt","quote_ref","invoice_ref","notes",
-      "created_at","updated_at"
+      "id","status","status_label","letting_agent","job_ref","address","estimate_no",
+      "job_booked_dt","estimate_visit_dt","estimate_work_dt",
+      "quote_ref","invoice_ref","notes","created_at","updated_at"
     ];
 
     const rows = jobs.map(j=>[
@@ -879,8 +947,10 @@
       j.agent || "",
       j.ref || "",
       j.address || "",
+      j.estNo || "",
       j.bookedDT || "",
-      j.estBookedDT || "",
+      j.estVisitDT || "",
+      j.estWorkDT || "",
       j.quoteRef || "",
       j.invRef || "",
       (j.notes || "").replace(/\n/g," "),
