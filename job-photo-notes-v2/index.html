@@ -27,8 +27,8 @@ button{
   border:1px solid var(--line);border-radius:14px;
   padding:10px 12px;font-weight:900
 }
-button.danger{border-color:rgba(239,68,68,.5)}
 button.good{border-color:rgba(34,197,94,.5)}
+button.bad{border-color:rgba(239,68,68,.5)}
 input,textarea{
   width:100%;background:rgba(0,0,0,.2);color:var(--text);
   border:1px solid var(--line);border-radius:14px;padding:10px 12px
@@ -45,19 +45,20 @@ textarea{min-height:90px}
   background:#000;color:#fff;padding:10px 14px;border-radius:14px;display:none;font-weight:900
 }
 
-/* Camera modal */
-.modal{
-  position:fixed;inset:0;background:rgba(0,0,0,.65);
-  display:none;align-items:center;justify-content:center;padding:16px;z-index:50
-}
-.modal .panel{
-  width:min(960px,100%);border:1px solid var(--line);border-radius:18px;
-  background:#0b1220;padding:12px
-}
-.videoWrap{
-  width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--line)
-}
+/* CAMERA MODAL */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:50}
+.panel{background:#0b1220;border:1px solid var(--line);border-radius:18px;padding:12px;width:min(960px,95%)}
+.videoWrap{aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden}
 video{width:100%;height:100%;object-fit:cover}
+
+/* PDF PRINT */
+@media print{
+  header, .no-print, .modal {display:none!important}
+  body{background:#fff;color:#000}
+  .card,.item{border:1px solid #ccc}
+  .thumb{background:#fff}
+  textarea{border:none;background:none;color:#000}
+}
 </style>
 </head>
 
@@ -69,234 +70,152 @@ video{width:100%;height:100%;object-fit:cover}
       <div class="logo">FPS</div>
       <div>
         <strong>Ford Property Services</strong><br>
-        <span class="small">Photo Notes (in-app camera)</span>
+        <span class="small">Photo Notes</span>
       </div>
     </div>
-    <a href="/app/dashboard/" style="color:#9ecbff;text-decoration:none">← Dashboard</a>
+    <a href="/app/dashboard/" class="no-print" style="color:#9ecbff;text-decoration:none">← Dashboard</a>
   </div>
 </header>
 
-<!-- Optional gallery picker (you can remove this button if you want camera-only) -->
 <input id="galleryInput" type="file" accept="image/*" multiple style="display:none">
 
 <main>
   <div class="card">
 
-    <div class="row">
-      <button id="openCamera" class="good" type="button">📷 Open camera</button>
-      <button id="chooseGallery" type="button">🖼️ Add from gallery</button>
-      <button id="saveDraft" type="button">💾 Save draft</button>
-      <button onclick="window.print()" type="button">🧾 Save PDF</button>
-      <button id="clearAll" class="danger" type="button">🗑️ Clear photos</button>
+    <!-- PDF HEADER -->
+    <div style="margin-bottom:10px">
+      <strong>Property Address:</strong>
+      <div id="pdfAddress">—</div>
+      <div class="small">Date: <span id="pdfDate">—</span></div>
     </div>
 
-    <div class="row" style="margin-top:12px">
-      <input id="job" placeholder="Job / Address">
+    <!-- CONTROLS -->
+    <div class="row no-print">
+      <button id="openCamera" class="good">📷 Open camera</button>
+      <button id="chooseGallery">🖼️ Gallery</button>
+      <button onclick="window.print()">🧾 Save PDF</button>
+    </div>
+
+    <div class="row no-print" style="margin-top:12px">
+      <input id="address" placeholder="Property address">
       <input id="date" type="date">
     </div>
 
-    <textarea id="general" placeholder="General notes..." style="margin-top:12px"></textarea>
+    <textarea id="general" class="no-print" placeholder="General notes (optional)" style="margin-top:12px"></textarea>
 
     <div id="list" class="grid"></div>
-
-    <div class="small" style="margin-top:10px">
-      Photos taken with <strong>Open camera</strong> are kept inside this app (not auto-saved to your gallery).
-    </div>
 
   </div>
 </main>
 
-<div id="toast" class="toast">Saved</div>
-
-<!-- Camera modal -->
-<div id="camModal" class="modal" aria-hidden="true">
+<!-- CAMERA -->
+<div id="camModal" class="modal">
   <div class="panel">
-    <div class="row" style="justify-content:space-between">
-      <strong>Camera</strong>
-      <button id="closeCamera" class="danger" type="button">✕ Close</button>
-    </div>
-
-    <div class="videoWrap" style="margin-top:10px">
-      <video id="video" playsinline autoplay muted></video>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <button id="switchCam" type="button">🔁 Switch camera</button>
-      <button id="snap" class="good" type="button">📸 Take photo</button>
-    </div>
-
-    <div class="small" style="margin-top:8px">
-      Tip: If camera permission prompts, tap <strong>Allow</strong>.
+    <div class="videoWrap"><video id="video" autoplay playsinline muted></video></div>
+    <div class="row" style="margin-top:8px">
+      <button id="snap" class="good">📸 Take photo</button>
+      <button id="closeCam" class="bad">✕ Close</button>
     </div>
   </div>
 </div>
 
+<div id="toast" class="toast">Saved</div>
+
 <script>
 const $=id=>document.getElementById(id);
-const STORAGE="fps_photo_notes_v2_camera";
-let state={job:"",date:"",general:"",items:[]};
+const STORE="fps_photo_notes_pdf";
+let state={address:"",date:"",items:[]};
 
-function toast(msg){
-  const t=$("toast");t.textContent=msg;t.style.display="block";
-  setTimeout(()=>t.style.display="none",1400);
-}
-
-function save(){ localStorage.setItem(STORAGE, JSON.stringify(state)); }
+function toast(t){$("toast").textContent=t;$("toast").style.display="block";setTimeout(()=>$("toast").style.display="none",1200)}
+function save(){localStorage.setItem(STORE,JSON.stringify(state));syncPdf()}
 function load(){
-  const raw=localStorage.getItem(STORAGE);
-  if(raw) state=JSON.parse(raw);
-  $("job").value=state.job||"";
+  const r=localStorage.getItem(STORE);
+  if(r)state=JSON.parse(r);
+  $("address").value=state.address||"";
   $("date").value=state.date||"";
-  $("general").value=state.general||"";
-  render();
+  render();syncPdf();
 }
 
-$("job").oninput=()=>{state.job=$("job").value;save();}
-$("date").onchange=()=>{state.date=$("date").value;save();}
-$("general").oninput=()=>{state.general=$("general").value;save();}
+function syncPdf(){
+  $("pdfAddress").textContent=state.address||"—";
+  $("pdfDate").textContent=state.date||"—";
+}
+
+$("address").oninput=e=>{state.address=e.target.value;save()}
+$("date").onchange=e=>{state.date=e.target.value;save()}
 
 function render(){
-  const list=$("list"); list.innerHTML="";
+  const l=$("list");l.innerHTML="";
   state.items.forEach((it,i)=>{
     const d=document.createElement("div");
     d.className="item";
     d.innerHTML=`
-      <div class="thumb"><img src="${it.img}" alt="Photo ${i+1}"></div>
-      <textarea placeholder="Notes...">${it.note||""}</textarea>
-      <div class="row" style="margin-top:6px">
-        <button class="danger" type="button">🗑️ Delete</button>
+      <div class="thumb"><img src="${it.img}"></div>
+      <textarea placeholder="Notes for this photo...">${it.note||""}</textarea>
+      <div class="row no-print" style="margin-top:6px">
+        <button>🎤 Dictate</button>
+        <button class="bad">🗑️ Delete</button>
       </div>
     `;
-    d.querySelector("textarea").oninput=e=>{ it.note=e.target.value; save(); };
-    d.querySelector("button").onclick=()=>{
-      state.items.splice(i,1); save(); render(); toast("Photo deleted");
-    };
-    list.appendChild(d);
+    const ta=d.querySelector("textarea");
+    ta.oninput=e=>{it.note=e.target.value;save()}
+    const [dict,del]=d.querySelectorAll("button");
+
+    dict.onclick=()=>startDictation(ta);
+    del.onclick=()=>{state.items.splice(i,1);save();render()}
+    l.appendChild(d);
   });
 }
 
-async function filesToItems(files){
-  for(const f of files){
-    const img=new Image();
-    img.src=URL.createObjectURL(f);
-    await img.decode();
-    // compress a bit to avoid storage explosion
-    const max=1800;
-    const scale=Math.min(1, max/Math.max(img.width,img.height));
-    const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
-    const c=document.createElement("canvas");
-    c.width=w; c.height=h;
-    c.getContext("2d").drawImage(img,0,0,w,h);
-    state.items.push({img:c.toDataURL("image/jpeg",0.94), note:""});
-    URL.revokeObjectURL(img.src);
-  }
-  save(); render();
-}
-
-// ----- Gallery (optional) -----
-$("chooseGallery").onclick=()=> $("galleryInput").click();
-$("galleryInput").onchange=async e=>{
-  const files=[...e.target.files];
-  if(!files.length) return;
-  await filesToItems(files);
-  e.target.value="";
-  toast("Added from gallery");
-};
-
-// ----- In-app camera -----
-const modal=$("camModal");
-const video=$("video");
-let stream=null;
-let facing="environment"; // start rear camera if possible
-
-function openModal(){
-  modal.style.display="flex";
-  modal.setAttribute("aria-hidden","false");
-}
-function closeModal(){
-  modal.style.display="none";
-  modal.setAttribute("aria-hidden","true");
-}
-
-async function startCamera(){
-  // stop old stream
-  if(stream){
-    stream.getTracks().forEach(t=>t.stop());
-    stream=null;
-  }
-  const constraints = {
-    audio:false,
-    video:{
-      facingMode: { ideal: facing },
-      width: { ideal: 1920 },
-      height:{ ideal: 1080 }
-    }
+/* Dictation */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec;
+function startDictation(target){
+  if(!SR){alert("Dictation not supported in this browser");return}
+  if(rec)rec.stop();
+  rec=new SR();
+  rec.lang="en-GB";
+  rec.interimResults=false;
+  rec.onresult=e=>{
+    target.value+=(target.value?" ":"")+e.results[0][0].transcript;
+    target.dispatchEvent(new Event("input"));
   };
-
-  try{
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-    await video.play();
-  }catch(err){
-    alert("Camera failed to start. Make sure you allowed camera permission in Chrome.\n\n" + err);
-    closeModal();
-  }
+  rec.start();
 }
 
-$("openCamera").onclick=async ()=>{
-  openModal();
-  await startCamera();
-};
-
-$("closeCamera").onclick=()=>{
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  closeModal();
-};
-
-$("switchCam").onclick=async ()=>{
-  facing = (facing==="environment") ? "user" : "environment";
-  await startCamera();
-};
-
+/* Camera */
+let stream;
+$("openCamera").onclick=async()=>{
+  $("camModal").style.display="flex";
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+  $("video").srcObject=stream;
+}
+$("closeCam").onclick=()=>{stream.getTracks().forEach(t=>t.stop());$("camModal").style.display="none"}
 $("snap").onclick=()=>{
-  if(!video.videoWidth) return;
-  // Capture current frame to canvas
-  const c=document.createElement("canvas");
-  const w=video.videoWidth, h=video.videoHeight;
-  c.width=w; c.height=h;
-  c.getContext("2d").drawImage(video,0,0,w,h);
+  const v=$("video"),c=document.createElement("canvas");
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext("2d").drawImage(v,0,0);
+  state.items.push({img:c.toDataURL("image/jpeg",0.94),note:""});
+  save();render();toast("Photo added");
+}
 
-  // Compress (keeps it inside app, not saving to gallery)
-  const dataUrl = c.toDataURL("image/jpeg", 0.94);
-  state.items.push({img:dataUrl, note:""});
-  save(); render();
-  toast("Photo captured (saved in app)");
-};
-
-// Draft backup download
-$("saveDraft").onclick=()=>{
-  save();
-  const blob=new Blob([JSON.stringify({...state, savedAt:new Date().toISOString()}, null, 2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="photo-notes-draft.json";
-  a.click();
-  toast("Draft saved");
-};
-
-$("clearAll").onclick=()=>{
-  if(!confirm("Clear ALL photos from this job?")) return;
-  state.items=[]; save(); render(); toast("Cleared");
-};
-
-// Init date today
-(function init(){
-  const raw=localStorage.getItem(STORAGE);
-  if(!raw){
-    const d=new Date();
-    state.date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    save();
+/* Gallery */
+$("chooseGallery").onclick=()=>$("galleryInput").click();
+$("galleryInput").onchange=async e=>{
+  for(const f of e.target.files){
+    const img=new Image();img.src=URL.createObjectURL(f);await img.decode();
+    const c=document.createElement("canvas");
+    c.width=img.width;c.height=img.height;
+    c.getContext("2d").drawImage(img,0,0);
+    state.items.push({img:c.toDataURL("image/jpeg",0.94),note:""});
   }
+  save();render();
+}
+
+/* Init */
+(function(){
+  const d=new Date();
+  $("date").value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   load();
 })();
 </script>
