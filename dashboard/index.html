@@ -1,182 +1,162 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Ford Property Services • Dashboard</title>
-  <meta name="theme-color" content="#0b1220" />
-  <link rel="manifest" href="manifest.webmanifest">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ford Property Services • Dashboard</title>
+<meta name="theme-color" content="#0b1220">
 
-  <style>
-    :root{
-      --bg:#0b1220; --text:#e7eefc; --muted:#a9b7d3;
-      --line:rgba(255,255,255,.14); --shadow:0 10px 30px rgba(0,0,0,.35);
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      color:var(--text);
-      background:
-        radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
-        radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
-        var(--bg);
-    }
-    header{
-      position:sticky; top:0; z-index:10;
-      background: rgba(11,18,32,.82);
-      backdrop-filter: blur(10px);
-      border-bottom:1px solid var(--line);
-    }
-    .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .brand{display:flex;align-items:center;gap:12px}
-    .logo{
-      width:56px;height:56px;border-radius:14px;
-      background: rgba(255,255,255,.92);
-      border:1px solid rgba(255,255,255,.16);
-      box-shadow: var(--shadow);
-      display:grid;place-items:center;
-      overflow:hidden;
-      padding:7px;
-      flex:0 0 auto;
-    }
-    .brand h1{margin:0;font-size:16px;line-height:1.1}
-    .brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .pill{
-      display:inline-flex;gap:8px;align-items:center;
-      padding:8px 10px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      font-size:12px;color:var(--muted);
-    }
-    .pill strong{color:var(--text)}
-    main{max-width:1100px;margin:0 auto;padding:16px}
-    .card{
-      background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:18px;
-      box-shadow: var(--shadow);
-      padding:14px;
-    }
-    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
-    @media(min-width:700px){.grid{grid-template-columns:repeat(2,1fr)}}
-    @media(min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
-    a.tile{
-      text-decoration:none;color:inherit;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
-      border-radius:18px;
-      padding:14px;
-      display:flex;gap:12px;align-items:center;
-    }
-    a.tile:active{transform:scale(.98)}
-    .icon{
-      width:54px;height:54px;border-radius:16px;
-      display:grid;place-items:center;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      flex:0 0 auto;
-    }
-    .icon svg{width:26px;height:26px;opacity:.95}
-    .ttext h3{margin:0;font-size:14px;line-height:1.15}
-    .ttext p{margin:4px 0 0;color:var(--muted);font-size:12px}
-    .hint{margin-top:10px;color:var(--muted);font-size:12px}
-    code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:8px}
-  </style>
+<style>
+:root{
+  --bg:#0b1220;
+  --text:#e7eefc;
+  --muted:#a9b7d3;
+  --line:rgba(255,255,255,.14);
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
+    radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
+    var(--bg);
+}
+header{
+  position:sticky;top:0;z-index:10;
+  background:rgba(11,18,32,.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{
+  width:56px;height:56px;border-radius:14px;
+  background:#fff;color:#000;
+  display:grid;place-items:center;
+  font-weight:900;
+}
+.brand h1{margin:0;font-size:16px}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
+
+main{max-width:1100px;margin:0 auto;padding:16px}
+.card{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+  background:linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
+  box-shadow:var(--shadow);
+}
+.grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+  margin-top:12px;
+}
+@media(min-width:700px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
+
+a.tile{
+  text-decoration:none;
+  color:inherit;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  border-radius:18px;
+  padding:14px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+a.tile:active{transform:scale(.98)}
+.icon{
+  width:54px;height:54px;border-radius:16px;
+  display:grid;place-items:center;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+}
+.icon svg{width:26px;height:26px}
+.ttext h3{margin:0;font-size:14px}
+.ttext p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.hint{margin-top:10px;color:var(--muted);font-size:12px}
+</style>
 </head>
 
 <body>
+
 <header>
-  <div class="wrap">
-    <div class="top">
-      <div class="brand">
-        <div class="logo" aria-hidden="true">
-          <span style="font-weight:950;letter-spacing:.4px;color:#0b1220;">FPS</span>
-        </div>
-        <div>
-          <h1>Ford Property Services</h1>
-          <p>Dashboard</p>
-        </div>
-      </div>
-      <div class="row">
-        <span class="pill"><strong>Tip:</strong> Add to Home Screen</span>
+  <div class="wrap top">
+    <div class="brand">
+      <div class="logo">FPS</div>
+      <div>
+        <h1>Ford Property Services</h1>
+        <p>Dashboard</p>
       </div>
     </div>
+    <div class="hint">Chrome → ⋮ → Add to Home screen</div>
   </div>
 </header>
 
 <main>
   <div class="card">
-    <div>
-      <strong>Quick Access</strong><br />
-      <span style="color:var(--muted);font-size:12px">
-        Photo Notes is linked to the exact file that exists:
-        <code>/app/job-photo-notes/job-photo-notes/index.html</code>
-      </span>
-    </div>
+    <strong>Quick Access</strong>
 
     <div class="grid">
-      <a class="tile" href="/app/jobs-board/">
-        <div class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M7 7h10M7 12h10M7 17h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
-          </svg>
+
+      <!-- Jobs Board -->
+      <a class="tile" href="../jobs-board/index.html">
+        <div class="icon">📋</div>
+        <div class="ttext">
+          <h3>Jobs Board</h3>
+          <p>Track jobs and estimates</p>
         </div>
-        <div class="ttext"><h3>Jobs Board</h3><p>Track estimate → works → invoice → paid.</p></div>
       </a>
 
-      <a class="tile" href="/app/inspection-report/">
-        <div class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M8 3h8l3 3v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
-            <path d="M8 11h8M8 15h8M8 19h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M16 3v3h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+      <!-- Inspection Report -->
+      <a class="tile" href="../inspection-report/index.html">
+        <div class="icon">📝</div>
+        <div class="ttext">
+          <h3>Inspection Report</h3>
+          <p>Create inspection reports</p>
         </div>
-        <div class="ttext"><h3>Inspection Report</h3><p>Create inspection report + PDF.</p></div>
       </a>
 
-      <a class="tile" href="/app/works-completion-report/">
-        <div class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M9 11l2 2 4-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M7 3h10l3 3v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
-            <path d="M17 3v3h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+      <!-- Works Completion -->
+      <a class="tile" href="../works-completion-report/index.html">
+        <div class="icon">✅</div>
+        <div class="ttext">
+          <h3>Works Completion</h3>
+          <p>Completion report & photos</p>
         </div>
-        <div class="ttext"><h3>Works Completion Report</h3><p>After photos (up to 20) + PDF.</p></div>
       </a>
 
-      <!-- ✅ Photo Notes — exact inner path -->
-      <a class="tile" href="/app/job-photo-notes/job-photo-notes/index.html?v=999">
-        <div class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M4 7a2 2 0 0 1 2-2h3l1-1h4l1 1h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2"/>
-            <path d="M9 14l2-2 2 2 3-3 2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M9 9h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-          </svg>
+      <!-- ✅ FIXED PHOTO NOTES -->
+      <a class="tile" href="../job-photo-notes-v2/index.html">
+        <div class="icon">📷</div>
+        <div class="ttext">
+          <h3>Photo Notes</h3>
+          <p>In-app camera (no gallery save)</p>
         </div>
-        <div class="ttext"><h3>Photo Notes</h3><p>Multiple photos + notes + dictation.</p></div>
       </a>
 
-      <a class="tile" href="/app/">
-        <div class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M3 10.5 12 3l9 7.5V21a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-10.5Z" stroke="currentColor" stroke-width="2"/>
-            <path d="M9 23V14h6v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+      <!-- App Root -->
+      <a class="tile" href="../index.html">
+        <div class="icon">🏠</div>
+        <div class="ttext">
+          <h3>App Root</h3>
+          <p>Open /app</p>
         </div>
-        <div class="ttext"><h3>App Root</h3><p>Open your app root folder.</p></div>
       </a>
+
     </div>
 
     <div class="hint">
-      After committing, open the dashboard with <code>?v=999</code> to avoid cached versions.
+      If a tile ever opens the wrong page, it means the folder doesn’t contain an index.html.
     </div>
   </div>
 </main>
+
 </body>
 </html>
