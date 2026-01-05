@@ -3,15 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Ford Property Services • Job Photo Notes</title>
+  <title>Ford Property Services • Dashboard</title>
 
-  <!-- PWA -->
   <meta name="theme-color" content="#0b1220" />
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-  <!-- PDF export -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <!-- Uses your existing icons from jobs-board if present -->
+  <link rel="apple-touch-icon" href="../jobs-board/icons/icon-192.png">
 
   <style>
     :root{
@@ -21,32 +19,32 @@
       --line:rgba(255,255,255,.14);
       --shadow: 0 10px 30px rgba(0,0,0,.35);
       --radius: 18px;
-      --radius2: 14px;
+      --blue: rgba(74,163,255,.95);
       --ok: rgba(34,197,94,.9);
       --warn: rgba(245,158,11,.9);
-      --bad: rgba(239,68,68,.9);
-      --blue: rgba(74,163,255,.95);
+      --purple: rgba(168,85,247,.9);
     }
     *{box-sizing:border-box}
     body{
       margin:0;
       font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(74,163,255,.20), transparent 60%),
-        radial-gradient(1000px 600px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
-        var(--bg);
       color:var(--text);
+      background:
+        radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
+        var(--bg);
     }
     header{
       position:sticky; top:0; z-index:10;
-      background: rgba(11,18,32,.84);
+      background: rgba(11,18,32,.82);
       backdrop-filter: blur(10px);
       border-bottom:1px solid var(--line);
     }
-    .wrap{max-width:980px;margin:0 auto;padding:14px 16px}
-    .top{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+    .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
+    .top{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
     .brand{display:flex; align-items:center; gap:12px;}
-
     .logo{
       width:56px;height:56px;border-radius:14px;
       background: rgba(255,255,255,.92);
@@ -56,31 +54,13 @@
       overflow:hidden;
       cursor:pointer;
       padding:7px;
+      flex:0 0 auto;
     }
     .logo img{width:100%;height:100%;object-fit:contain;display:none}
-
     .brand h1{margin:0;font-size:16px;line-height:1.1}
     .brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
 
-    main{max-width:980px;margin:0 auto;padding:16px}
-    .card{
-      background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 14px;
-    }
-    .stack{display:grid;gap:14px}
-
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    .pill{
-      display:inline-flex;gap:8px;align-items:center;
-      padding:8px 10px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      font-size:12px;color:var(--muted);
-    }
-    .pill strong{color:var(--text)}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
     button{
       border:1px solid rgba(255,255,255,.16);
       background: rgba(255,255,255,.06);
@@ -89,95 +69,66 @@
       border-radius:14px;
       cursor:pointer;
       font-weight:900;
+      white-space:nowrap;
     }
-    button.primary{
-      background: linear-gradient(135deg, var(--blue), rgba(74,163,255,.35));
-      border-color: rgba(74,163,255,.5);
+    .pill{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:8px 10px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-size:12px;color:var(--muted);
     }
-    button.danger{
-      background: linear-gradient(135deg, var(--bad), rgba(239,68,68,.25));
-      border-color: rgba(239,68,68,.45);
-    }
-    button.ok{
-      background: linear-gradient(135deg, var(--ok), rgba(34,197,94,.25));
-      border-color: rgba(34,197,94,.45);
-    }
-    button.warn{
-      background: linear-gradient(135deg, var(--warn), rgba(245,158,11,.25));
-      border-color: rgba(245,158,11,.45);
+    .pill strong{color:var(--text)}
+
+    main{max-width:1100px;margin:0 auto;padding:16px}
+    .card{
+      background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:18px;
+      box-shadow: var(--shadow);
+      padding:14px;
     }
 
-    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px 2px}
-    input, textarea{
-      width:100%;
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    @media(min-width:700px){ .grid{ grid-template-columns: repeat(2, 1fr); } }
+    @media(min-width:980px){ .grid{ grid-template-columns: repeat(3, 1fr); } }
+
+    a.tile{
+      text-decoration:none;
+      color:inherit;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      border-radius:18px;
+      padding:14px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      transition: transform .08s ease, border-color .08s ease;
+    }
+    a.tile:active{ transform: scale(.98); }
+    a.tile:hover{ border-color: rgba(255,255,255,.24); }
+
+    .icon{
+      width:54px;height:54px;border-radius:16px;
+      display:grid; place-items:center;
       border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 10px 12px;
-      border-radius: 14px;
-      outline:none;
+      flex:0 0 auto;
     }
-    textarea{min-height:90px;resize:vertical}
-    .hint{color:var(--muted);font-size:12px;margin:8px 0 0}
+    .icon svg{width:26px;height:26px;opacity:.95}
 
-    .grid2{display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:720px){ .grid2{grid-template-columns:1fr 1fr} }
+    .ttext{min-width:0}
+    .ttext h3{margin:0;font-size:14px;line-height:1.15}
+    .ttext p{margin:4px 0 0;color:var(--muted);font-size:12px}
 
-    .sectionTitle{
-      font-weight:950; letter-spacing:.4px; font-size:12px;
-      color: var(--text); opacity:.95;
-      margin:2px 0 10px; text-transform:uppercase;
-    }
-
-    .photoControls{
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      border-radius: var(--radius2);
-      padding:10px;
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
-    }
-
-    .photos{display:grid;grid-template-columns:1fr;gap:12px}
-
-    .photoCard{
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      border-radius: var(--radius2);
-      padding:10px;
-      overflow:hidden;
-    }
-    .photoTop{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:10px}
-    .idx{font-weight:950}
-    .mini{font-size:12px;color:var(--muted)}
-    .photoGrid{
-      display:grid;
-      grid-template-columns:120px 1fr;
-      gap:10px;
-      align-items:start;
-    }
-    @media(min-width:720px){ .photoGrid{grid-template-columns:180px 1fr} }
-    .thumb{
-      width:120px;height:120px;border-radius:14px;
-      overflow:hidden;border:1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.2);
-    }
-    @media(min-width:720px){ .thumb{width:180px;height:180px} }
-    .thumb img{width:100%;height:100%;object-fit:cover}
-
-    .noteActions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
-    .micStatus{
-      font-size:12px;color:var(--muted);
-      padding:8px 10px;border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      border-radius:999px;
-    }
-
-    .toast{
-      display:none;margin-top:10px;padding:10px 12px;
-      border-radius:14px;border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);color:var(--muted);font-size:12px;
-    }
-    footer{color:var(--muted);text-align:center;padding:18px 10px 30px;font-size:12px}
+    .hint{margin-top:10px;color:var(--muted);font-size:12px}
+    .notice{color: rgba(255,255,255,.95)}
+    .notice small{color:var(--muted)}
   </style>
 </head>
 
@@ -186,23 +137,19 @@
   <div class="wrap">
     <div class="top">
       <div class="brand">
-        <div class="logo" id="logoBox" title="Tap to upload logo">
+        <div class="logo" id="logoBox" title="Tap to upload logo (saves on phone)">
           <span id="logoFallback" style="font-weight:950;letter-spacing:.4px;color:#0b1220;">FPS</span>
           <img id="logoImg" alt="Company logo" />
         </div>
         <div>
           <h1>Ford Property Services</h1>
-          <p>Job Photo Notes</p>
+          <p>Dashboard</p>
         </div>
       </div>
 
       <div class="row">
-        <span class="pill"><strong>Job ID:</strong> <span id="jobIdText"></span></span>
-        <span class="pill"><strong>Photos:</strong> <span id="photoCount">0</span></span>
-        <button id="newJobBtn" class="danger" type="button">New Job</button>
-        <button id="saveBtn" class="ok" type="button">Save Draft</button>
-        <button id="loadBtn" type="button">Load Draft</button>
-        <button id="exportPdfBtn" class="primary" type="button">Save to Phone (PDF)</button>
+        <span class="pill"><strong>Tip:</strong> Add to Home Screen</span>
+        <button id="installHelp" type="button">Install Help</button>
       </div>
     </div>
   </div>
@@ -211,585 +158,157 @@
 <input id="logoInput" type="file" accept="image/*" style="display:none" />
 
 <main>
-  <div class="card stack">
-
-    <div>
-      <div class="sectionTitle">Job Details</div>
-      <div class="grid2">
-        <div>
-          <label>Letting Agent</label>
-          <input id="lettingAgent" placeholder="e.g., Romans" />
-        </div>
-        <div>
-          <label>Job Reference</label>
-          <input id="jobRef" placeholder="Optional" />
-        </div>
-        <div style="grid-column:1/-1">
-          <label>Property Address</label>
-          <input id="propertyAddress" placeholder="Full address" />
-        </div>
-      </div>
-      <div class="hint">Tip: This app is just for collecting photos + notes. Your report apps stay separate.</div>
+  <div class="card">
+    <div class="notice">
+      <strong>Quick Access</strong><br />
+      <small>If any tile opens a 404, it means the folder name differs. This version fixes Photo Notes → job-photo-notes.</small>
     </div>
 
-    <div>
-      <div class="sectionTitle">Add Photos</div>
-      <div class="photoControls">
-        <div class="row">
-          <button id="galleryBtn" type="button">Add from Gallery</button>
-          <button id="cameraBtn" type="button">Take Photo</button>
-          <input id="galleryInput" type="file" accept="image/*" multiple style="display:none" />
-          <input id="cameraInput" type="file" accept="image/*" capture="environment" style="display:none" />
+    <div class="grid">
+      <!-- Jobs Board -->
+      <a class="tile" href="../jobs-board/">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M7 7h10M7 12h10M7 17h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
+          </svg>
         </div>
-
-        <div class="row">
-          <span class="micStatus" id="globalMicStatus">Voice: Idle</span>
-          <button id="globalDictateBtn" class="warn" type="button">Dictate (Append to General Notes)</button>
-          <button id="clearGeneralBtn" class="danger" type="button">Clear General Notes</button>
+        <div class="ttext">
+          <h3>Jobs Board</h3>
+          <p>Track estimate → works → invoice → paid.</p>
         </div>
-      </div>
+      </a>
 
-      <label style="margin-top:10px">General Job Notes</label>
-      <textarea id="generalNotes" placeholder="General notes for the job..."></textarea>
+      <!-- Inspection Report (change link if your folder name differs) -->
+      <a class="tile" href="../inspection-report/">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M8 3h8l3 3v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 11h8M8 15h8M8 19h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M16 3v3h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Inspection Report</h3>
+          <p>Create inspection report + PDF.</p>
+        </div>
+      </a>
 
-      <div class="toast" id="toast"></div>
-      <div class="hint">
-        PDF clarity: photos export large and keep aspect ratio. (Bigger PDFs, but clear.)
-      </div>
+      <!-- Works Completion Report (change link if your folder name differs) -->
+      <a class="tile" href="../works-completion-report/">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M9 11l2 2 4-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7 3h10l3 3v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M17 3v3h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Works Completion Report</h3>
+          <p>After photos (up to 20) + PDF.</p>
+        </div>
+      </a>
+
+      <!-- Photo Notes (FIXED) -->
+      <a class="tile" href="../job-photo-notes/">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 7a2 2 0 0 1 2-2h3l1-1h4l1 1h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M9 14l2-2 2 2 3-3 2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9 9h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Photo Notes</h3>
+          <p>Multiple photos + notes + dictation.</p>
+        </div>
+      </a>
+
+      <!-- Root -->
+      <a class="tile" href="../">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M3 10.5 12 3l9 7.5V21a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-10.5Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M9 23V14h6v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>App Root</h3>
+          <p>Open your app root folder.</p>
+        </div>
+      </a>
+
+      <!-- Placeholder -->
+      <a class="tile" href="../">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Add another tool</h3>
+          <p>Duplicate a tile and change the link.</p>
+        </div>
+      </a>
     </div>
 
-    <div>
-      <div class="sectionTitle">Photos & Notes</div>
-      <div id="photos" class="photos"></div>
-      <div class="hint" id="emptyHint">No photos added yet.</div>
+    <div class="hint">
+      <strong>Install:</strong> Android Chrome → menu (⋮) → <em>Add to Home screen</em>.<br />
+      <strong>Logo:</strong> tap the logo square to upload — it saves on your phone and will appear on your other apps that use the same key.
     </div>
-
   </div>
 </main>
 
-<footer>Ford Property Services • Job Photo Notes</footer>
-
 <script>
-  // PWA Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
   }
 
-  function pad2(n){ return String(n).padStart(2,'0'); }
-  function makeJobId(){
-    const d = new Date();
-    const dd = pad2(d.getDate());
-    const mm = pad2(d.getMonth()+1);
-    const yyyy = d.getFullYear();
-    const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-    let tail = "";
-    for(let i=0;i<5;i++) tail += letters[Math.floor(Math.random()*letters.length)];
-    return `JOB-${dd}-${mm}-${yyyy}-${tail}`;
+  // Shared logo (same key used across your apps)
+  const logoBox = document.getElementById('logoBox');
+  const logoInput = document.getElementById('logoInput');
+  const logoImg = document.getElementById('logoImg');
+  const logoFallback = document.getElementById('logoFallback');
+
+  const savedLogo = localStorage.getItem('fps_logo_v1');
+  if (savedLogo) {
+    logoImg.src = savedLogo;
+    logoImg.style.display = 'block';
+    logoFallback.style.display = 'none';
   }
 
-  function showToast(msg){
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.display = 'block';
-    clearTimeout(showToast._tm);
-    showToast._tm = setTimeout(()=> t.style.display='none', 2600);
-  }
-
-  // HIGH QUALITY: bigger max size + higher quality JPEG
-  async function fileToDataURL(file, maxDim=2800, quality=0.92){
+  async function fileToDataURL(file, maxDim=900, quality=0.90){
     const img = await new Promise((res, rej)=>{
       const i = new Image();
       i.onload=()=>res(i);
       i.onerror=rej;
       i.src = URL.createObjectURL(file);
     });
-    const canvas = document.createElement('canvas');
+    const c = document.createElement('canvas');
     let {width:w, height:h} = img;
     const scale = Math.min(1, maxDim / Math.max(w,h));
     w = Math.round(w*scale); h = Math.round(h*scale);
-    canvas.width=w; canvas.height=h;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img,0,0,w,h);
-    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    c.width=w; c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    const url = c.toDataURL('image/jpeg', quality);
     URL.revokeObjectURL(img.src);
-    return dataUrl;
+    return url;
   }
 
-  // Elements
-  const jobIdText = document.getElementById('jobIdText');
-  const photoCount = document.getElementById('photoCount');
-  const photosEl = document.getElementById('photos');
-  const emptyHint = document.getElementById('emptyHint');
-
-  const lettingAgent = document.getElementById('lettingAgent');
-  const jobRef = document.getElementById('jobRef');
-  const propertyAddress = document.getElementById('propertyAddress');
-  const generalNotes = document.getElementById('generalNotes');
-
-  const galleryBtn = document.getElementById('galleryBtn');
-  const cameraBtn = document.getElementById('cameraBtn');
-  const galleryInput = document.getElementById('galleryInput');
-  const cameraInput = document.getElementById('cameraInput');
-
-  const newJobBtn = document.getElementById('newJobBtn');
-  const saveBtn = document.getElementById('saveBtn');
-  const loadBtn = document.getElementById('loadBtn');
-  const exportPdfBtn = document.getElementById('exportPdfBtn');
-
-  const logoBox = document.getElementById('logoBox');
-  const logoInput = document.getElementById('logoInput');
-  const logoImg = document.getElementById('logoImg');
-  const logoFallback = document.getElementById('logoFallback');
-
-  const globalDictateBtn = document.getElementById('globalDictateBtn');
-  const globalMicStatus = document.getElementById('globalMicStatus');
-  const clearGeneralBtn = document.getElementById('clearGeneralBtn');
-
-  // State
-  const state = { jobId: makeJobId(), photos: [] }; // { dataUrl, note }
-
-  // Shared logo
-  const savedLogo = localStorage.getItem('fps_logo_v1');
-  if(savedLogo){
-    logoImg.src = savedLogo;
-    logoImg.style.display = 'block';
-    logoFallback.style.display = 'none';
-  }
-
-  function updateHeader(){
-    jobIdText.textContent = state.jobId;
-    photoCount.textContent = String(state.photos.length);
-  }
-  updateHeader();
-
-  // Logo upload
   logoBox.addEventListener('click', ()=> logoInput.click());
   logoInput.addEventListener('change', async (e)=>{
-    const file = e.target.files && e.target.files[0];
-    if(!file) return;
-    const dataUrl = await fileToDataURL(file, 1200, 0.94);
-    logoImg.src = dataUrl;
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const url = await fileToDataURL(f, 900, 0.90);
+    localStorage.setItem('fps_logo_v1', url);
+    logoImg.src = url;
     logoImg.style.display = 'block';
     logoFallback.style.display = 'none';
-    localStorage.setItem('fps_logo_v1', dataUrl);
-    showToast('Logo saved on this device.');
   });
 
-  // Dictation (final-only)
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  function canDictate(){ return !!SpeechRecognition; }
-
-  function createRecognition({ onStatus, onFinalText, lang='en-GB' }){
-    const rec = new SpeechRecognition();
-    rec.lang = lang;
-    rec.interimResults = false;
-    rec.continuous = true;
-
-    rec.onstart = ()=> onStatus && onStatus("Listening…");
-    rec.onerror = (e)=> onStatus && onStatus("Error: " + (e.error || "unknown"));
-    rec.onend = ()=> onStatus && onStatus("Idle");
-
-    rec.onresult = (event)=>{
-      for(let i=event.resultIndex; i<event.results.length; i++){
-        const res = event.results[i];
-        const txt = (res[0]?.transcript || "").trim();
-        if(txt) onFinalText && onFinalText(txt);
-      }
-    };
-    return rec;
-  }
-
-  // Render photos
-  function render(){
-    updateHeader();
-    photosEl.innerHTML = "";
-    emptyHint.style.display = state.photos.length ? "none" : "block";
-
-    state.photos.forEach((p, idx)=>{
-      const card = document.createElement('div');
-      card.className = 'photoCard';
-
-      const top = document.createElement('div');
-      top.className = 'photoTop';
-      top.innerHTML = `
-        <div>
-          <div class="idx">Photo ${idx+1}</div>
-          <div class="mini">Use Dictate to append notes • Use Clear to delete</div>
-        </div>
-        <div class="row">
-          <button type="button" class="danger">Remove</button>
-        </div>
-      `;
-      top.querySelector('button').addEventListener('click', ()=>{
-        state.photos.splice(idx,1);
-        render();
-      });
-
-      const grid = document.createElement('div');
-      grid.className = 'photoGrid';
-
-      const thumb = document.createElement('div');
-      thumb.className = 'thumb';
-      const img = document.createElement('img');
-      img.src = p.dataUrl;
-      thumb.appendChild(img);
-
-      const right = document.createElement('div');
-
-      const label = document.createElement('label');
-      label.textContent = "Notes for this photo";
-      const ta = document.createElement('textarea');
-      ta.value = p.note || "";
-      ta.placeholder = "Type notes for this photo...";
-      ta.addEventListener('input', ()=>{ p.note = ta.value; });
-
-      const actions = document.createElement('div');
-      actions.className = 'noteActions';
-
-      const micStatus = document.createElement('span');
-      micStatus.className = 'micStatus';
-      micStatus.textContent = canDictate() ? "Voice: Idle" : "Voice: Not supported";
-
-      const micBtn = document.createElement('button');
-      micBtn.type="button";
-      micBtn.className="warn";
-      micBtn.textContent="Dictate to this photo";
-
-      const stopBtn = document.createElement('button');
-      stopBtn.type="button";
-      stopBtn.textContent="Stop";
-      stopBtn.disabled=true;
-
-      const clearBtn = document.createElement('button');
-      clearBtn.type="button";
-      clearBtn.className="danger";
-      clearBtn.textContent="Clear Notes";
-
-      let rec = null;
-
-      clearBtn.addEventListener('click', ()=>{
-        ta.value="";
-        p.note="";
-      });
-
-      micBtn.addEventListener('click', ()=>{
-        if(!canDictate()){
-          alert("Voice dictation isn't supported on this browser. Use Chrome on Android.");
-          return;
-        }
-        micBtn.disabled=true;
-        stopBtn.disabled=false;
-
-        rec = createRecognition({
-          onStatus: (s)=> micStatus.textContent = "Voice: " + s,
-          onFinalText: (txt)=>{
-            const current = (ta.value || "").trim();
-            ta.value = ((current ? current + " " : "") + txt).trim();
-            p.note = ta.value;
-          }
-        });
-
-        try{ rec.start(); }catch(e){
-          micStatus.textContent="Voice: Error";
-          micBtn.disabled=false;
-          stopBtn.disabled=true;
-          rec=null;
-        }
-      });
-
-      stopBtn.addEventListener('click', ()=>{
-        try{ rec && rec.stop(); }catch(e){}
-        rec=null;
-        micBtn.disabled=false;
-        stopBtn.disabled=true;
-      });
-
-      actions.appendChild(micStatus);
-      actions.appendChild(micBtn);
-      actions.appendChild(stopBtn);
-      actions.appendChild(clearBtn);
-
-      right.appendChild(label);
-      right.appendChild(ta);
-      right.appendChild(actions);
-
-      grid.appendChild(thumb);
-      grid.appendChild(right);
-
-      card.appendChild(top);
-      card.appendChild(grid);
-
-      photosEl.appendChild(card);
-    });
-  }
-  render();
-
-  // Add photos
-  async function addPhotos(files){
-    const arr = Array.from(files || []);
-    for(const f of arr){
-      const dataUrl = await fileToDataURL(f, 2800, 0.92);
-      state.photos.push({ dataUrl, note: "" });
-    }
-    render();
-  }
-  galleryBtn.addEventListener('click', ()=> galleryInput.click());
-  cameraBtn.addEventListener('click', ()=> cameraInput.click());
-  galleryInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files); galleryInput.value=""; });
-  cameraInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files); cameraInput.value=""; });
-
-  // Global dictation
-  let globalRec = null;
-  function setGlobalIdle(){
-    globalMicStatus.textContent = "Voice: Idle";
-    globalDictateBtn.textContent = "Dictate (Append to General Notes)";
-    globalRec = null;
-  }
-  globalDictateBtn.addEventListener('click', ()=>{
-    if(!canDictate()){
-      alert("Voice dictation isn't supported on this browser. Use Chrome on Android.");
-      return;
-    }
-    if(globalRec){
-      try{ globalRec.stop(); }catch(e){}
-      setGlobalIdle();
-      return;
-    }
-    globalDictateBtn.textContent="Stop Dictation";
-    globalRec = createRecognition({
-      onStatus: (s)=> globalMicStatus.textContent = "Voice: " + s,
-      onFinalText: (txt)=>{
-        const current = (generalNotes.value || "").trim();
-        generalNotes.value = ((current ? current + " " : "") + txt).trim();
-      }
-    });
-    globalRec.onend = ()=> setGlobalIdle();
-    try{ globalRec.start(); }catch(e){ setGlobalIdle(); alert("Could not start dictation. Check microphone permissions."); }
+  document.getElementById('installHelp').addEventListener('click', ()=>{
+    alert("Install on Android:\n\n1) Open this dashboard in Chrome\n2) Tap ⋮ (top right)\n3) Tap 'Add to Home screen'\n\nIt opens full-screen like an app.");
   });
-  clearGeneralBtn.addEventListener('click', ()=>{ generalNotes.value=""; });
-
-  // Save/Load draft
-  const STORAGE_KEY = "fps_job_photo_notes_v1";
-  function collectDraft(){
-    return {
-      jobId: state.jobId,
-      fields: {
-        lettingAgent: lettingAgent.value || "",
-        jobRef: jobRef.value || "",
-        propertyAddress: propertyAddress.value || "",
-        generalNotes: generalNotes.value || ""
-      },
-      photos: state.photos
-    };
-  }
-  function applyDraft(d){
-    if(!d) return;
-    state.jobId = d.jobId || makeJobId();
-    lettingAgent.value = d.fields?.lettingAgent ?? "";
-    jobRef.value = d.fields?.jobRef ?? "";
-    propertyAddress.value = d.fields?.propertyAddress ?? "";
-    generalNotes.value = d.fields?.generalNotes ?? "";
-    state.photos = d.photos || [];
-    render();
-    showToast("Draft loaded.");
-  }
-  saveBtn.addEventListener('click', ()=>{ localStorage.setItem(STORAGE_KEY, JSON.stringify(collectDraft())); showToast("Draft saved on this device."); });
-  loadBtn.addEventListener('click', ()=>{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw){ alert("No saved draft found."); return; }
-    applyDraft(JSON.parse(raw));
-  });
-
-  // New job
-  newJobBtn.addEventListener('click', ()=>{
-    if(!confirm("Start a new job? This clears photos + notes (logo stays).")) return;
-    state.jobId = makeJobId();
-    state.photos = [];
-    lettingAgent.value = "";
-    jobRef.value = "";
-    propertyAddress.value = "";
-    generalNotes.value = "";
-    render();
-    showToast("New job started.");
-  });
-
-  // --------- PDF EXPORT (clear photos) ----------
-  function safeFileName(name){
-    return String(name || "fps-job")
-      .replace(/[/\\?%*:|"<>]/g, "-")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  async function getImageInfo(dataUrl){
-    const img = await new Promise((res, rej)=>{
-      const i = new Image();
-      i.onload=()=>res(i);
-      i.onerror=rej;
-      i.src = dataUrl;
-    });
-    return { w: img.naturalWidth || img.width, h: img.naturalHeight || img.height };
-  }
-
-  exportPdfBtn.addEventListener('click', async ()=>{
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({unit:'mm', format:'a4', compress: true});
-
-    const margin = 12;
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const contentW = pageW - margin*2;
-
-    const now = new Date();
-    const stamp = `${pad2(now.getDate())}/${pad2(now.getMonth()+1)}/${now.getFullYear()} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-
-    const jobData = {
-      jobId: state.jobId,
-      lettingAgent: (lettingAgent.value || "").trim() || "-",
-      jobRef: (jobRef.value || "").trim() || "-",
-      address: (propertyAddress.value || "").trim() || "-",
-      generalNotes: (generalNotes.value || "").trim() || "-"
-    };
-
-    function header(){
-      doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(20);
-      doc.text('FORD PROPERTY SERVICES', margin, 16);
-      doc.setFontSize(12);
-      doc.text('Job Photo Notes', margin, 23);
-
-      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(60);
-      doc.text(`Job ID: ${jobData.jobId}`, pageW - margin, 16, {align:'right'});
-      doc.text(`Saved: ${stamp}`, pageW - margin, 22, {align:'right'});
-
-      doc.setDrawColor(200); doc.setLineWidth(0.35);
-      doc.line(margin, 26, pageW - margin, 26);
-    }
-
-    function wrap(text, width){
-      return doc.splitTextToSize(String(text || ""), width);
-    }
-
-    // Page 1 summary
-    header();
-    let y = 34;
-
-    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20);
-    doc.text('Job Details', margin, y); y += 6;
-
-    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
-    doc.text(`Letting Agent: ${jobData.lettingAgent}`, margin, y); y += 6;
-    doc.text(`Job Reference: ${jobData.jobRef}`, margin, y); y += 6;
-
-    const addrLines = wrap(`Address: ${jobData.address}`, contentW);
-    doc.text(addrLines, margin, y); y += addrLines.length * 5 + 2;
-
-    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20);
-    doc.text('General Notes', margin, y); y += 6;
-
-    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
-    const genLines = wrap(jobData.generalNotes, contentW);
-    doc.text(genLines, margin, y);
-    y += genLines.length * 5 + 6;
-
-    // Each photo gets its own page for maximum clarity
-    for(let i=0;i<state.photos.length;i++){
-      const p = state.photos[i];
-
-      doc.addPage();
-      header();
-
-      let py = 34;
-      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20);
-      doc.text(`Photo ${i+1}`, margin, py);
-      py += 6;
-
-      // Reserve space at bottom for notes (up to ~40mm). If notes longer, spill to next page.
-      const notesTopGap = 6;
-      const notesAreaMax = 42;
-      const imageMaxH = (pageH - margin - (py + notesTopGap + notesAreaMax));
-
-      // Determine image placement (keep aspect ratio, no stretching)
-      let iw = contentW;
-      let ih = imageMaxH;
-
-      try{
-        const info = await getImageInfo(p.dataUrl);
-        const aspect = info.w / info.h;
-
-        // fit by width first
-        iw = contentW;
-        ih = iw / aspect;
-
-        // if too tall, fit by height instead
-        if(ih > imageMaxH){
-          ih = imageMaxH;
-          iw = ih * aspect;
-        }
-
-        const ix = margin + (contentW - iw) / 2;
-        const iy = py;
-
-        // Border
-        doc.setDrawColor(200); doc.setLineWidth(0.35);
-        doc.roundedRect(ix, iy, iw, ih, 2, 2);
-
-        // Add image with best quality (no "FAST")
-        doc.addImage(p.dataUrl, 'JPEG', ix, iy, iw, ih, undefined, 'NONE');
-        py = iy + ih + notesTopGap;
-      }catch(e){
-        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(120);
-        doc.text('Image error', margin, py+10);
-        py += 22;
-        doc.setTextColor(40);
-      }
-
-      // Notes
-      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20);
-      doc.text('Notes:', margin, py);
-      py += 5;
-
-      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
-      const noteText = (p.note || "").trim() || "-";
-      const noteLines = wrap(noteText, contentW);
-
-      // If notes exceed page, continue onto next page
-      const lineH = 5;
-      const available = pageH - margin - py;
-      const maxLinesHere = Math.max(1, Math.floor(available / lineH));
-      const first = noteLines.slice(0, maxLinesHere);
-      doc.text(first, margin, py);
-
-      const remaining = noteLines.slice(maxLinesHere);
-      if(remaining.length){
-        doc.addPage();
-        header();
-        let ny = 34;
-        doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20);
-        doc.text(`Photo ${i+1} Notes (cont.)`, margin, ny);
-        ny += 8;
-        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
-        doc.text(remaining, margin, ny);
-      }
-    }
-
-    // Footer page numbers
-    const total = doc.getNumberOfPages();
-    for(let p=1;p<=total;p++){
-      doc.setPage(p);
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(9);
-      doc.setTextColor(130);
-      doc.text(`Job ID: ${jobData.jobId}`, margin, pageH - 8);
-      doc.text(`Page ${p} of ${total}`, pageW - margin, pageH - 8, {align:'right'});
-    }
-
-    const filename = safeFileName(`${jobData.jobId} Photo Notes`) + ".pdf";
-    doc.save(filename);
-  });
-
-  if(!canDictate()){
-    showToast("Voice dictation not supported here. Use Chrome on Android for dictation.");
-  }
 </script>
 </body>
 </html>
