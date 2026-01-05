@@ -2,28 +2,313 @@
 <html lang="en-GB">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TEST • Photo Notes level</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Ford Property Services • Dashboard</title>
+
+  <meta name="theme-color" content="#0b1220" />
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Uses your existing icons from jobs-board if present -->
+  <link rel="apple-touch-icon" href="../jobs-board/icons/icon-192.png">
+
   <style>
-    body{margin:0;font-family:system-ui,Arial;background:#0b1220;color:#e7eefc;display:grid;place-items:center;min-height:100vh;padding:16px;text-align:center}
-    .card{max-width:620px;width:100%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);border-radius:16px;padding:16px}
-    code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:8px}
-    a{color:#4aa3ff;font-weight:900;text-decoration:none}
+    :root{
+      --bg:#0b1220;
+      --text:#e7eefc;
+      --muted:#a9b7d3;
+      --line:rgba(255,255,255,.14);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+      --blue: rgba(74,163,255,.95);
+      --ok: rgba(34,197,94,.9);
+      --warn: rgba(245,158,11,.9);
+      --purple: rgba(168,85,247,.9);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
+        var(--bg);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      background: rgba(11,18,32,.82);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
+    .top{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+    .brand{display:flex; align-items:center; gap:12px;}
+    .logo{
+      width:56px;height:56px;border-radius:14px;
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow: var(--shadow);
+      display:grid; place-items:center;
+      overflow:hidden;
+      cursor:pointer;
+      padding:7px;
+      flex:0 0 auto;
+    }
+    .logo img{width:100%;height:100%;object-fit:contain;display:none}
+    .brand h1{margin:0;font-size:16px;line-height:1.1}
+    .brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
+
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    button{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .pill{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:8px 10px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      font-size:12px;color:var(--muted);
+    }
+    .pill strong{color:var(--text)}
+
+    main{max-width:1100px;margin:0 auto;padding:16px}
+    .card{
+      background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:18px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    @media(min-width:700px){ .grid{ grid-template-columns: repeat(2, 1fr); } }
+    @media(min-width:980px){ .grid{ grid-template-columns: repeat(3, 1fr); } }
+
+    a.tile{
+      text-decoration:none;
+      color:inherit;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      border-radius:18px;
+      padding:14px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      transition: transform .08s ease, border-color .08s ease;
+    }
+    a.tile:active{ transform: scale(.98); }
+    a.tile:hover{ border-color: rgba(255,255,255,.24); }
+
+    .icon{
+      width:54px;height:54px;border-radius:16px;
+      display:grid; place-items:center;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      flex:0 0 auto;
+    }
+    .icon svg{width:26px;height:26px;opacity:.95}
+
+    .ttext{min-width:0}
+    .ttext h3{margin:0;font-size:14px;line-height:1.15}
+    .ttext p{margin:4px 0 0;color:var(--muted);font-size:12px}
+
+    .hint{margin-top:10px;color:var(--muted);font-size:12px}
+    .notice{color: rgba(255,255,255,.95)}
+    .notice small{color:var(--muted)}
   </style>
 </head>
+
 <body>
-  <div class="card">
-    <h2 style="margin:0 0 10px">✅ TEST PAGE LOADED</h2>
-    <div>This proves you are opening:</div>
-    <div style="margin-top:8px"><code>/app/job-photo-notes/job-photo-notes/</code></div>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo" id="logoBox" title="Tap to upload logo (saves on phone)">
+          <span id="logoFallback" style="font-weight:950;letter-spacing:.4px;color:#0b1220;">FPS</span>
+          <img id="logoImg" alt="Company logo" />
+        </div>
+        <div>
+          <h1>Ford Property Services</h1>
+          <p>Dashboard</p>
+        </div>
+      </div>
 
-    <div style="margin-top:14px">
-      <a href="./job-photo-notes/index.html?v=1">Go one level deeper</a>
-    </div>
-
-    <div style="opacity:.8;margin-top:14px">
-      If you still see the dashboard instead of this test page, then your dashboard tile is NOT pointing here.
+      <div class="row">
+        <span class="pill"><strong>Tip:</strong> Add to Home Screen</span>
+        <button id="installHelp" type="button">Install Help</button>
+      </div>
     </div>
   </div>
+</header>
+
+<input id="logoInput" type="file" accept="image/*" style="display:none" />
+
+<main>
+  <div class="card">
+    <div class="notice">
+      <strong>Quick Access</strong><br />
+      <small>If any tile opens a 404, it means the folder name differs. This version fixes Photo Notes → job-photo-notes.</small>
+    </div>
+
+    <div class="grid">
+      <!-- Jobs Board -->
+      <a class="tile" href="../jobs-board/">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M7 7h10M7 12h10M7 17h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Jobs Board</h3>
+          <p>Track estimate → works → invoice → paid.</p>
+        </div>
+      </a>
+
+      <!-- Inspection Report (change link if your folder name differs) -->
+      <a class="tile" href="../inspection-report/">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M8 3h8l3 3v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 11h8M8 15h8M8 19h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M16 3v3h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Inspection Report</h3>
+          <p>Create inspection report + PDF.</p>
+        </div>
+      </a>
+
+      <!-- Works Completion Report (change link if your folder name differs) -->
+      <a class="tile" href="../works-completion-report/">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M9 11l2 2 4-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7 3h10l3 3v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M17 3v3h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Works Completion Report</h3>
+          <p>After photos (up to 20) + PDF.</p>
+        </div>
+      </a>
+
+      <!-- Photo Notes (FIXED) -->
+      <a class="tile" href="../job-photo-notes/">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 7a2 2 0 0 1 2-2h3l1-1h4l1 1h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M9 14l2-2 2 2 3-3 2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9 9h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Photo Notes</h3>
+          <p>Multiple photos + notes + dictation.</p>
+        </div>
+      </a>
+
+      <!-- Root -->
+      <a class="tile" href="../">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M3 10.5 12 3l9 7.5V21a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-10.5Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M9 23V14h6v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>App Root</h3>
+          <p>Open your app root folder.</p>
+        </div>
+      </a>
+
+      <!-- Placeholder -->
+      <a class="tile" href="../">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ttext">
+          <h3>Add another tool</h3>
+          <p>Duplicate a tile and change the link.</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="hint">
+      <strong>Install:</strong> Android Chrome → menu (⋮) → <em>Add to Home screen</em>.<br />
+      <strong>Logo:</strong> tap the logo square to upload — it saves on your phone and will appear on your other apps that use the same key.
+    </div>
+  </div>
+</main>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  }
+
+  // Shared logo (same key used across your apps)
+  const logoBox = document.getElementById('logoBox');
+  const logoInput = document.getElementById('logoInput');
+  const logoImg = document.getElementById('logoImg');
+  const logoFallback = document.getElementById('logoFallback');
+
+  const savedLogo = localStorage.getItem('fps_logo_v1');
+  if (savedLogo) {
+    logoImg.src = savedLogo;
+    logoImg.style.display = 'block';
+    logoFallback.style.display = 'none';
+  }
+
+  async function fileToDataURL(file, maxDim=900, quality=0.90){
+    const img = await new Promise((res, rej)=>{
+      const i = new Image();
+      i.onload=()=>res(i);
+      i.onerror=rej;
+      i.src = URL.createObjectURL(file);
+    });
+    const c = document.createElement('canvas');
+    let {width:w, height:h} = img;
+    const scale = Math.min(1, maxDim / Math.max(w,h));
+    w = Math.round(w*scale); h = Math.round(h*scale);
+    c.width=w; c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    const url = c.toDataURL('image/jpeg', quality);
+    URL.revokeObjectURL(img.src);
+    return url;
+  }
+
+  logoBox.addEventListener('click', ()=> logoInput.click());
+  logoInput.addEventListener('change', async (e)=>{
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const url = await fileToDataURL(f, 900, 0.90);
+    localStorage.setItem('fps_logo_v1', url);
+    logoImg.src = url;
+    logoImg.style.display = 'block';
+    logoFallback.style.display = 'none';
+  });
+
+  document.getElementById('installHelp').addEventListener('click', ()=>{
+    alert("Install on Android:\n\n1) Open this dashboard in Chrome\n2) Tap ⋮ (top right)\n3) Tap 'Add to Home screen'\n\nIt opens full-screen like an app.");
+  });
+</script>
 </body>
 </html>
