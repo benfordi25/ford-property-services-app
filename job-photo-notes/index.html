@@ -1,19 +1,381 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Opening Photo Notes…</title>
-  <meta name="theme-color" content="#0b1220" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ford Property Services • Photo Notes</title>
+<meta name="theme-color" content="#0b1220">
+
+<style>
+:root{
+  --bg:#0b1220; --line:rgba(255,255,255,.14);
+  --text:#e7eefc; --muted:#a9b7d3;
+  --good:#22c55e; --bad:#ef4444;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:var(--bg)}
+header{position:sticky;top:0;z-index:10;background:#0b1220;border-bottom:1px solid var(--line)}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:54px;height:54px;border-radius:14px;background:#fff;color:#000;display:grid;place-items:center;font-weight:900}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.card{border:1px solid var(--line);border-radius:18px;padding:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{
+  background:rgba(255,255,255,.06);color:var(--text);
+  border:1px solid var(--line);border-radius:14px;
+  padding:10px 12px;font-weight:900;cursor:pointer
+}
+button.good{border-color:rgba(34,197,94,.55)}
+button.bad{border-color:rgba(239,68,68,.55)}
+input,textarea{
+  width:100%;background:rgba(0,0,0,.2);color:var(--text);
+  border:1px solid var(--line);border-radius:14px;padding:10px 12px
+}
+textarea{min-height:90px}
+.grid{display:grid;gap:12px;margin-top:12px}
+@media(min-width:800px){.grid{grid-template-columns:1fr 1fr}}
+.item{border:1px solid var(--line);border-radius:18px;padding:12px}
+.thumb{aspect-ratio:4/3;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:8px;background:#000}
+.thumb img{width:100%;height:100%;object-fit:contain}
+.small{font-size:12px;color:var(--muted)}
+.toast{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  background:#000;color:#fff;padding:10px 14px;border-radius:14px;display:none;font-weight:900;z-index:100
+}
+
+/* CAMERA MODAL */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:50;padding:14px}
+.panel{background:#0b1220;border:1px solid var(--line);border-radius:18px;padding:12px;width:min(960px,96%)}
+.videoWrap{aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+video{width:100%;height:100%;object-fit:cover}
+
+/* PDF PRINT: hide app controls */
+@media print{
+  header, .no-print, .modal {display:none!important}
+  body{background:#fff;color:#000}
+  .card,.item{border:1px solid #ccc}
+  textarea{border:none;background:none;color:#000}
+  .small{color:#333}
+}
+</style>
 </head>
-<body style="margin:0;font-family:system-ui;background:#0b1220;color:#e7eefc;display:grid;place-items:center;min-height:100vh;padding:16px;text-align:center">
-  Opening Photo Notes…
-  <script>
-    // HARD redirect to absolute URL (avoids ../ path issues)
-    location.replace("/app/job-photo-notes-v2/?v=" + Date.now());
-  </script>
+
+<body>
+
+<header>
+  <div class="wrap top">
+    <div class="brand">
+      <div class="logo">FPS</div>
+      <div>
+        <strong>Ford Property Services</strong><br>
+        <span class="small">Photo Notes</span>
+      </div>
+    </div>
+    <a href="/app/dashboard/" class="no-print" style="color:#9ecbff;text-decoration:none">← Dashboard</a>
+  </div>
+</header>
+
+<input id="galleryInput" type="file" accept="image/*" multiple style="display:none">
+
+<main>
+  <div class="card">
+
+    <!-- PDF header area (prints) -->
+    <div style="margin-bottom:10px">
+      <div style="font-weight:900;font-size:16px">Photo Report</div>
+      <div style="margin-top:6px"><strong>Property Address:</strong> <span id="pdfAddress">—</span></div>
+      <div class="small">Date: <span id="pdfDate">—</span></div>
+    </div>
+
+    <!-- App controls (do NOT print) -->
+    <div class="row no-print">
+      <button id="newForm" class="bad" type="button">🆕 New form</button>
+      <button id="openCamera" class="good" type="button">📷 Open camera</button>
+      <button id="chooseGallery" type="button">🖼️ Gallery</button>
+      <button id="savePdf" type="button">🧾 Save PDF</button>
+    </div>
+
+    <div class="row no-print" style="margin-top:12px">
+      <input id="address" placeholder="Property address">
+      <input id="date" type="date">
+    </div>
+
+    <textarea id="general" class="no-print" placeholder="General notes (optional)" style="margin-top:12px"></textarea>
+
+    <div id="list" class="grid"></div>
+
+  </div>
+</main>
+
+<!-- Camera modal -->
+<div id="camModal" class="modal" aria-hidden="true">
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <strong>Camera</strong>
+      <button id="closeCamTop" class="bad" type="button">✕ Close</button>
+    </div>
+    <div class="videoWrap" style="margin-top:10px">
+      <video id="video" autoplay playsinline muted></video>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="snap" class="good" type="button">📸 Take photo</button>
+      <button id="closeCam" class="bad" type="button">✕ Close</button>
+    </div>
+    <div class="small" style="margin-top:8px">If prompted, tap <strong>Allow</strong> to give camera access.</div>
+  </div>
+</div>
+
+<div id="toast" class="toast">Saved</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+const STORE = "fps_photo_notes_v2_pdf";
+let state = { address:"", date:"", general:"", items:[] };
+
+function showToast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  clearTimeout(showToast._tm);
+  showToast._tm = setTimeout(()=>t.style.display="none", 1300);
+}
+
+function ukDateFromInput(value){
+  if(!value) return "";
+  const [y,m,d] = value.split("-").map(Number);
+  if(!y || !m || !d) return "";
+  return `${String(d).padStart(2,"0")}/${String(m).padStart(2,"0")}/${y}`;
+}
+
+function syncPdfHeader(){
+  $("pdfAddress").textContent = state.address || "—";
+  $("pdfDate").textContent = ukDateFromInput(state.date) || "—";
+}
+
+function save(){
+  localStorage.setItem(STORE, JSON.stringify(state));
+  syncPdfHeader();
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE);
+    if(raw) state = JSON.parse(raw);
+  }catch(e){}
+  $("address").value = state.address || "";
+  $("date").value = state.date || "";
+  $("general").value = state.general || "";
+  syncPdfHeader();
+  render();
+}
+
+$("address").addEventListener("input", (e)=>{ state.address = e.target.value; save(); });
+$("date").addEventListener("change", (e)=>{ state.date = e.target.value; save(); });
+$("general").addEventListener("input", (e)=>{ state.general = e.target.value; save(); });
+
+/* Dictation per photo */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+
+function startDictation(targetTextarea){
+  if(!SR){
+    alert("Dictation not supported. Use Chrome on Android.");
+    return;
+  }
+  if(rec){ try{ rec.stop(); }catch(e){} }
+
+  rec = new SR();
+  rec.lang = "en-GB";
+  rec.interimResults = false;
+  rec.continuous = false;
+
+  rec.onresult = (ev)=>{
+    const text = Array.from(ev.results).map(r => r[0]?.transcript || "").join(" ").trim();
+    if(!text) return;
+    const cur = targetTextarea.value || "";
+    targetTextarea.value = (cur && !cur.endsWith(" ") ? cur + " " : cur) + text;
+    targetTextarea.dispatchEvent(new Event("input"));
+    showToast("Dictation added");
+  };
+  rec.onerror = ()=>{};
+  try{ rec.start(); }catch(e){}
+}
+
+/* Render */
+function render(){
+  const list = $("list");
+  list.innerHTML = "";
+
+  state.items.forEach((it, idx)=>{
+    const box = document.createElement("div");
+    box.className = "item";
+
+    box.innerHTML = `
+      <div class="thumb"><img src="${it.img}" alt="Photo ${idx+1}"></div>
+      <div class="small" style="margin-bottom:6px"><strong>Photo ${idx+1}</strong></div>
+      <textarea placeholder="Notes for this photo..."></textarea>
+      <div class="row no-print" style="margin-top:6px">
+        <button type="button" class="good">🎤 Dictate</button>
+        <button type="button" class="bad">⌫ Clear</button>
+        <button type="button" class="bad">🗑️ Delete</button>
+      </div>
+    `;
+
+    const ta = box.querySelector("textarea");
+    ta.value = it.note || "";
+    ta.addEventListener("input", (e)=>{ it.note = e.target.value; save(); });
+
+    const buttons = box.querySelectorAll("button");
+    const bDict = buttons[0];
+    const bClear = buttons[1];
+    const bDel = buttons[2];
+
+    bDict.addEventListener("click", ()=> startDictation(ta));
+    bClear.addEventListener("click", ()=>{
+      ta.value = "";
+      it.note = "";
+      save();
+      showToast("Note cleared");
+    });
+    bDel.addEventListener("click", ()=>{
+      if(!confirm("Delete this photo?")) return;
+      state.items.splice(idx, 1);
+      save();
+      render();
+      showToast("Photo deleted");
+    });
+
+    list.appendChild(box);
+  });
+}
+
+/* Camera (in-app) */
+let stream = null;
+
+function openCam(){
+  $("camModal").style.display = "flex";
+  $("camModal").setAttribute("aria-hidden","false");
+}
+function closeCam(){
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream = null;
+  }
+  $("camModal").style.display = "none";
+  $("camModal").setAttribute("aria-hidden","true");
+}
+
+$("openCamera").addEventListener("click", async ()=>{
+  openCam();
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:"environment" }, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
+    $("video").srcObject = stream;
+    await $("video").play();
+  }catch(err){
+    alert("Camera failed to start. Please allow camera permission in Chrome.\n\n" + err);
+    closeCam();
+  }
+});
+
+$("closeCam").addEventListener("click", closeCam);
+$("closeCamTop").addEventListener("click", closeCam);
+
+$("snap").addEventListener("click", ()=>{
+  const v = $("video");
+  if(!v.videoWidth) return;
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth;
+  c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v,0,0);
+
+  state.items.push({ img: c.toDataURL("image/jpeg", 0.94), note:"" });
+  save();
+  render();
+  showToast("Photo added");
+});
+
+/* Gallery import */
+$("chooseGallery").addEventListener("click", ()=> $("galleryInput").click());
+
+$("galleryInput").addEventListener("change", async (e)=>{
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+
+  for(const f of files){
+    const img = new Image();
+    img.src = URL.createObjectURL(f);
+    await img.decode();
+
+    // compress to avoid storage bloat
+    const max = 1800;
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img,0,0,w,h);
+
+    state.items.push({ img: c.toDataURL("image/jpeg", 0.94), note:"" });
+    URL.revokeObjectURL(img.src);
+  }
+
+  e.target.value = "";
+  save();
+  render();
+  showToast("Added from gallery");
+});
+
+/* PDF */
+$("savePdf").addEventListener("click", ()=>{
+  // This uses print-to-PDF, but the print CSS hides the app controls
+  window.print();
+});
+
+/* New form */
+$("newForm").addEventListener("click", ()=>{
+  if(!confirm("Start a NEW form? This will clear address/date/notes/photos on this device.")) return;
+  state = { address:"", date:"", general:"", items:[] };
+  localStorage.removeItem(STORE);
+
+  // reset UI
+  $("address").value = "";
+  $("general").value = "";
+
+  // set date today
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  $("date").value = `${y}-${m}-${day}`;
+  state.date = $("date").value;
+
+  save();
+  render();
+  showToast("New form ready");
+});
+
+/* Init */
+(function init(){
+  // default date today if empty
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  $("date").value = `${y}-${m}-${day}`;
+
+  load();
+
+  // if loaded state has empty date, set today
+  if(!state.date){
+    state.date = $("date").value;
+    save();
+  }
+})();
+</script>
+
 </body>
 </html>
