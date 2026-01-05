@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Opening Photo Notes…</title>
+  <meta name="theme-color" content="#0b1220">
+  <style>
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:#0b1220;
+      color:#e7eefc;
+      display:grid;
+      place-items:center;
+      min-height:100vh;
+      padding:16px;
+      text-align:center;
+    }
+    .card{
+      max-width:520px;
+      width:100%;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.06);
+      border-radius:16px;
+      padding:16px;
+    }
+    .muted{color:#a9b7d3;font-size:13px}
+    a{color:#4aa3ff;font-weight:800;text-decoration:none}
+    code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="margin:0 0 10px">Opening Photo Notes…</h2>
+    <div class="muted">
+      Redirecting to the app…
+    </div>
+    <div style="margin-top:12px">
+      <a href="./job-photo-notes/index.html">Tap here if it doesn’t open</a>
+    </div>
+  </div>
+
+<script>
+  location.replace("./job-photo-notes/index.html?v=" + Date.now());
+</script>
+</body>
+</html>
