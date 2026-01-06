@@ -860,6 +860,86 @@
   // Init
   load();
   renderAll();
+  <script>
+/** ===== Calendar Sync Feed (Jobs Board → Calendar app) ===== **/
+const CAL_FEED_KEY = "fps_calendar_feed_v1";
+
+/** Pick the best job date field your board uses */
+function getJobDate(job){
+  return (
+    job.date ||
+    job.jobDate ||
+    job.scheduledDate ||
+    job.visitDate ||
+    job.bookingDate ||
+    ""
+  );
+}
+
+/** Pick the best time field your board uses */
+function getJobTime(job){
+  return (
+    job.time ||
+    job.jobTime ||
+    job.scheduledTime ||
+    job.visitTime ||
+    ""
+  );
+}
+
+/** Create a short title for calendar */
+function calendarTitle(job){
+  const addr = (job.address || "").trim();
+  const ref  = (job.ref || "").trim();
+  if (addr && ref) return `${addr} • ${ref}`;
+  return addr || ref || "Job";
+}
+
+/** Convert Jobs Board jobs[] → calendar feed */
+function buildCalendarFeedFromJobs(jobs){
+  // feed = { "YYYY-MM-DD": [ {id,title,address,time,ref,status,updatedAt} ] }
+  const feed = {};
+
+  for (const j of (jobs || [])) {
+    const d = (getJobDate(j) || "").trim();
+    if (!d) continue; // no scheduled date = not shown on calendar
+
+    // Normalise date: accept YYYY-MM-DD only
+    // If you store UK dates like DD/MM/YYYY, tell me and I’ll adjust.
+    const date = d;
+
+    const item = {
+      id: j.id || j.jobId || (j.ref ? `ref:${j.ref}` : `addr:${j.address || ""}`),
+      title: calendarTitle(j),
+      address: j.address || "",
+      time: getJobTime(j) || "",
+      ref: j.ref || "",
+      status: j.status || "",
+      updatedAt: j.updatedAt || j.createdAt || new Date().toISOString()
+    };
+
+    if (!feed[date]) feed[date] = [];
+    feed[date].push(item);
+  }
+
+  // Sort each day by time then title (nice & stable)
+  for (const date of Object.keys(feed)) {
+    feed[date].sort((a,b)=> String(a.time).localeCompare(String(b.time)) || String(a.title).localeCompare(String(b.title)));
+  }
+
+  return feed;
+}
+
+/** Write the feed (call this after every save) */
+function syncCalendarFeed(jobs){
+  try{
+    const feed = buildCalendarFeedFromJobs(jobs);
+    localStorage.setItem(CAL_FEED_KEY, JSON.stringify(feed));
+  }catch(err){
+    console.warn("Calendar feed sync failed:", err);
+  }
+}
+</script>
 </script>
 </body>
 </html>
