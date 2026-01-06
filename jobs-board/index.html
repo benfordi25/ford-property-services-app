@@ -877,7 +877,8 @@ function syncCalendarFeed(jobs){
     // build feed: { "YYYY-MM-DD": [ {title,address,time,ref,status,id} ] }
     const feed = {};
     for(const j of (jobs || [])){
-      const date = (j.date || j.jobDate || j.scheduledDate || j.visitDate || j.bookingDate || "").trim();
+      const rawDate = (j.date || j.jobDate || j.scheduledDate || "").trim();
+const date = ukToISO(rawDate);
       if(!date) continue;
 
       const item = {
