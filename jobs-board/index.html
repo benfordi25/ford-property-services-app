@@ -500,10 +500,12 @@
   }
 
   function save(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
-    savedStatusEl.textContent = nowStamp();
-    syncCalendarFeed(jobs);
-  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+  savedStatusEl.textContent = nowStamp();
+
+  syncCalendarFeed(jobs);
+  localStorage.setItem("fps_calendar_feed_updated_v1", new Date().toISOString());
+}
   function load(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
