@@ -19,11 +19,11 @@
     .row{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
     @media(min-width:720px){ .row{grid-template-columns:repeat(4,1fr)} .row.two{grid-template-columns:repeat(2,1fr)} }
     label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-    input,select,button,textarea{
+    input,select,button{
       width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);
       background:#0b1220;color:var(--text);outline:none
     }
-    input:focus,select:focus,textarea:focus{border-color:#3b82f6}
+    input:focus,select:focus{border-color:#3b82f6}
     button{cursor:pointer}
     .btn{background:#1f3a6b;border-color:#2b4d90}
     .btn:active{transform:translateY(1px)}
@@ -61,8 +61,7 @@
     }
     .readonly .readonlyTag{display:block}
     .readonly input,
-    .readonly select,
-    .readonly textarea{
+    .readonly select{
       opacity:.78;
     }
   </style>
@@ -143,7 +142,7 @@
           <div>
             <label>Open archived job</label>
             <select id="archivedSelect"></select>
-            <div class="hint">Archived jobs are read-only. You can still create a PDF or restore them to Active.</div>
+            <div class="hint">Archived jobs are read-only. You can still create a PDF or restore them.</div>
           </div>
         </div>
 
@@ -154,28 +153,23 @@
 
         <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
 
-        <div class="hint">
-          <b>Sync:</b> <span class="mono" id="syncState">idle</span>
-        </div>
+        <div class="hint"><b>Sync:</b> <span class="mono" id="syncState">idle</span></div>
 
         <div class="right">
           <button class="small" id="pdfBtn">Create PDF</button>
           <button class="small" id="exportBtn">Export JSON</button>
         </div>
-
-        <div class="hint">PDF is generated as a clean report with headings + tables (no app buttons).</div>
       </div>
 
       <!-- RIGHT: MAIN -->
       <div id="mainPanel">
         <div class="readonlyTag" id="readonlyTag">
-          This job is <b>Archived</b> and is <b>read-only</b>.  
-          To edit it, restore it back to Active.
+          This job is <b>Archived</b> and is <b>read-only</b>. Restore it to Active to edit.
         </div>
 
         <div class="grid">
           <!-- LEFT -->
-          <div class="card" id="leftCard">
+          <div class="card">
             <div class="row two">
               <div>
                 <label>Property address</label>
@@ -252,7 +246,7 @@
           </div>
 
           <!-- RIGHT -->
-          <div class="card" id="rightCard">
+          <div class="card">
             <span class="pill">Estimate & Commission</span>
 
             <div class="row two">
@@ -294,18 +288,16 @@
                   <div class="v" id="kpiSpent">£0.00</div>
                 </div>
                 <div class="kpi">
-                  <div class="t">Profit / Loss (NET)</div>
-                  <div class="v" id="kpiProfitLoss">£0.00</div>
+                  <div class="t">Remaining / Profit-Loss (NET)</div>
+                  <div class="v" id="kpiRemaining">£0.00</div>
                 </div>
               </div>
 
               <div class="kpi" id="profitLossBox" style="margin-top:10px">
-                <div class="t">Remaining (vs net left after commission)</div>
-                <div class="v" id="kpiRemaining">£0.00</div>
+                <div class="t">Profit / Loss status</div>
                 <div class="hint" id="profitLossHint"></div>
+                <div class="hint" id="statusHint"></div>
               </div>
-
-              <div class="hint" id="statusHint"></div>
 
               <div class="right">
                 <button class="small" id="resetBtn">Reset current job</button>
@@ -317,8 +309,8 @@
             </div>
           </div>
         </div><!-- /grid -->
-      </div><!-- /mainPanel -->
-    </div><!-- /appLayout -->
+      </div><!-- /main -->
+    </div><!-- /layout -->
   </div><!-- /wrap -->
 
   <!-- Clean PDF libraries -->
@@ -326,26 +318,27 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.3/dist/jspdf.plugin.autotable.min.js"></script>
 
   <script type="module">
-    // =================== REQUIRED: paste your Firebase web config here ===================
-    const firebaseConfig = {
-      apiKey: "PASTE_ME",
-      authDomain: "PASTE_ME",
-      projectId: "PASTE_ME",
-      storageBucket: "PASTE_ME",
-      messagingSenderId: "PASTE_ME",
-      appId: "PASTE_ME"
-    };
-    // ================================================================================
-
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
-      from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
     import {
-      getFirestore, collection, doc,
+      getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import {
+      getFirestore,
+      collection, doc,
       addDoc, deleteDoc, setDoc,
       onSnapshot, query, orderBy,
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+    // ✅ YOUR CONFIG (already inserted)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfKXXlQyYJIGNjLOIVQqwtyL_QgDEG9Ps",
+      authDomain: "ford-property-services-be377.firebaseapp.com",
+      projectId: "ford-property-services-be377",
+      storageBucket: "ford-property-services-be377.firebasestorage.app",
+      messagingSenderId: "943925201384",
+      appId: "1:943925201384:web:cc273115633c1337c93c5d"
+    };
 
     const $ = (id) => document.getElementById(id);
     const num = (v) => {
@@ -402,7 +395,7 @@
     const db = getFirestore(app);
 
     const jobsCol = (userId) => collection(db, "users", userId, "jobs");
-    const jobDoc = (userId, jobId) => doc(db, "users", userId, "jobs", jobId);
+    const jobDocRef = (userId, jobId) => doc(db, "users", userId, "jobs", jobId);
 
     function setSync(text) { $("syncState").textContent = text; }
     function isArchived(){ return (state.status || "active") === "archived"; }
@@ -445,22 +438,18 @@
 
     function applyEditLock(){
       const ro = isArchived();
-      const main = $("mainPanel");
-      main.classList.toggle("readonly", ro);
+      $("mainPanel").classList.toggle("readonly", ro);
 
-      // Disable top-level editing inputs
       const ids = [
         "propertyAddress","jobLabel","estDuration","jobNotes","currency",
         "estimateNet","commissionPct"
       ];
       ids.forEach(id => { const el = $(id); if (el) el.disabled = ro; });
 
-      // Disable buttons that would change an archived job
       $("addMatBtn").disabled = ro;
       $("resetBtn").disabled = ro;
-      $("markCompleteBtn").disabled = ro || !currentJobId; // you can’t mark completed if already archived
+      $("markCompleteBtn").disabled = ro || !currentJobId;
 
-      // You CAN still: create PDF, export JSON, restore archived, switch jobs
       $("pdfBtn").disabled = !currentJobId;
       $("exportBtn").disabled = !currentJobId;
       $("deleteJobBtn").disabled = !currentJobId;
@@ -476,8 +465,6 @@
       $("kpiLabour").textContent = money(s.labourTotal, s.cur);
       $("kpiMaterials").textContent = money(s.materialsNet, s.cur);
       $("kpiSpent").textContent = money(s.spent, s.cur);
-
-      $("kpiProfitLoss").textContent = money(s.remaining, s.cur);
       $("kpiRemaining").textContent = money(s.remaining, s.cur);
 
       const plBox = $("profitLossBox");
@@ -619,10 +606,7 @@
             queueSave(); renderAll();
           };
           delTd.appendChild(del);
-        } else {
-          delTd.textContent = "";
         }
-
         [dateTd, descTd, grossTd, pctTd, netTd, delTd].forEach(td => tr.appendChild(td));
         body.appendChild(tr);
       });
@@ -645,7 +629,7 @@
 
     function queueSave(recalc = true) {
       if (!uid || !currentJobId || applyingRemote) return;
-      if (isArchived()) return; // prevent editing archived jobs
+      if (isArchived()) return; // prevent autosave for archived jobs
       if (recalc) renderTotals();
       setSync("pending");
       clearTimeout(savingTimer);
@@ -657,9 +641,8 @@
       if (isArchived()) return;
       try {
         setSync("saving…");
-        const ref = jobDoc(uid, currentJobId);
         const payload = { ...state, updatedAt: serverTimestamp() };
-        await setDoc(ref, payload, { merge: true });
+        await setDoc(jobDocRef(uid, currentJobId), payload, { merge: true });
         setSync("saved");
       } catch (e) {
         console.error(e);
@@ -672,7 +655,7 @@
       currentJobId = jobId;
 
       setSync("loading…");
-      const ref = jobDoc(uid, jobId);
+      const ref = jobDocRef(uid, jobId);
 
       jobDocUnsub = onSnapshot(ref, (snap) => {
         applyingRemote = true;
@@ -714,7 +697,7 @@
           else activeJobs.push(job);
         });
 
-        // Active dropdown
+        // Active
         activeSelect.innerHTML = "";
         if (activeJobs.length === 0) {
           const opt = document.createElement("option");
@@ -732,7 +715,7 @@
           });
         }
 
-        // Archived dropdown
+        // Archived
         archivedSelect.innerHTML = "";
         if (archivedJobs.length === 0) {
           const opt = document.createElement("option");
@@ -750,22 +733,22 @@
           });
         }
 
-        // Decide which job to keep/open
-        const shouldChooseActive =
-          currentJobId && activeJobs.some(j => j.id === currentJobId) ? currentJobId :
-          prevActive && activeJobs.some(j => j.id === prevActive) ? prevActive :
-          activeJobs[0]?.id || "";
+        // Pick what to open
+        const pickActive =
+          (currentJobId && activeJobs.some(j => j.id === currentJobId)) ? currentJobId :
+          (prevActive && activeJobs.some(j => j.id === prevActive)) ? prevActive :
+          (activeJobs[0]?.id || "");
 
-        if (shouldChooseActive) {
-          activeSelect.value = shouldChooseActive;
-          if (shouldChooseActive !== currentJobId) subscribeToJob(shouldChooseActive);
+        if (pickActive) {
+          activeSelect.value = pickActive;
+          if (pickActive !== currentJobId) subscribeToJob(pickActive);
         } else if (archivedJobs.length) {
-          // if no active jobs, open an archived job (first)
-          const pick = prevArchived && archivedJobs.some(j => j.id === prevArchived) ? prevArchived : archivedJobs[0].id;
-          archivedSelect.value = pick;
-          if (pick !== currentJobId) subscribeToJob(pick);
+          const pickArchived =
+            (prevArchived && archivedJobs.some(j => j.id === prevArchived)) ? prevArchived :
+            archivedJobs[0].id;
+          archivedSelect.value = pickArchived;
+          if (pickArchived !== currentJobId) subscribeToJob(pickArchived);
         } else {
-          // no jobs at all
           currentJobId = null;
           applyEditLock();
         }
@@ -794,10 +777,8 @@
       job.updatedAt = serverTimestamp();
 
       const ref = await addDoc(jobsCol(uid), job);
-
       $("newAddress").value = "";
       $("newLabel").value = "";
-
       subscribeToJob(ref.id);
     }
 
@@ -818,7 +799,7 @@
       if (!currentJobId) return;
       const name = safeName(state.jobLabel) || "this job";
       if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
-      await deleteDoc(jobDoc(uid, currentJobId));
+      await deleteDoc(jobDocRef(uid, currentJobId));
       currentJobId = null;
       setSync("deleted");
     }
@@ -832,7 +813,7 @@
 
       try {
         setSync("saving…");
-        await setDoc(jobDoc(uid, currentJobId), {
+        await setDoc(jobDocRef(uid, currentJobId), {
           status: "archived",
           completedAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -852,13 +833,12 @@
 
       try {
         setSync("saving…");
-        await setDoc(jobDoc(uid, id), {
+        await setDoc(jobDocRef(uid, id), {
           status: "active",
           completedAt: null,
           updatedAt: serverTimestamp()
         }, { merge: true });
         setSync("saved");
-        // it will reappear in active list automatically
       } catch (e) {
         console.error(e);
         setSync("error");
@@ -870,27 +850,28 @@
     function formatDateISO(d){ return d || ""; }
 
     async function createCleanPdf(){
+      if (!currentJobId) return;
+
       const s = computeSummary();
       const cur = s.cur;
       const sym = currencySymbol(cur);
 
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF("p", "mm", "a4");
+      const pdf = new jsPDF("p", "mm", "a4");
 
       const marginX = 14;
       let y = 14;
 
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.text("Ford Property Services – Job Costing Report", marginX, y);
+      pdf.setFont("helvetica","bold");
+      pdf.setFontSize(16);
+      pdf.text("Ford Property Services – Job Costing Report", marginX, y);
       y += 7;
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, marginX, y);
+      pdf.setFont("helvetica","normal");
+      pdf.setFontSize(10);
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, marginX, y);
       y += 6;
 
-      // Job details
       const jobDetails = [
         ["Property address", state.propertyAddress || ""],
         ["Job label", state.jobLabel || ""],
@@ -900,7 +881,7 @@
         ["Notes", state.jobNotes || ""],
       ];
 
-      doc.autoTable({
+      pdf.autoTable({
         startY: y,
         head: [["Job details", ""]],
         body: jobDetails,
@@ -910,29 +891,21 @@
         columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 125 } },
       });
 
-      y = doc.lastAutoTable.finalY + 6;
+      y = pdf.lastAutoTable.finalY + 6;
 
-      // Labour
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("Labour", marginX, y);
+      pdf.setFont("helvetica","bold");
+      pdf.setFontSize(12);
+      pdf.text("Labour", marginX, y);
       y += 2;
 
-      const labourRows = state.labour.map(r => ({
-        person: personDisplay(r),
-        rate: num(r.rate),
-        days: num(r.days),
-        total: num(r.rate) * num(r.days)
-      }));
-
-      const labourBody = labourRows.map(r => ([
-        r.person,
-        r.rate ? money(r.rate, cur) : "",
-        r.days ? String(r.days) : "",
-        r.total ? money(r.total, cur) : ""
+      const labourBody = state.labour.map(r => ([
+        personDisplay(r),
+        num(r.rate) ? money(num(r.rate), cur) : "",
+        num(r.days) ? String(num(r.days)) : "",
+        (num(r.rate) * num(r.days)) ? money(num(r.rate)*num(r.days), cur) : ""
       ]));
 
-      doc.autoTable({
+      pdf.autoTable({
         startY: y,
         head: [["Person", "Rate / day", "Days", "Total"]],
         body: labourBody.length ? labourBody : [["", "", "", ""]],
@@ -947,12 +920,11 @@
         },
       });
 
-      y = doc.lastAutoTable.finalY + 6;
+      y = pdf.lastAutoTable.finalY + 6;
 
-      // Materials
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("Materials", marginX, y);
+      pdf.setFont("helvetica","bold");
+      pdf.setFontSize(12);
+      pdf.text("Materials", marginX, y);
       y += 2;
 
       const matBody = state.materials.map(m => {
@@ -968,7 +940,7 @@
         ];
       });
 
-      doc.autoTable({
+      pdf.autoTable({
         startY: y,
         head: [["Date", "Description", "Gross", "% to net", "Net"]],
         body: matBody.length ? matBody : [["", "", "", "", ""]],
@@ -984,12 +956,11 @@
         },
       });
 
-      y = doc.lastAutoTable.finalY + 6;
+      y = pdf.lastAutoTable.finalY + 6;
 
-      // Financial summary
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("Financial summary (NET)", marginX, y);
+      pdf.setFont("helvetica","bold");
+      pdf.setFontSize(12);
+      pdf.text("Financial summary (NET)", marginX, y);
       y += 2;
 
       const summaryBody = [
@@ -1003,7 +974,7 @@
         ["Profit / Loss (NET)", money(s.remaining, cur)],
       ];
 
-      doc.autoTable({
+      pdf.autoTable({
         startY: y,
         head: [["Item", "Amount"]],
         body: summaryBody,
@@ -1027,7 +998,7 @@
       const namePart = (state.propertyAddress || state.jobLabel || "job")
         .replace(/[^a-z0-9]+/gi,"-").toLowerCase().slice(0, 50);
 
-      doc.save(`fps-job-costing-${namePart || "report"}.pdf`);
+      pdf.save(`fps-job-costing-${namePart || "report"}.pdf`);
     }
     // -------------------------------------------------------------------------
 
@@ -1044,7 +1015,7 @@
 
       $("createJobBtn").onclick = async () => {
         try { await createJobFromInputs(); }
-        catch(e){ console.error(e); alert("Could not create job. Check Firestore + rules + config."); }
+        catch(e){ console.error(e); alert("Could not create job. Check Firestore rules + config."); }
       };
 
       $("duplicateJobBtn").onclick = async () => {
@@ -1067,7 +1038,6 @@
         catch(e){ console.error(e); alert("Could not restore job."); }
       };
 
-      // Editable fields (these will be disabled by applyEditLock when archived)
       $("propertyAddress").oninput = () => { state.propertyAddress = $("propertyAddress").value; queueSave(false); };
       $("jobLabel").oninput = () => { state.jobLabel = $("jobLabel").value; queueSave(false); };
       $("estDuration").oninput = () => { state.estDuration = $("estDuration").value; queueSave(false); };
@@ -1107,7 +1077,7 @@
 
       $("pdfBtn").onclick = async () => {
         try { await createCleanPdf(); }
-        catch (e) { console.error(e); alert("PDF failed. Check your browser / try again."); }
+        catch (e) { console.error(e); alert("PDF failed. Try again."); }
       };
 
       $("signOutBtn").onclick = async () => { await signOut(auth); };
