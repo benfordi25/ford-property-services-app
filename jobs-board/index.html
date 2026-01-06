@@ -877,22 +877,22 @@ function ukToISO(dateStr){
   
 function syncCalendarFeed(jobs){
   try{
-    // build feed: { "YYYY-MM-DD": [ {title,address,time,ref,status,id} ] }
     const feed = {};
-    for(const j of (jobs || [])){
-      const rawDate = (
-  j.date ||
-  j.jobDate ||
-  j.scheduledDate ||
-  j.visitDate ||
-  j.bookingDate ||
-  j.estVisitDT ||
-  j.worksDT ||
-  j.estWorkDT ||
-  ""
-).trim();
 
-const date = ukToISO(rawDate);
+    for (const j of (jobs || [])){
+      const rawDate = (
+        j.date ||
+        j.jobDate ||
+        j.scheduledDate ||
+        j.visitDate ||
+        j.bookingDate ||
+        j.estVisitDT ||
+        j.worksDT ||
+        j.estWorkDT ||
+        ""
+      ).trim();
+
+      const date = ukToISO(rawDate);
       if(!date) continue;
 
       const item = {
@@ -910,12 +910,13 @@ const date = ukToISO(rawDate);
     }
 
     // sort by time (optional)
-    for(const d of Object.keys(feed)){
+    for (const d of Object.keys(feed)){
       feed[d].sort((a,b)=> String(a.time).localeCompare(String(b.time)));
     }
 
+    // ✅ IMPORTANT: write once, after loops
     localStorage.setItem(CAL_FEED_KEY, JSON.stringify(feed));
-  }catch(e){
+  } catch(e){
     console.warn("Calendar feed sync failed", e);
   }
 }
