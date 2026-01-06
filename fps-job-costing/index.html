@@ -205,16 +205,19 @@
 
             <div style="margin-top:14px">
               <span class="pill">Labour</span>
-              <div class="hint">Set each person’s <b>rate/day</b> and <b>days</b>.</div>
+              <div class="hint">
+                Enter both <b>Estimated</b> and <b>Actual</b> days. <b>Only Actual Days are used</b> for totals.
+              </div>
 
               <table>
                 <thead>
                   <tr>
-                    <th style="width:20%">Person</th>
-                    <th style="width:18%">Other name</th>
-                    <th style="width:18%">Rate / day</th>
-                    <th style="width:18%">Days</th>
-                    <th style="width:26%">Total</th>
+                    <th style="width:16%">Person</th>
+                    <th style="width:16%">Other name</th>
+                    <th style="width:16%">Rate / day</th>
+                    <th style="width:16%">Est days</th>
+                    <th style="width:16%">Actual days</th>
+                    <th style="width:20%">Total (Actual)</th>
                   </tr>
                 </thead>
                 <tbody id="labourBody"></tbody>
@@ -223,16 +226,14 @@
 
             <div style="margin-top:14px">
               <span class="pill">Materials</span>
-              <div class="hint">Enter <b>gross</b> and <b>% to net</b> (default 20: net = gross / 1.2).</div>
+              <div class="hint">Enter material costs as <b>NET only</b>.</div>
 
               <table>
                 <thead>
                   <tr>
-                    <th style="width:16%">Date</th>
-                    <th style="width:30%">Description</th>
-                    <th style="width:16%">Gross</th>
-                    <th style="width:14%">% to net</th>
-                    <th style="width:16%">Net</th>
+                    <th style="width:20%">Date</th>
+                    <th style="width:52%">Description</th>
+                    <th style="width:20%">Net</th>
                     <th style="width:8%"></th>
                   </tr>
                 </thead>
@@ -276,7 +277,7 @@
 
               <div class="totals" style="margin-top:10px">
                 <div class="kpi">
-                  <div class="t">Labour total</div>
+                  <div class="t">Labour total (Actual)</div>
                   <div class="v" id="kpiLabour">£0.00</div>
                 </div>
                 <div class="kpi">
@@ -304,7 +305,7 @@
               </div>
 
               <div class="hint">
-                Profit/Loss (NET) = <span class="mono">(Net after commission) − (Labour + Materials net)</span>.
+                Profit/Loss (NET) = <span class="mono">(Net after commission) − (Labour actual + Materials net)</span>.
               </div>
             </div>
           </div>
@@ -366,13 +367,13 @@
       estimateNet: "",
       commissionPct: "",
       labour: [
-        { person: "Ben", otherName: "", rate: "", days: "" },
-        { person: "Joe", otherName: "", rate: "", days: "" },
-        { person: "Brett", otherName: "", rate: "", days: "" },
-        { person: "Other", otherName: "", rate: "", days: "" }
+        { person: "Ben", otherName: "", rate: "", estDays: "", actDays: "" },
+        { person: "Joe", otherName: "", rate: "", estDays: "", actDays: "" },
+        { person: "Brett", otherName: "", rate: "", estDays: "", actDays: "" },
+        { person: "Other", otherName: "", rate: "", estDays: "", actDays: "" }
       ],
       materials: [
-        { date: todayISO(), desc: "", gross: "", pctToNet: "20" }
+        { date: todayISO(), desc: "", net: "" }
       ],
       status: "active",     // "active" | "archived"
       completedAt: null,
@@ -400,19 +401,11 @@
     function setSync(text) { $("syncState").textContent = text; }
     function isArchived(){ return (state.status || "active") === "archived"; }
 
-    function materialNet(gross, pctToNet) {
-      const g = num(gross);
-      const p = num(pctToNet);
-      if (g <= 0) return 0;
-      if (p <= 0) return g;
-      return g / (1 + p/100);
-    }
-
-    function calcLabourTotal() {
-      return state.labour.reduce((sum, r) => sum + (num(r.rate) * num(r.days)), 0);
+    function calcLabourTotalActual() {
+      return state.labour.reduce((sum, r) => sum + (num(r.rate) * num(r.actDays)), 0);
     }
     function calcMaterialsTotalNet() {
-      return state.materials.reduce((sum, m) => sum + materialNet(m.gross, m.pctToNet), 0);
+      return state.materials.reduce((sum, m) => sum + num(m.net), 0);
     }
     function calcCommission(estNet, pct){
       return estNet * (pct/100);
@@ -423,7 +416,7 @@
 
     function computeSummary(){
       const cur = state.currency;
-      const labourTotal = calcLabourTotal();
+      const labourTotal = calcLabourTotalActual();
       const materialsNet = calcMaterialsTotalNet();
       const spent = labourTotal + materialsNet;
 
@@ -527,22 +520,31 @@
         rate.oninput = () => { state.labour[idx].rate = rate.value; queueSave(); renderTotals(); };
         rateTd.appendChild(rate);
 
-        const daysTd = document.createElement("td");
-        const days = document.createElement("input");
-        days.type = "number"; days.step = "0.5"; days.min = "0";
-        days.placeholder = "e.g., 2";
-        days.value = row.days;
-        days.disabled = ro;
-        days.oninput = () => { state.labour[idx].days = days.value; queueSave(); renderTotals(); };
-        daysTd.appendChild(days);
+        const estTd = document.createElement("td");
+        const est = document.createElement("input");
+        est.type = "number"; est.step = "0.5"; est.min = "0";
+        est.placeholder = "e.g., 2";
+        est.value = row.estDays ?? "";
+        est.disabled = ro;
+        est.oninput = () => { state.labour[idx].estDays = est.value; queueSave(false); };
+        estTd.appendChild(est);
+
+        const actTd = document.createElement("td");
+        const act = document.createElement("input");
+        act.type = "number"; act.step = "0.5"; act.min = "0";
+        act.placeholder = "e.g., 2";
+        act.value = row.actDays ?? "";
+        act.disabled = ro;
+        act.oninput = () => { state.labour[idx].actDays = act.value; queueSave(); renderTotals(); };
+        actTd.appendChild(act);
 
         const totalTd = document.createElement("td");
         const total = document.createElement("input");
         total.disabled = true;
-        total.value = money(num(row.rate) * num(row.days), state.currency);
+        total.value = money(num(row.rate) * num(row.actDays), state.currency);
         totalTd.appendChild(total);
 
-        [personTd, otherTd, rateTd, daysTd, totalTd].forEach(td => tr.appendChild(td));
+        [personTd, otherTd, rateTd, estTd, actTd, totalTd].forEach(td => tr.appendChild(td));
         body.appendChild(tr);
       });
     }
@@ -571,28 +573,13 @@
         desc.oninput = () => { state.materials[idx].desc = desc.value; queueSave(false); };
         descTd.appendChild(desc);
 
-        const grossTd = document.createElement("td");
-        const gross = document.createElement("input");
-        gross.type = "number"; gross.step = "0.01"; gross.min = "0";
-        gross.placeholder = "e.g., 96.00";
-        gross.value = m.gross || "";
-        gross.disabled = ro;
-        gross.oninput = () => { state.materials[idx].gross = gross.value; queueSave(); renderTotals(); };
-        grossTd.appendChild(gross);
-
-        const pctTd = document.createElement("td");
-        const pct = document.createElement("input");
-        pct.type = "number"; pct.step = "0.01"; pct.min = "0";
-        pct.placeholder = "20";
-        pct.value = (m.pctToNet ?? "20");
-        pct.disabled = ro;
-        pct.oninput = () => { state.materials[idx].pctToNet = pct.value; queueSave(); renderTotals(); };
-        pctTd.appendChild(pct);
-
         const netTd = document.createElement("td");
         const net = document.createElement("input");
-        net.disabled = true;
-        net.value = money(materialNet(m.gross, m.pctToNet), state.currency);
+        net.type = "number"; net.step = "0.01"; net.min = "0";
+        net.placeholder = "e.g., 80.00";
+        net.value = m.net || "";
+        net.disabled = ro;
+        net.oninput = () => { state.materials[idx].net = net.value; queueSave(); renderTotals(); };
         netTd.appendChild(net);
 
         const delTd = document.createElement("td");
@@ -602,12 +589,13 @@
           del.className = "small";
           del.onclick = () => {
             state.materials.splice(idx, 1);
-            if (state.materials.length === 0) state.materials.push({ date: todayISO(), desc:"", gross:"", pctToNet:"20" });
+            if (state.materials.length === 0) state.materials.push({ date: todayISO(), desc:"", net:"" });
             queueSave(); renderAll();
           };
           delTd.appendChild(del);
         }
-        [dateTd, descTd, grossTd, pctTd, netTd, delTd].forEach(td => tr.appendChild(td));
+
+        [dateTd, descTd, netTd, delTd].forEach(td => tr.appendChild(td));
         body.appendChild(tr);
       });
     }
@@ -629,7 +617,7 @@
 
     function queueSave(recalc = true) {
       if (!uid || !currentJobId || applyingRemote) return;
-      if (isArchived()) return; // prevent autosave for archived jobs
+      if (isArchived()) return;
       if (recalc) renderTotals();
       setSync("pending");
       clearTimeout(savingTimer);
@@ -661,6 +649,41 @@
         applyingRemote = true;
         const data = snap.data();
         state = { ...defaultJob(), ...(data || {}) };
+
+        // Backwards compatibility:
+        // - Old materials might have gross/pct; keep net-only by copying gross->net if net missing.
+        if (Array.isArray(state.materials)) {
+          state.materials = state.materials.map(m => {
+            if (m && typeof m === "object") {
+              if (m.net == null || m.net === "") {
+                if (m.gross != null && m.gross !== "") return { date: m.date || todayISO(), desc: m.desc || "", net: m.gross };
+              }
+              return { date: m.date || todayISO(), desc: m.desc || "", net: m.net ?? "" };
+            }
+            return { date: todayISO(), desc: "", net: "" };
+          });
+          if (state.materials.length === 0) state.materials = [{ date: todayISO(), desc: "", net: "" }];
+        } else {
+          state.materials = [{ date: todayISO(), desc: "", net: "" }];
+        }
+
+        // Backwards compatibility for labour:
+        // - If older jobs used "days", treat it as actual days.
+        if (Array.isArray(state.labour)) {
+          state.labour = state.labour.map(r => {
+            if (!r || typeof r !== "object") return { person:"Other", otherName:"", rate:"", estDays:"", actDays:"" };
+            const act = (r.actDays ?? r.actualDays ?? r.days ?? "");
+            const est = (r.estDays ?? r.estimatedDays ?? "");
+            return {
+              person: r.person ?? "Other",
+              otherName: r.otherName ?? "",
+              rate: r.rate ?? "",
+              estDays: est,
+              actDays: act
+            };
+          });
+        }
+
         renderAll();
         setSync("synced");
         setTimeout(() => { applyingRemote = false; }, 60);
@@ -901,22 +924,24 @@
       const labourBody = state.labour.map(r => ([
         personDisplay(r),
         num(r.rate) ? money(num(r.rate), cur) : "",
-        num(r.days) ? String(num(r.days)) : "",
-        (num(r.rate) * num(r.days)) ? money(num(r.rate)*num(r.days), cur) : ""
+        (r.estDays ?? "") !== "" ? String(num(r.estDays)) : "",
+        (r.actDays ?? "") !== "" ? String(num(r.actDays)) : "",
+        (num(r.rate) * num(r.actDays)) ? money(num(r.rate)*num(r.actDays), cur) : ""
       ]));
 
       pdf.autoTable({
         startY: y,
-        head: [["Person", "Rate / day", "Days", "Total"]],
-        body: labourBody.length ? labourBody : [["", "", "", ""]],
+        head: [["Person", "Rate / day", "Est days", "Actual days", "Total (Actual)"]],
+        body: labourBody.length ? labourBody : [["", "", "", "", ""]],
         theme: "grid",
         styles: { fontSize: 10, cellPadding: 2.5 },
         headStyles: { fillColor: [20, 28, 45] },
         columnStyles: {
-          0: { cellWidth: 60 },
-          1: { cellWidth: 40, halign: "right" },
+          0: { cellWidth: 50 },
+          1: { cellWidth: 35, halign: "right" },
           2: { cellWidth: 25, halign: "right" },
-          3: { cellWidth: 55, halign: "right" },
+          3: { cellWidth: 25, halign: "right" },
+          4: { cellWidth: 45, halign: "right" },
         },
       });
 
@@ -924,35 +949,28 @@
 
       pdf.setFont("helvetica","bold");
       pdf.setFontSize(12);
-      pdf.text("Materials", marginX, y);
+      pdf.text("Materials (NET)", marginX, y);
       y += 2;
 
-      const matBody = state.materials.map(m => {
-        const g = num(m.gross);
-        const p = num(m.pctToNet);
-        const net = materialNet(m.gross, m.pctToNet);
+      const matBody = (state.materials || []).map(m => {
         return [
           formatDateISO(m.date),
           m.desc || "",
-          g ? money(g, cur) : "",
-          (m.pctToNet ?? "20") !== "" ? `${p.toFixed(2)}%` : "",
-          net ? money(net, cur) : ""
+          num(m.net) ? money(num(m.net), cur) : ""
         ];
       });
 
       pdf.autoTable({
         startY: y,
-        head: [["Date", "Description", "Gross", "% to net", "Net"]],
-        body: matBody.length ? matBody : [["", "", "", "", ""]],
+        head: [["Date", "Description", "Net"]],
+        body: matBody.length ? matBody : [["", "", ""]],
         theme: "grid",
         styles: { fontSize: 10, cellPadding: 2.5 },
         headStyles: { fillColor: [20, 28, 45] },
         columnStyles: {
-          0: { cellWidth: 25 },
-          1: { cellWidth: 70 },
-          2: { cellWidth: 30, halign: "right" },
-          3: { cellWidth: 25, halign: "right" },
-          4: { cellWidth: 40, halign: "right" },
+          0: { cellWidth: 30 },
+          1: { cellWidth: 110 },
+          2: { cellWidth: 40, halign: "right" },
         },
       });
 
@@ -968,7 +986,7 @@
         ["Commission %", `${s.commPct.toFixed(2)}%`],
         ["Commission amount", money(s.commAmt, cur)],
         ["Net after commission", money(s.netAfterCommission, cur)],
-        ["Labour total", money(s.labourTotal, cur)],
+        ["Labour total (Actual)", money(s.labourTotal, cur)],
         ["Materials total (net)", money(s.materialsNet, cur)],
         ["Spent so far", money(s.spent, cur)],
         ["Profit / Loss (NET)", money(s.remaining, cur)],
@@ -1049,7 +1067,7 @@
 
       $("addMatBtn").onclick = () => {
         if (isArchived()) return;
-        state.materials.push({ date: todayISO(), desc:"", gross:"", pctToNet:"20" });
+        state.materials.push({ date: todayISO(), desc:"", net:"" });
         queueSave(); renderAll();
       };
 
