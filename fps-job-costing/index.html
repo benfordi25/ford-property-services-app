@@ -206,7 +206,7 @@
             <div style="margin-top:14px">
               <span class="pill">Labour</span>
               <div class="hint">
-                <b>Spent so far</b> uses <b>Estimated days</b> until you enter <b>Actual days</b> (then it switches to Actual for that person).
+                Spent so far uses <b>Estimated</b> days until you enter <b>Actual</b> days (then it switches per person).
               </div>
 
               <table>
@@ -314,6 +314,7 @@
     </div><!-- /layout -->
   </div><!-- /wrap -->
 
+  <!-- Clean PDF libraries -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.3/dist/jspdf.plugin.autotable.min.js"></script>
 
@@ -322,10 +323,14 @@
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
       from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
     import {
-      getFirestore, collection, doc, addDoc, deleteDoc, setDoc,
-      onSnapshot, query, orderBy, serverTimestamp
+      getFirestore,
+      collection, doc,
+      addDoc, deleteDoc, setDoc,
+      onSnapshot, query, orderBy,
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
+    // ✅ Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCfKXXlQyYJIGNjLOIVQqwtyL_QgDEG9Ps",
       authDomain: "ford-property-services-be377.firebaseapp.com",
@@ -352,7 +357,9 @@
       return sym + x.toFixed(2);
     }
 
-    // If actual is blank, use estimate. If actual has ANY value (including 0), use actual.
+    // ✅ Used days rule:
+    // - If Actual is blank → use Estimated
+    // - If Actual has any value → use Actual
     function usedDays(row){
       const act = row?.actDays;
       const hasActual = act !== null && act !== undefined && String(act) !== "";
@@ -376,7 +383,7 @@
       materials: [
         { date: todayISO(), desc: "", net: "" }
       ],
-      status: "active",
+      status: "active",     // "active" | "archived"
       completedAt: null,
       createdAt: null,
       updatedAt: null
@@ -430,8 +437,8 @@
       const ro = isArchived();
       $("mainPanel").classList.toggle("readonly", ro);
 
-      ["propertyAddress","jobLabel","estDuration","jobNotes","currency","estimateNet","commissionPct"]
-        .forEach(id => { const el = $(id); if (el) el.disabled = ro; });
+      const ids = ["propertyAddress","jobLabel","estDuration","jobNotes","currency","estimateNet","commissionPct"];
+      ids.forEach(id => { const el = $(id); if (el) el.disabled = ro; });
 
       $("addMatBtn").disabled = ro;
       $("resetBtn").disabled = ro;
@@ -483,11 +490,7 @@
 
         const personTd = document.createElement("td");
         const sel = document.createElement("select");
-        ["Ben","Joe","Brett","Other"].forEach(p => {
-          const opt = document.createElement("option");
-          opt.value = p; opt.textContent = p;
-          sel.appendChild(opt);
-        });
+        ["Ben","Joe","Brett","Other"].forEach(p => sel.appendChild(new Option(p, p)));
         sel.value = row.person;
         sel.disabled = ro;
         sel.onchange = () => {
@@ -509,7 +512,7 @@
         const rate = document.createElement("input");
         rate.type = "number"; rate.step = "0.01"; rate.min = "0";
         rate.placeholder = "e.g., 180";
-        rate.value = row.rate;
+        rate.value = row.rate ?? "";
         rate.disabled = ro;
         rate.oninput = () => { state.labour[idx].rate = rate.value; queueSave(); renderAll(); };
         rateTd.appendChild(rate);
@@ -526,7 +529,7 @@
         const actTd = document.createElement("td");
         const act = document.createElement("input");
         act.type = "number"; act.step = "0.5"; act.min = "0";
-        act.placeholder = "leave blank to use est";
+        act.placeholder = "blank = use est";
         act.value = row.actDays ?? "";
         act.disabled = ro;
         act.oninput = () => { state.labour[idx].actDays = act.value; queueSave(); renderAll(); };
@@ -588,6 +591,7 @@
           };
           delTd.appendChild(del);
         }
+
         [dateTd, descTd, netTd, delTd].forEach(td => tr.appendChild(td));
         body.appendChild(tr);
       });
@@ -622,8 +626,7 @@
       if (isArchived()) return;
       try {
         setSync("saving…");
-        const payload = { ...state, updatedAt: serverTimestamp() };
-        await setDoc(jobDocRef(uid, currentJobId), payload, { merge: true });
+        await setDoc(jobDocRef(uid, currentJobId), { ...state, updatedAt: serverTimestamp() }, { merge: true });
         setSync("saved");
       } catch (e) {
         console.error(e);
@@ -643,7 +646,7 @@
         const data = snap.data();
         state = { ...defaultJob(), ...(data || {}) };
 
-        // Backward compatibility: old labour "days" becomes estimated (so it behaves like before until actual entered)
+        // Backwards compatibility: old "days" becomes Estimated
         if (Array.isArray(state.labour)) {
           state.labour = state.labour.map(r => {
             if (!r || typeof r !== "object") return { person:"Other", otherName:"", rate:"", estDays:"", actDays:"" };
@@ -657,9 +660,11 @@
               actDays: act
             };
           });
+        } else {
+          state.labour = defaultJob().labour;
         }
 
-        // Materials: ensure net-only shape
+        // Materials: net-only (copy old gross -> net if needed)
         if (Array.isArray(state.materials)) {
           state.materials = state.materials.map(m => {
             if (m && typeof m === "object") {
@@ -707,44 +712,30 @@
             address: safeName(d.propertyAddress) || "",
             status
           };
-          if (status === "archived") archivedJobs.push(job);
-          else activeJobs.push(job);
+          (status === "archived" ? archivedJobs : activeJobs).push(job);
         });
 
+        // Active
         activeSelect.innerHTML = "";
         if (activeJobs.length === 0) {
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "No active jobs – create one";
-          activeSelect.appendChild(opt);
+          activeSelect.appendChild(new Option("No active jobs – create one", ""));
           activeSelect.disabled = true;
         } else {
           activeSelect.disabled = false;
-          activeJobs.forEach(j => {
-            const opt = document.createElement("option");
-            opt.value = j.id;
-            opt.textContent = j.address ? `${j.label} — ${j.address}` : j.label;
-            activeSelect.appendChild(opt);
-          });
+          activeJobs.forEach(j => activeSelect.appendChild(new Option(j.address ? `${j.label} — ${j.address}` : j.label, j.id)));
         }
 
+        // Archived
         archivedSelect.innerHTML = "";
         if (archivedJobs.length === 0) {
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "No archived jobs";
-          archivedSelect.appendChild(opt);
+          archivedSelect.appendChild(new Option("No archived jobs", ""));
           archivedSelect.disabled = true;
         } else {
           archivedSelect.disabled = false;
-          archivedJobs.forEach(j => {
-            const opt = document.createElement("option");
-            opt.value = j.id;
-            opt.textContent = j.address ? `${j.label} — ${j.address}` : j.label;
-            archivedSelect.appendChild(opt);
-          });
+          archivedJobs.forEach(j => archivedSelect.appendChild(new Option(j.address ? `${j.label} — ${j.address}` : j.label, j.id)));
         }
 
+        // Pick what to open
         const pickActive =
           (currentJobId && activeJobs.some(j => j.id === currentJobId)) ? currentJobId :
           (prevActive && activeJobs.some(j => j.id === prevActive)) ? prevActive :
@@ -764,6 +755,7 @@
           applyEditLock();
         }
 
+        // Keep archived selection sensible
         if (prevArchived && archivedJobs.some(j => j.id === prevArchived)) {
           archivedSelect.value = prevArchived;
         } else if (archivedJobs[0]?.id) {
@@ -1057,12 +1049,17 @@
       $("signOutBtn").onclick = async () => { await signOut(auth); };
     }
 
+    // LOGIN
     $("loginBtn").onclick = async () => {
       $("loginErr").style.display = "none";
       const email = $("email").value.trim();
       const pass = $("password").value;
-      try { await signInWithEmailAndPassword(auth, email, pass); }
-      catch (e) { $("loginErr").textContent = e?.message || "Login failed."; $("loginErr").style.display = "block"; }
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch (e) {
+        $("loginErr").textContent = e?.message || "Login failed.";
+        $("loginErr").style.display = "block";
+      }
     };
 
     onAuthStateChanged(auth, (user) => {
@@ -1074,176 +1071,23 @@
 
         $("userPill").textContent = "Not signed in";
         $("signOutBtn").disabled = true;
+
         $("loginCard").style.display = "block";
         $("appLayout").style.display = "none";
         return;
       }
 
       uid = user.uid;
+
       $("userPill").textContent = user.email || "Signed in";
       $("signOutBtn").disabled = false;
+
       $("loginCard").style.display = "none";
       $("appLayout").style.display = "grid";
 
       wireInputs();
       subscribeToJobsList();
     });
-
-    // --- Remaining functions (create/duplicate/delete/restore/list) ---
-    // Kept identical logic to previous versions (only labour calculation changed)
-    async function createJobFromInputs() {
-      const addr = safeName($("newAddress").value);
-      const lbl = safeName($("newLabel").value);
-
-      const job = defaultJob();
-      job.propertyAddress = addr;
-      job.jobLabel = lbl;
-      job.createdAt = serverTimestamp();
-      job.updatedAt = serverTimestamp();
-
-      const ref = await addDoc(jobsCol(uid), job);
-      $("newAddress").value = "";
-      $("newLabel").value = "";
-      subscribeToJob(ref.id);
-    }
-
-    async function duplicateCurrentJob() {
-      if (!currentJobId) return;
-      const copy = JSON.parse(JSON.stringify(state));
-      copy.status = "active";
-      copy.completedAt = null;
-      copy.createdAt = serverTimestamp();
-      copy.updatedAt = serverTimestamp();
-      copy.jobLabel = safeName((copy.jobLabel || "Job") + " (copy)");
-      const ref = await addDoc(jobsCol(uid), copy);
-      subscribeToJob(ref.id);
-    }
-
-    async function deleteCurrentJob() {
-      if (!currentJobId) return;
-      const name = safeName(state.jobLabel) || "this job";
-      if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
-      await deleteDoc(jobDocRef(uid, currentJobId));
-      currentJobId = null;
-      setSync("deleted");
-    }
-
-    async function markCurrentCompleted() {
-      if (!uid || !currentJobId) return;
-      if (isArchived()) return;
-
-      const name = safeName(state.jobLabel) || "this job";
-      if (!confirm(`Mark ${name} as completed? (Moves to Archived)`)) return;
-
-      setSync("saving…");
-      await setDoc(jobDocRef(uid, currentJobId), {
-        status: "archived",
-        completedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      setSync("saved");
-    }
-
-    async function restoreArchivedSelected() {
-      if (!uid) return;
-      const id = $("archivedSelect").value;
-      if (!id) return;
-
-      setSync("saving…");
-      await setDoc(jobDocRef(uid, id), {
-        status: "active",
-        completedAt: null,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      setSync("saved");
-    }
-
-    function queueSave(recalc = true) {
-      if (!uid || !currentJobId || applyingRemote) return;
-      if (isArchived()) return;
-      if (recalc) renderTotals();
-      setSync("pending");
-      clearTimeout(savingTimer);
-      savingTimer = setTimeout(saveToCloud, 350);
-    }
-
-    async function saveToCloud() {
-      if (!uid || !currentJobId) return;
-      if (isArchived()) return;
-      try {
-        setSync("saving…");
-        await setDoc(jobDocRef(uid, currentJobId), { ...state, updatedAt: serverTimestamp() }, { merge: true });
-        setSync("saved");
-      } catch (e) {
-        console.error(e);
-        setSync("error");
-      }
-    }
-
-    function subscribeToJobsList() {
-      if (jobsUnsub) jobsUnsub();
-      const q = query(jobsCol(uid), orderBy("updatedAt", "desc"));
-      jobsUnsub = onSnapshot(q, (snap) => {
-        const activeSelect = $("jobSelect");
-        const archivedSelect = $("archivedSelect");
-        const prevActive = activeSelect.value;
-        const prevArchived = archivedSelect.value;
-
-        const activeJobs = [];
-        const archivedJobs = [];
-
-        snap.forEach(docSnap => {
-          const d = docSnap.data() || {};
-          const status = d.status || "active";
-          const job = {
-            id: docSnap.id,
-            label: safeName(d.jobLabel) || "Untitled job",
-            address: safeName(d.propertyAddress) || "",
-            status
-          };
-          (status === "archived" ? archivedJobs : activeJobs).push(job);
-        });
-
-        activeSelect.innerHTML = "";
-        if (!activeJobs.length) {
-          activeSelect.appendChild(new Option("No active jobs – create one", ""));
-          activeSelect.disabled = true;
-        } else {
-          activeSelect.disabled = false;
-          activeJobs.forEach(j => activeSelect.appendChild(new Option(j.address ? `${j.label} — ${j.address}` : j.label, j.id)));
-        }
-
-        archivedSelect.innerHTML = "";
-        if (!archivedJobs.length) {
-          archivedSelect.appendChild(new Option("No archived jobs", ""));
-          archivedSelect.disabled = true;
-        } else {
-          archivedSelect.disabled = false;
-          archivedJobs.forEach(j => archivedSelect.appendChild(new Option(j.address ? `${j.label} — ${j.address}` : j.label, j.id)));
-        }
-
-        const pickActive =
-          (currentJobId && activeJobs.some(j => j.id === currentJobId)) ? currentJobId :
-          (prevActive && activeJobs.some(j => j.id === prevActive)) ? prevActive :
-          (activeJobs[0]?.id || "");
-
-        if (pickActive) {
-          activeSelect.value = pickActive;
-          if (pickActive !== currentJobId) subscribeToJob(pickActive);
-        } else if (archivedJobs.length) {
-          const pickArchived =
-            (prevArchived && archivedJobs.some(j => j.id === prevArchived)) ? prevArchived :
-            archivedJobs[0].id;
-          archivedSelect.value = pickArchived;
-          if (pickArchived !== currentJobId) subscribeToJob(pickArchived);
-        } else {
-          currentJobId = null;
-          applyEditLock();
-        }
-
-        applyEditLock();
-      });
-    }
   </script>
 </body>
 </html>
