@@ -12,15 +12,18 @@
     h1{font-size:18px;margin:0 0 8px}
     .sub{color:var(--muted);font-size:13px;margin-bottom:14px;line-height:1.35}
     .layout{display:grid;grid-template-columns:1fr;gap:12px}
-    @media(min-width:980px){ .layout{grid-template-columns:300px 1fr} }
+    @media(min-width:980px){ .layout{grid-template-columns:320px 1fr} }
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:900px){ .grid{grid-template-columns:1.2fr .8fr} }
     .card{background:rgba(17,26,46,.92);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
     .row{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
     @media(min-width:720px){ .row{grid-template-columns:repeat(4,1fr)} .row.two{grid-template-columns:repeat(2,1fr)} }
     label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-    input,select,button{width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);background:#0b1220;color:var(--text);outline:none}
-    input:focus,select:focus{border-color:#3b82f6}
+    input,select,button,textarea{
+      width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);
+      background:#0b1220;color:var(--text);outline:none
+    }
+    input:focus,select:focus,textarea:focus{border-color:#3b82f6}
     button{cursor:pointer}
     .btn{background:#1f3a6b;border-color:#2b4d90}
     .btn:active{transform:translateY(1px)}
@@ -44,14 +47,33 @@
 
     .profitBox{border-color:rgba(134,239,172,.35)}
     .lossBox{border-color:rgba(252,165,165,.35)}
+
+    .readonlyTag{
+      display:none;
+      margin-top:10px;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid rgba(252,165,165,.35);
+      background:#0b1220;
+      color:#fca5a5;
+      font-size:12px;
+      line-height:1.35;
+    }
+    .readonly .readonlyTag{display:block}
+    .readonly input,
+    .readonly select,
+    .readonly textarea{
+      opacity:.78;
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="topbar">
       <div>
         <h1>Ford Property Services – Job Costing</h1>
-        <div class="sub" id="subline">Cloud-synced across devices (Firebase). Multiple jobs + clean PDF export. Login required.</div>
+        <div class="sub">Cloud-synced across devices (Firebase). Multiple jobs + clean PDF export. Login required.</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <span class="pill" id="userPill">Not signed in</span>
@@ -78,21 +100,21 @@
       </div>
       <div class="hint danger" id="loginErr" style="display:none"></div>
       <div class="hint">
-        Tip: If login fails on GitHub Pages, add <span class="mono">YOURUSERNAME.github.io</span> to Firebase Auth → Authorized domains.
+        Tip: If login fails on GitHub Pages, add <span class="mono">benfordi25.github.io</span> to Firebase → Authentication → Settings → Authorized domains.
       </div>
     </div>
 
     <!-- APP -->
     <div class="layout" id="appLayout" style="display:none">
-      <!-- JOB SWITCHER -->
+      <!-- LEFT: JOBS -->
       <div class="card">
         <span class="pill">Jobs</span>
 
         <div class="row" style="margin-top:10px">
           <div>
-            <label>Open job</label>
+            <label>Open active job</label>
             <select id="jobSelect"></select>
-            <div class="hint">Saved in the cloud under your login.</div>
+            <div class="hint">Active jobs are editable and autosave to the cloud.</div>
           </div>
         </div>
 
@@ -113,27 +135,47 @@
           <button class="small" id="deleteJobBtn">Delete</button>
         </div>
 
-        <div class="hint">
-          <b>Sync:</b> <span class="mono" id="syncState">idle</span>
+        <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+
+        <span class="pill">Completed / Archived</span>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Open archived job</label>
+            <select id="archivedSelect"></select>
+            <div class="hint">Archived jobs are read-only. You can still create a PDF or restore them to Active.</div>
+          </div>
+        </div>
+
+        <div class="right">
+          <button class="small" id="markCompleteBtn">Mark current as completed</button>
+          <button class="small" id="restoreBtn">Restore selected archived</button>
         </div>
 
         <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+
+        <div class="hint">
+          <b>Sync:</b> <span class="mono" id="syncState">idle</span>
+        </div>
 
         <div class="right">
           <button class="small" id="pdfBtn">Create PDF</button>
           <button class="small" id="exportBtn">Export JSON</button>
         </div>
 
-        <div class="hint">
-          PDF is generated as a clean report with headings + tables (no app buttons).
-        </div>
+        <div class="hint">PDF is generated as a clean report with headings + tables (no app buttons).</div>
       </div>
 
-      <!-- MAIN CONTENT -->
-      <div>
+      <!-- RIGHT: MAIN -->
+      <div id="mainPanel">
+        <div class="readonlyTag" id="readonlyTag">
+          This job is <b>Archived</b> and is <b>read-only</b>.  
+          To edit it, restore it back to Active.
+        </div>
+
         <div class="grid">
           <!-- LEFT -->
-          <div class="card">
+          <div class="card" id="leftCard">
             <div class="row two">
               <div>
                 <label>Property address</label>
@@ -187,9 +229,7 @@
 
             <div style="margin-top:14px">
               <span class="pill">Materials</span>
-              <div class="hint">
-                Enter <b>gross</b> and <b>% to net</b> (default 20: net = gross / 1.2).
-              </div>
+              <div class="hint">Enter <b>gross</b> and <b>% to net</b> (default 20: net = gross / 1.2).</div>
 
               <table>
                 <thead>
@@ -212,7 +252,7 @@
           </div>
 
           <!-- RIGHT -->
-          <div class="card">
+          <div class="card" id="rightCard">
             <span class="pill">Estimate & Commission</span>
 
             <div class="row two">
@@ -254,14 +294,14 @@
                   <div class="v" id="kpiSpent">£0.00</div>
                 </div>
                 <div class="kpi">
-                  <div class="t">Remaining (vs net left)</div>
-                  <div class="v" id="kpiRemaining">£0.00</div>
+                  <div class="t">Profit / Loss (NET)</div>
+                  <div class="v" id="kpiProfitLoss">£0.00</div>
                 </div>
               </div>
 
               <div class="kpi" id="profitLossBox" style="margin-top:10px">
-                <div class="t">Profit / Loss (NET)</div>
-                <div class="v" id="kpiProfitLoss">£0.00</div>
+                <div class="t">Remaining (vs net left after commission)</div>
+                <div class="v" id="kpiRemaining">£0.00</div>
                 <div class="hint" id="profitLossHint"></div>
               </div>
 
@@ -276,8 +316,8 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </div><!-- /grid -->
+      </div><!-- /mainPanel -->
     </div><!-- /appLayout -->
   </div><!-- /wrap -->
 
@@ -298,12 +338,10 @@
     // ================================================================================
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+      from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
     import {
-      getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
-    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-    import {
-      getFirestore,
-      collection, doc,
+      getFirestore, collection, doc,
       addDoc, deleteDoc, setDoc,
       onSnapshot, query, orderBy,
       serverTimestamp
@@ -343,6 +381,8 @@
       materials: [
         { date: todayISO(), desc: "", gross: "", pctToNet: "20" }
       ],
+      status: "active",     // "active" | "archived"
+      completedAt: null,
       createdAt: null,
       updatedAt: null
     });
@@ -365,6 +405,7 @@
     const jobDoc = (userId, jobId) => doc(db, "users", userId, "jobs", jobId);
 
     function setSync(text) { $("syncState").textContent = text; }
+    function isArchived(){ return (state.status || "active") === "archived"; }
 
     function materialNet(gross, pctToNet) {
       const g = num(gross);
@@ -383,14 +424,86 @@
     function calcCommission(estNet, pct){
       return estNet * (pct/100);
     }
-
     function personDisplay(row){
       return row.person === "Other" ? (row.otherName || "Other") : row.person;
+    }
+
+    function computeSummary(){
+      const cur = state.currency;
+      const labourTotal = calcLabourTotal();
+      const materialsNet = calcMaterialsTotalNet();
+      const spent = labourTotal + materialsNet;
+
+      const estNet = num(state.estimateNet);
+      const commPct = num(state.commissionPct);
+      const commAmt = calcCommission(estNet, commPct);
+      const netAfterCommission = estNet - commAmt;
+
+      const remaining = netAfterCommission - spent; // profit/loss net
+      return { cur, labourTotal, materialsNet, spent, estNet, commPct, commAmt, netAfterCommission, remaining };
+    }
+
+    function applyEditLock(){
+      const ro = isArchived();
+      const main = $("mainPanel");
+      main.classList.toggle("readonly", ro);
+
+      // Disable top-level editing inputs
+      const ids = [
+        "propertyAddress","jobLabel","estDuration","jobNotes","currency",
+        "estimateNet","commissionPct"
+      ];
+      ids.forEach(id => { const el = $(id); if (el) el.disabled = ro; });
+
+      // Disable buttons that would change an archived job
+      $("addMatBtn").disabled = ro;
+      $("resetBtn").disabled = ro;
+      $("markCompleteBtn").disabled = ro || !currentJobId; // you can’t mark completed if already archived
+
+      // You CAN still: create PDF, export JSON, restore archived, switch jobs
+      $("pdfBtn").disabled = !currentJobId;
+      $("exportBtn").disabled = !currentJobId;
+      $("deleteJobBtn").disabled = !currentJobId;
+      $("duplicateJobBtn").disabled = !currentJobId;
+    }
+
+    function renderTotals() {
+      const s = computeSummary();
+
+      $("commissionAmt").value = money(s.commAmt, s.cur);
+      $("netAfterCommission").value = money(s.netAfterCommission, s.cur);
+
+      $("kpiLabour").textContent = money(s.labourTotal, s.cur);
+      $("kpiMaterials").textContent = money(s.materialsNet, s.cur);
+      $("kpiSpent").textContent = money(s.spent, s.cur);
+
+      $("kpiProfitLoss").textContent = money(s.remaining, s.cur);
+      $("kpiRemaining").textContent = money(s.remaining, s.cur);
+
+      const plBox = $("profitLossBox");
+      if (s.remaining >= 0) {
+        plBox.classList.remove("lossBox"); plBox.classList.add("profitBox");
+        $("profitLossHint").innerHTML = `<span class="ok">Profit (within budget after commission)</span>`;
+      } else {
+        plBox.classList.remove("profitBox"); plBox.classList.add("lossBox");
+        $("profitLossHint").innerHTML = `<span class="danger">Loss (over budget after commission)</span>`;
+      }
+
+      const hint = $("statusHint");
+      if (s.netAfterCommission <= 0 && (state.estimateNet !== "" || state.commissionPct !== "")) {
+        hint.innerHTML = `<span class="danger">Net after commission is £0 or less — check estimate/commission.</span>`;
+      } else if (s.remaining < 0) {
+        hint.innerHTML = `<span class="danger">Over budget vs net after commission.</span>`;
+      } else {
+        hint.innerHTML = `<span class="ok">Within budget vs net after commission.</span>`;
+      }
     }
 
     function renderLabour() {
       const body = $("labourBody");
       body.innerHTML = "";
+      const ro = isArchived();
+
       state.labour.forEach((row, idx) => {
         const tr = document.createElement("tr");
 
@@ -402,6 +515,7 @@
           sel.appendChild(opt);
         });
         sel.value = row.person;
+        sel.disabled = ro;
         sel.onchange = () => {
           state.labour[idx].person = sel.value;
           if (sel.value !== "Other") state.labour[idx].otherName = "";
@@ -413,7 +527,7 @@
         const other = document.createElement("input");
         other.placeholder = row.person === "Other" ? "Type name" : "—";
         other.value = row.otherName || "";
-        other.disabled = row.person !== "Other";
+        other.disabled = ro || row.person !== "Other";
         other.oninput = () => { state.labour[idx].otherName = other.value; queueSave(false); };
         otherTd.appendChild(other);
 
@@ -422,6 +536,7 @@
         rate.type = "number"; rate.step = "0.01"; rate.min = "0";
         rate.placeholder = "e.g., 180";
         rate.value = row.rate;
+        rate.disabled = ro;
         rate.oninput = () => { state.labour[idx].rate = rate.value; queueSave(); renderTotals(); };
         rateTd.appendChild(rate);
 
@@ -430,6 +545,7 @@
         days.type = "number"; days.step = "0.5"; days.min = "0";
         days.placeholder = "e.g., 2";
         days.value = row.days;
+        days.disabled = ro;
         days.oninput = () => { state.labour[idx].days = days.value; queueSave(); renderTotals(); };
         daysTd.appendChild(days);
 
@@ -447,6 +563,8 @@
     function renderMaterials() {
       const body = $("matBody");
       body.innerHTML = "";
+      const ro = isArchived();
+
       state.materials.forEach((m, idx) => {
         const tr = document.createElement("tr");
 
@@ -454,6 +572,7 @@
         const date = document.createElement("input");
         date.type = "date";
         date.value = m.date || todayISO();
+        date.disabled = ro;
         date.oninput = () => { state.materials[idx].date = date.value; queueSave(false); };
         dateTd.appendChild(date);
 
@@ -461,6 +580,7 @@
         const desc = document.createElement("input");
         desc.placeholder = "e.g., plasterboard, fixings, paint…";
         desc.value = m.desc || "";
+        desc.disabled = ro;
         desc.oninput = () => { state.materials[idx].desc = desc.value; queueSave(false); };
         descTd.appendChild(desc);
 
@@ -469,6 +589,7 @@
         gross.type = "number"; gross.step = "0.01"; gross.min = "0";
         gross.placeholder = "e.g., 96.00";
         gross.value = m.gross || "";
+        gross.disabled = ro;
         gross.oninput = () => { state.materials[idx].gross = gross.value; queueSave(); renderTotals(); };
         grossTd.appendChild(gross);
 
@@ -477,6 +598,7 @@
         pct.type = "number"; pct.step = "0.01"; pct.min = "0";
         pct.placeholder = "20";
         pct.value = (m.pctToNet ?? "20");
+        pct.disabled = ro;
         pct.oninput = () => { state.materials[idx].pctToNet = pct.value; queueSave(); renderTotals(); };
         pctTd.appendChild(pct);
 
@@ -487,70 +609,23 @@
         netTd.appendChild(net);
 
         const delTd = document.createElement("td");
-        const del = document.createElement("button");
-        del.textContent = "✕";
-        del.className = "small";
-        del.onclick = () => {
-          state.materials.splice(idx, 1);
-          if (state.materials.length === 0) state.materials.push({ date: todayISO(), desc:"", gross:"", pctToNet:"20" });
-          queueSave(); renderAll();
-        };
-        delTd.appendChild(del);
+        if (!ro) {
+          const del = document.createElement("button");
+          del.textContent = "✕";
+          del.className = "small";
+          del.onclick = () => {
+            state.materials.splice(idx, 1);
+            if (state.materials.length === 0) state.materials.push({ date: todayISO(), desc:"", gross:"", pctToNet:"20" });
+            queueSave(); renderAll();
+          };
+          delTd.appendChild(del);
+        } else {
+          delTd.textContent = "";
+        }
 
         [dateTd, descTd, grossTd, pctTd, netTd, delTd].forEach(td => tr.appendChild(td));
         body.appendChild(tr);
       });
-    }
-
-    function computeSummary(){
-      const cur = state.currency;
-
-      const labourTotal = calcLabourTotal();
-      const materialsNet = calcMaterialsTotalNet();
-      const spent = labourTotal + materialsNet;
-
-      const estNet = num(state.estimateNet);
-      const commPct = num(state.commissionPct);
-      const commAmt = calcCommission(estNet, commPct);
-      const netAfterCommission = estNet - commAmt;
-
-      const remaining = netAfterCommission - spent; // profit/loss (net)
-
-      return { cur, labourTotal, materialsNet, spent, estNet, commPct, commAmt, netAfterCommission, remaining };
-    }
-
-    function renderTotals() {
-      const s = computeSummary();
-
-      $("commissionAmt").value = money(s.commAmt, s.cur);
-      $("netAfterCommission").value = money(s.netAfterCommission, s.cur);
-
-      $("kpiLabour").textContent = money(s.labourTotal, s.cur);
-      $("kpiMaterials").textContent = money(s.materialsNet, s.cur);
-      $("kpiSpent").textContent = money(s.spent, s.cur);
-      $("kpiRemaining").textContent = money(s.remaining, s.cur);
-
-      const plBox = $("profitLossBox");
-      $("kpiProfitLoss").textContent = money(s.remaining, s.cur);
-
-      if (s.remaining >= 0) {
-        plBox.classList.remove("lossBox"); plBox.classList.add("profitBox");
-        $("kpiProfitLoss").className = "v ok";
-        $("profitLossHint").innerHTML = `<span class="ok">Profit (within budget after commission)</span>`;
-      } else {
-        plBox.classList.remove("profitBox"); plBox.classList.add("lossBox");
-        $("kpiProfitLoss").className = "v danger";
-        $("profitLossHint").innerHTML = `<span class="danger">Loss (over budget after commission)</span>`;
-      }
-
-      const hint = $("statusHint");
-      if (s.netAfterCommission <= 0 && (state.estimateNet !== "" || state.commissionPct !== "")) {
-        hint.innerHTML = `<span class="danger">Net left after commission is £0 or less — check estimate/commission.</span>`;
-      } else if (s.remaining < 0) {
-        hint.innerHTML = `<span class="danger">Over budget vs net left (after commission).</span>`;
-      } else {
-        hint.innerHTML = `<span class="ok">Within budget vs net left (after commission).</span>`;
-      }
     }
 
     function renderAll() {
@@ -565,10 +640,12 @@
       renderLabour();
       renderMaterials();
       renderTotals();
+      applyEditLock();
     }
 
     function queueSave(recalc = true) {
       if (!uid || !currentJobId || applyingRemote) return;
+      if (isArchived()) return; // prevent editing archived jobs
       if (recalc) renderTotals();
       setSync("pending");
       clearTimeout(savingTimer);
@@ -577,6 +654,7 @@
 
     async function saveToCloud() {
       if (!uid || !currentJobId) return;
+      if (isArchived()) return;
       try {
         setSync("saving…");
         const ref = jobDoc(uid, currentJobId);
@@ -614,43 +692,92 @@
 
       const q = query(jobsCol(uid), orderBy("updatedAt", "desc"));
       jobsUnsub = onSnapshot(q, (snap) => {
-        const select = $("jobSelect");
-        const prev = select.value;
+        const activeSelect = $("jobSelect");
+        const archivedSelect = $("archivedSelect");
 
-        const jobs = [];
+        const prevActive = activeSelect.value;
+        const prevArchived = archivedSelect.value;
+
+        const activeJobs = [];
+        const archivedJobs = [];
+
         snap.forEach(docSnap => {
           const d = docSnap.data() || {};
-          jobs.push({
+          const status = d.status || "active";
+          const job = {
             id: docSnap.id,
             label: safeName(d.jobLabel) || "Untitled job",
-            address: safeName(d.propertyAddress) || ""
-          });
+            address: safeName(d.propertyAddress) || "",
+            status
+          };
+          if (status === "archived") archivedJobs.push(job);
+          else activeJobs.push(job);
         });
 
-        select.innerHTML = "";
-        if (jobs.length === 0) {
+        // Active dropdown
+        activeSelect.innerHTML = "";
+        if (activeJobs.length === 0) {
           const opt = document.createElement("option");
           opt.value = "";
-          opt.textContent = "No jobs yet – create one";
-          select.appendChild(opt);
-          select.disabled = true;
-          return;
+          opt.textContent = "No active jobs – create one";
+          activeSelect.appendChild(opt);
+          activeSelect.disabled = true;
+        } else {
+          activeSelect.disabled = false;
+          activeJobs.forEach(j => {
+            const opt = document.createElement("option");
+            opt.value = j.id;
+            opt.textContent = j.address ? `${j.label} — ${j.address}` : j.label;
+            activeSelect.appendChild(opt);
+          });
         }
 
-        select.disabled = false;
-        jobs.forEach(j => {
+        // Archived dropdown
+        archivedSelect.innerHTML = "";
+        if (archivedJobs.length === 0) {
           const opt = document.createElement("option");
-          opt.value = j.id;
-          opt.textContent = j.address ? `${j.label} — ${j.address}` : j.label;
-          select.appendChild(opt);
-        });
+          opt.value = "";
+          opt.textContent = "No archived jobs";
+          archivedSelect.appendChild(opt);
+          archivedSelect.disabled = true;
+        } else {
+          archivedSelect.disabled = false;
+          archivedJobs.forEach(j => {
+            const opt = document.createElement("option");
+            opt.value = j.id;
+            opt.textContent = j.address ? `${j.label} — ${j.address}` : j.label;
+            archivedSelect.appendChild(opt);
+          });
+        }
 
-        const choose = (currentJobId && jobs.some(j => j.id === currentJobId)) ? currentJobId
-                    : (prev && jobs.some(j => j.id === prev)) ? prev
-                    : jobs[0].id;
+        // Decide which job to keep/open
+        const shouldChooseActive =
+          currentJobId && activeJobs.some(j => j.id === currentJobId) ? currentJobId :
+          prevActive && activeJobs.some(j => j.id === prevActive) ? prevActive :
+          activeJobs[0]?.id || "";
 
-        select.value = choose;
-        if (choose && choose !== currentJobId) subscribeToJob(choose);
+        if (shouldChooseActive) {
+          activeSelect.value = shouldChooseActive;
+          if (shouldChooseActive !== currentJobId) subscribeToJob(shouldChooseActive);
+        } else if (archivedJobs.length) {
+          // if no active jobs, open an archived job (first)
+          const pick = prevArchived && archivedJobs.some(j => j.id === prevArchived) ? prevArchived : archivedJobs[0].id;
+          archivedSelect.value = pick;
+          if (pick !== currentJobId) subscribeToJob(pick);
+        } else {
+          // no jobs at all
+          currentJobId = null;
+          applyEditLock();
+        }
+
+        // Keep archived selection sensible
+        if (prevArchived && archivedJobs.some(j => j.id === prevArchived)) {
+          archivedSelect.value = prevArchived;
+        } else if (archivedJobs[0]?.id) {
+          archivedSelect.value = archivedJobs[0].id;
+        }
+
+        applyEditLock();
       });
     }
 
@@ -661,6 +788,8 @@
       const job = defaultJob();
       job.propertyAddress = addr;
       job.jobLabel = lbl;
+      job.status = "active";
+      job.completedAt = null;
       job.createdAt = serverTimestamp();
       job.updatedAt = serverTimestamp();
 
@@ -675,6 +804,8 @@
     async function duplicateCurrentJob() {
       if (!currentJobId) return;
       const copy = JSON.parse(JSON.stringify(state));
+      copy.status = "active";
+      copy.completedAt = null;
       copy.createdAt = serverTimestamp();
       copy.updatedAt = serverTimestamp();
       copy.jobLabel = safeName((copy.jobLabel || "Job") + " (copy)");
@@ -692,15 +823,51 @@
       setSync("deleted");
     }
 
-    // ---------------- CLEAN PDF (headings + tables; no buttons) ----------------
-    function formatDateISO(d){
-      if (!d) return "";
-      return d; // keep yyyy-mm-dd as entered
+    async function markCurrentCompleted() {
+      if (!uid || !currentJobId) return;
+      if (isArchived()) return;
+
+      const name = safeName(state.jobLabel) || "this job";
+      if (!confirm(`Mark ${name} as completed? (Moves to Archived)`)) return;
+
+      try {
+        setSync("saving…");
+        await setDoc(jobDoc(uid, currentJobId), {
+          status: "archived",
+          completedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        setSync("saved");
+      } catch (e) {
+        console.error(e);
+        setSync("error");
+        alert("Could not mark completed.");
+      }
     }
 
-    function pdfTitle(){
-      return "Ford Property Services – Job Costing Report";
+    async function restoreArchivedSelected() {
+      if (!uid) return;
+      const id = $("archivedSelect").value;
+      if (!id) return;
+
+      try {
+        setSync("saving…");
+        await setDoc(jobDoc(uid, id), {
+          status: "active",
+          completedAt: null,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        setSync("saved");
+        // it will reappear in active list automatically
+      } catch (e) {
+        console.error(e);
+        setSync("error");
+        alert("Could not restore job.");
+      }
     }
+
+    // ---------------- CLEAN PDF (headings + tables; no buttons) ----------------
+    function formatDateISO(d){ return d || ""; }
 
     async function createCleanPdf(){
       const s = computeSummary();
@@ -710,14 +877,12 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF("p", "mm", "a4");
 
-      // Layout constants
       const marginX = 14;
       let y = 14;
 
-      // Title
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
-      doc.text(pdfTitle(), marginX, y);
+      doc.text("Ford Property Services – Job Costing Report", marginX, y);
       y += 7;
 
       doc.setFont("helvetica", "normal");
@@ -725,12 +890,13 @@
       doc.text(`Generated: ${new Date().toLocaleString()}`, marginX, y);
       y += 6;
 
-      // Job details table
+      // Job details
       const jobDetails = [
         ["Property address", state.propertyAddress || ""],
         ["Job label", state.jobLabel || ""],
         ["Estimated duration (days)", state.estDuration || ""],
         ["Currency", `${cur} (${sym})`],
+        ["Status", (state.status || "active").toUpperCase()],
         ["Notes", state.jobNotes || ""],
       ];
 
@@ -746,15 +912,18 @@
 
       y = doc.lastAutoTable.finalY + 6;
 
-      // Labour table
-      const labourRows = state.labour
-        .map(r => ({
-          person: personDisplay(r),
-          rate: num(r.rate),
-          days: num(r.days),
-          total: num(r.rate) * num(r.days)
-        }))
-        .filter(r => (r.rate !== 0 || r.days !== 0 || (r.person && r.person !== "Other")));
+      // Labour
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Labour", marginX, y);
+      y += 2;
+
+      const labourRows = state.labour.map(r => ({
+        person: personDisplay(r),
+        rate: num(r.rate),
+        days: num(r.days),
+        total: num(r.rate) * num(r.days)
+      }));
 
       const labourBody = labourRows.map(r => ([
         r.person,
@@ -762,11 +931,6 @@
         r.days ? String(r.days) : "",
         r.total ? money(r.total, cur) : ""
       ]));
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("Labour", marginX, y);
-      y += 2;
 
       doc.autoTable({
         startY: y,
@@ -781,12 +945,11 @@
           2: { cellWidth: 25, halign: "right" },
           3: { cellWidth: 55, halign: "right" },
         },
-        didDrawPage: () => {},
       });
 
       y = doc.lastAutoTable.finalY + 6;
 
-      // Materials table
+      // Materials
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.text("Materials", marginX, y);
@@ -852,11 +1015,9 @@
           1: { cellWidth: 85, halign: "right" },
         },
         didParseCell: function (data) {
-          // Color the profit/loss row
           if (data.section === "body" && data.row.index === summaryBody.length - 1) {
-            const pl = s.remaining;
             if (data.column.index === 1) {
-              data.cell.styles.textColor = pl >= 0 ? [0, 130, 0] : [170, 0, 0];
+              data.cell.styles.textColor = s.remaining >= 0 ? [0, 130, 0] : [170, 0, 0];
               data.cell.styles.fontStyle = "bold";
             }
           }
@@ -876,6 +1037,11 @@
         if (id) subscribeToJob(id);
       };
 
+      $("archivedSelect").onchange = () => {
+        const id = $("archivedSelect").value;
+        if (id) subscribeToJob(id);
+      };
+
       $("createJobBtn").onclick = async () => {
         try { await createJobFromInputs(); }
         catch(e){ console.error(e); alert("Could not create job. Check Firestore + rules + config."); }
@@ -891,6 +1057,17 @@
         catch(e){ console.error(e); alert("Could not delete job."); }
       };
 
+      $("markCompleteBtn").onclick = async () => {
+        try { await markCurrentCompleted(); }
+        catch(e){ console.error(e); alert("Could not mark completed."); }
+      };
+
+      $("restoreBtn").onclick = async () => {
+        try { await restoreArchivedSelected(); }
+        catch(e){ console.error(e); alert("Could not restore job."); }
+      };
+
+      // Editable fields (these will be disabled by applyEditLock when archived)
       $("propertyAddress").oninput = () => { state.propertyAddress = $("propertyAddress").value; queueSave(false); };
       $("jobLabel").oninput = () => { state.jobLabel = $("jobLabel").value; queueSave(false); };
       $("estDuration").oninput = () => { state.estDuration = $("estDuration").value; queueSave(false); };
@@ -901,11 +1078,13 @@
       $("commissionPct").oninput = () => { state.commissionPct = $("commissionPct").value; queueSave(); };
 
       $("addMatBtn").onclick = () => {
+        if (isArchived()) return;
         state.materials.push({ date: todayISO(), desc:"", gross:"", pctToNet:"20" });
         queueSave(); renderAll();
       };
 
       $("resetBtn").onclick = async () => {
+        if (isArchived()) return;
         if (!confirm("Reset this job? This will overwrite the saved job.")) return;
         const keepCreated = state.createdAt;
         state = defaultJob();
@@ -934,7 +1113,7 @@
       $("signOutBtn").onclick = async () => { await signOut(auth); };
     }
 
-    // Login
+    // LOGIN
     $("loginBtn").onclick = async () => {
       $("loginErr").style.display = "none";
       const email = $("email").value.trim();
