@@ -860,6 +860,41 @@
   // Init
   load();
   renderAll();
+  // ===== Calendar feed sync (Jobs Board -> Calendar) =====
+const CAL_FEED_KEY = "fps_calendar_feed_v1";
+
+function syncCalendarFeed(jobs){
+  try{
+    // build feed: { "YYYY-MM-DD": [ {title,address,time,ref,status,id} ] }
+    const feed = {};
+    for(const j of (jobs || [])){
+      const date = (j.date || j.jobDate || j.scheduledDate || j.visitDate || j.bookingDate || "").trim();
+      if(!date) continue;
+
+      const item = {
+        id: j.id || j.jobId || j.ref || String(Math.random()),
+        title: (j.address || j.ref || "Job").trim(),
+        address: (j.address || "").trim(),
+        time: (j.time || j.jobTime || j.scheduledTime || j.visitTime || "").trim(),
+        ref: (j.ref || "").trim(),
+        status: (j.status || "").trim(),
+        updatedAt: j.updatedAt || j.createdAt || new Date().toISOString()
+      };
+
+      if(!feed[date]) feed[date] = [];
+      feed[date].push(item);
+    }
+
+    // sort by time (optional)
+    for(const d of Object.keys(feed)){
+      feed[d].sort((a,b)=> String(a.time).localeCompare(String(b.time)));
+    }
+
+    localStorage.setItem(CAL_FEED_KEY, JSON.stringify(feed));
+  }catch(e){
+    console.warn("Calendar feed sync failed", e);
+  }
+}
 </script>
 </body>
 </html>
