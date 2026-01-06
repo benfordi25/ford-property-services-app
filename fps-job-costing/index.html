@@ -206,7 +206,7 @@
             <div style="margin-top:14px">
               <span class="pill">Labour</span>
               <div class="hint">
-                Spent so far uses <b>Estimated</b> days until you enter <b>Actual</b> days (then it switches per person).
+                Spent so far uses <b>Estimated</b> days until you enter <b>Actual</b> days (switches per person).
               </div>
 
               <table>
@@ -226,7 +226,18 @@
 
             <div style="margin-top:14px">
               <span class="pill">Materials</span>
-              <div class="hint">Enter material costs as <b>NET only</b>.</div>
+              <div class="hint">Enter material costs as <b>NET only</b>. Estimated Materials Budget is for PDF/target only.</div>
+
+              <div class="row two" style="margin-top:10px">
+                <div>
+                  <label>Estimated materials budget (NET)</label>
+                  <input id="estMaterialsNet" type="number" step="0.01" min="0" placeholder="e.g., 650" />
+                </div>
+                <div>
+                  <label>Estimated materials notes (optional)</label>
+                  <input id="estMaterialsNote" placeholder="e.g., based on supplier quote" />
+                </div>
+              </div>
 
               <table>
                 <thead>
@@ -314,7 +325,6 @@
     </div><!-- /layout -->
   </div><!-- /wrap -->
 
-  <!-- Clean PDF libraries -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.3/dist/jspdf.plugin.autotable.min.js"></script>
 
@@ -330,7 +340,6 @@
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // ✅ Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCfKXXlQyYJIGNjLOIVQqwtyL_QgDEG9Ps",
       authDomain: "ford-property-services-be377.firebaseapp.com",
@@ -357,7 +366,7 @@
       return sym + x.toFixed(2);
     }
 
-    // ✅ Used days rule:
+    // Used days rule:
     // - If Actual is blank → use Estimated
     // - If Actual has any value → use Actual
     function usedDays(row){
@@ -374,6 +383,8 @@
       currency: "GBP",
       estimateNet: "",
       commissionPct: "",
+      estMaterialsNet: "",
+      estMaterialsNote: "",
       labour: [
         { person: "Ben", otherName: "", rate: "", estDays: "", actDays: "" },
         { person: "Joe", otherName: "", rate: "", estDays: "", actDays: "" },
@@ -383,7 +394,7 @@
       materials: [
         { date: todayISO(), desc: "", net: "" }
       ],
-      status: "active",     // "active" | "archived"
+      status: "active",
       completedAt: null,
       createdAt: null,
       updatedAt: null
@@ -416,13 +427,20 @@
       return (state.materials || []).reduce((sum, m) => sum + num(m.net), 0);
     }
     function calcCommission(estNet, pct){ return estNet * (pct/100); }
+
+    // For PDF comparison only (not used in live totals)
+    function calcLabourEstimatedBudget(){
+      return (state.labour || []).reduce((sum, r) => sum + (num(r.rate) * num(r.estDays)), 0);
+    }
+
     function personDisplay(row){ return row.person === "Other" ? (row.otherName || "Other") : row.person; }
 
     function computeSummary(){
       const cur = state.currency;
-      const labourTotal = calcLabourTotalUsed();
+
+      const labourUsed = calcLabourTotalUsed();
       const materialsNet = calcMaterialsTotalNet();
-      const spent = labourTotal + materialsNet;
+      const spent = labourUsed + materialsNet;
 
       const estNet = num(state.estimateNet);
       const commPct = num(state.commissionPct);
@@ -430,14 +448,19 @@
       const netAfterCommission = estNet - commAmt;
 
       const remaining = netAfterCommission - spent;
-      return { cur, labourTotal, materialsNet, spent, estNet, commPct, commAmt, netAfterCommission, remaining };
+
+      return { cur, labourUsed, materialsNet, spent, estNet, commPct, commAmt, netAfterCommission, remaining };
     }
 
     function applyEditLock(){
       const ro = isArchived();
       $("mainPanel").classList.toggle("readonly", ro);
 
-      const ids = ["propertyAddress","jobLabel","estDuration","jobNotes","currency","estimateNet","commissionPct"];
+      const ids = [
+        "propertyAddress","jobLabel","estDuration","jobNotes","currency",
+        "estimateNet","commissionPct",
+        "estMaterialsNet","estMaterialsNote"
+      ];
       ids.forEach(id => { const el = $(id); if (el) el.disabled = ro; });
 
       $("addMatBtn").disabled = ro;
@@ -456,7 +479,7 @@
       $("commissionAmt").value = money(s.commAmt, s.cur);
       $("netAfterCommission").value = money(s.netAfterCommission, s.cur);
 
-      $("kpiLabour").textContent = money(s.labourTotal, s.cur);
+      $("kpiLabour").textContent = money(s.labourUsed, s.cur);
       $("kpiMaterials").textContent = money(s.materialsNet, s.cur);
       $("kpiSpent").textContent = money(s.spent, s.cur);
       $("kpiRemaining").textContent = money(s.remaining, s.cur);
@@ -480,6 +503,8 @@
       }
     }
 
+    // ✅ KEYBOARD FIX: do NOT call renderAll() on every keystroke.
+    // Update only state + totals + that row total input.
     function renderLabour() {
       const body = $("labourBody");
       body.innerHTML = "";
@@ -496,7 +521,8 @@
         sel.onchange = () => {
           state.labour[idx].person = sel.value;
           if (sel.value !== "Other") state.labour[idx].otherName = "";
-          queueSave(); renderAll();
+          queueSave(false);
+          renderLabour(); // re-render only labour table (not the whole page)
         };
         personTd.appendChild(sel);
 
@@ -514,7 +540,6 @@
         rate.placeholder = "e.g., 180";
         rate.value = row.rate ?? "";
         rate.disabled = ro;
-        rate.oninput = () => { state.labour[idx].rate = rate.value; queueSave(); renderAll(); };
         rateTd.appendChild(rate);
 
         const estTd = document.createElement("td");
@@ -523,7 +548,6 @@
         est.placeholder = "e.g., 2";
         est.value = row.estDays ?? "";
         est.disabled = ro;
-        est.oninput = () => { state.labour[idx].estDays = est.value; queueSave(); renderAll(); };
         estTd.appendChild(est);
 
         const actTd = document.createElement("td");
@@ -532,7 +556,6 @@
         act.placeholder = "blank = use est";
         act.value = row.actDays ?? "";
         act.disabled = ro;
-        act.oninput = () => { state.labour[idx].actDays = act.value; queueSave(); renderAll(); };
         actTd.appendChild(act);
 
         const totalTd = document.createElement("td");
@@ -540,6 +563,27 @@
         total.disabled = true;
         total.value = money(num(row.rate) * usedDays(row), state.currency);
         totalTd.appendChild(total);
+
+        const updateRowTotalAndTotals = () => {
+          // keep state current:
+          state.labour[idx].rate = rate.value;
+          state.labour[idx].estDays = est.value;
+          state.labour[idx].actDays = act.value;
+
+          // update just this row total:
+          const r = state.labour[idx];
+          total.value = money(num(r.rate) * usedDays(r), state.currency);
+
+          // update KPIs:
+          renderTotals();
+
+          // autosave:
+          queueSave(false);
+        };
+
+        rate.addEventListener("input", updateRowTotalAndTotals, { passive: true });
+        est.addEventListener("input", updateRowTotalAndTotals, { passive: true });
+        act.addEventListener("input", updateRowTotalAndTotals, { passive: true });
 
         [personTd, otherTd, rateTd, estTd, actTd, totalTd].forEach(td => tr.appendChild(td));
         body.appendChild(tr);
@@ -576,7 +620,11 @@
         net.placeholder = "e.g., 80.00";
         net.value = m.net || "";
         net.disabled = ro;
-        net.oninput = () => { state.materials[idx].net = net.value; queueSave(); renderTotals(); };
+        net.oninput = () => {
+          state.materials[idx].net = net.value;
+          renderTotals();
+          queueSave(false);
+        };
         netTd.appendChild(net);
 
         const delTd = document.createElement("td");
@@ -587,7 +635,9 @@
           del.onclick = () => {
             state.materials.splice(idx, 1);
             if (state.materials.length === 0) state.materials.push({ date: todayISO(), desc:"", net:"" });
-            queueSave(); renderAll();
+            renderMaterials();
+            renderTotals();
+            queueSave(false);
           };
           delTd.appendChild(del);
         }
@@ -605,6 +655,8 @@
       $("currency").value = state.currency || "GBP";
       $("estimateNet").value = state.estimateNet || "";
       $("commissionPct").value = state.commissionPct || "";
+      $("estMaterialsNet").value = state.estMaterialsNet || "";
+      $("estMaterialsNote").value = state.estMaterialsNote || "";
 
       renderLabour();
       renderMaterials();
@@ -715,7 +767,6 @@
           (status === "archived" ? archivedJobs : activeJobs).push(job);
         });
 
-        // Active
         activeSelect.innerHTML = "";
         if (activeJobs.length === 0) {
           activeSelect.appendChild(new Option("No active jobs – create one", ""));
@@ -725,7 +776,6 @@
           activeJobs.forEach(j => activeSelect.appendChild(new Option(j.address ? `${j.label} — ${j.address}` : j.label, j.id)));
         }
 
-        // Archived
         archivedSelect.innerHTML = "";
         if (archivedJobs.length === 0) {
           archivedSelect.appendChild(new Option("No archived jobs", ""));
@@ -735,7 +785,6 @@
           archivedJobs.forEach(j => archivedSelect.appendChild(new Option(j.address ? `${j.label} — ${j.address}` : j.label, j.id)));
         }
 
-        // Pick what to open
         const pickActive =
           (currentJobId && activeJobs.some(j => j.id === currentJobId)) ? currentJobId :
           (prevActive && activeJobs.some(j => j.id === prevActive)) ? prevActive :
@@ -753,13 +802,6 @@
         } else {
           currentJobId = null;
           applyEditLock();
-        }
-
-        // Keep archived selection sensible
-        if (prevArchived && archivedJobs.some(j => j.id === prevArchived)) {
-          archivedSelect.value = prevArchived;
-        } else if (archivedJobs[0]?.id) {
-          archivedSelect.value = archivedJobs[0].id;
         }
 
         applyEditLock();
@@ -818,7 +860,7 @@
         await setDoc(jobDocRef(uid, currentJobId), {
           status: "archived",
           completedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp
         }, { merge: true });
         setSync("saved");
       } catch (e) {
@@ -858,6 +900,10 @@
       const cur = s.cur;
       const sym = currencySymbol(cur);
 
+      const estMat = num(state.estMaterialsNet);
+      const estMatNote = (state.estMaterialsNote || "").trim();
+      const labourEstBudget = calcLabourEstimatedBudget(); // PDF comparison only
+
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF("p", "mm", "a4");
 
@@ -881,6 +927,8 @@
         ["Currency", `${cur} (${sym})`],
         ["Status", (state.status || "active").toUpperCase()],
         ["Notes", state.jobNotes || ""],
+        ["Estimated materials budget (NET)", estMat ? money(estMat, cur) : ""],
+        ["Estimated materials note", estMatNote || ""],
       ];
 
       pdf.autoTable({
@@ -890,7 +938,7 @@
         theme: "grid",
         styles: { fontSize: 10, cellPadding: 2.5 },
         headStyles: { fillColor: [20, 28, 45] },
-        columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 125 } },
+        columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 120 } },
       });
 
       y = pdf.lastAutoTable.finalY + 6;
@@ -909,13 +957,13 @@
           (r.estDays ?? "") !== "" ? String(num(r.estDays)) : "",
           (r.actDays ?? "") !== "" ? String(num(r.actDays)) : "",
           usingActual ? "Actual" : "Est",
-          (num(r.rate) * used) ? money(num(r.rate)*used, cur) : ""
+          (num(r.rate) * used) ? money(num(r.rate) * used, cur) : ""
         ]);
       });
 
       pdf.autoTable({
         startY: y,
-        head: [["Person", "Rate / day", "Est days", "Actual days", "Used", "Total (used)"]],
+        head: [["Person", "Rate/day", "Est days", "Actual days", "Used", "Total (used)"]],
         body: labourBody.length ? labourBody : [["", "", "", "", "", ""]],
         theme: "grid",
         styles: { fontSize: 10, cellPadding: 2.5 },
@@ -969,8 +1017,10 @@
         ["Commission %", `${s.commPct.toFixed(2)}%`],
         ["Commission amount", money(s.commAmt, cur)],
         ["Net after commission", money(s.netAfterCommission, cur)],
-        ["Labour total (used)", money(s.labourTotal, cur)],
+        ["Labour total (used)", money(s.labourUsed, cur)],
+        ["Labour budget (est days x rate) – for target only", money(labourEstBudget, cur)],
         ["Materials total (net)", money(s.materialsNet, cur)],
+        ["Materials budget (estimated) – for target only", estMat ? money(estMat, cur) : ""],
         ["Spent so far", money(s.spent, cur)],
         ["Profit / Loss (NET)", money(s.remaining, cur)],
       ];
@@ -982,7 +1032,7 @@
         theme: "grid",
         styles: { fontSize: 10, cellPadding: 2.5 },
         headStyles: { fillColor: [20, 28, 45] },
-        columnStyles: { 0: { cellWidth: 95 }, 1: { cellWidth: 85, halign: "right" } },
+        columnStyles: { 0: { cellWidth: 115 }, 1: { cellWidth: 65, halign: "right" } },
         didParseCell: function (data) {
           if (data.section === "body" && data.row.index === summaryBody.length - 1 && data.column.index === 1) {
             data.cell.styles.textColor = s.remaining >= 0 ? [0, 130, 0] : [170, 0, 0];
@@ -1014,13 +1064,19 @@
       $("jobNotes").oninput = () => { state.jobNotes = $("jobNotes").value; queueSave(false); };
 
       $("currency").onchange = () => { state.currency = $("currency").value; queueSave(false); renderAll(); };
-      $("estimateNet").oninput = () => { state.estimateNet = $("estimateNet").value; queueSave(); };
-      $("commissionPct").oninput = () => { state.commissionPct = $("commissionPct").value; queueSave(); };
+
+      $("estimateNet").oninput = () => { state.estimateNet = $("estimateNet").value; renderTotals(); queueSave(false); };
+      $("commissionPct").oninput = () => { state.commissionPct = $("commissionPct").value; renderTotals(); queueSave(false); };
+
+      $("estMaterialsNet").oninput = () => { state.estMaterialsNet = $("estMaterialsNet").value; queueSave(false); };
+      $("estMaterialsNote").oninput = () => { state.estMaterialsNote = $("estMaterialsNote").value; queueSave(false); };
 
       $("addMatBtn").onclick = () => {
         if (isArchived()) return;
         state.materials.push({ date: todayISO(), desc:"", net:"" });
-        queueSave(); renderAll();
+        renderMaterials();
+        renderTotals();
+        queueSave(false);
       };
 
       $("resetBtn").onclick = async () => {
@@ -1029,7 +1085,8 @@
         const keepCreated = state.createdAt;
         state = defaultJob();
         state.createdAt = keepCreated || state.createdAt;
-        queueSave(); renderAll();
+        renderAll();
+        queueSave(false);
       };
 
       $("exportBtn").onclick = () => {
@@ -1049,7 +1106,6 @@
       $("signOutBtn").onclick = async () => { await signOut(auth); };
     }
 
-    // LOGIN
     $("loginBtn").onclick = async () => {
       $("loginErr").style.display = "none";
       const email = $("email").value.trim();
@@ -1078,7 +1134,6 @@
       }
 
       uid = user.uid;
-
       $("userPill").textContent = user.email || "Signed in";
       $("signOutBtn").disabled = false;
 
