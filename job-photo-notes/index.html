@@ -812,15 +812,23 @@ render();
     getFirestore, doc, getDoc, setDoc, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-  // 🔧 REPLACE THESE WITH YOUR NEW FIREBASE PROJECT WEB CONFIG
-  const firebaseConfig = {
-    apiKey: "PASTE_FROM_FIREBASE",
-    authDomain: "PASTE_FROM_FIREBASE",
-    projectId: "PASTE_FROM_FIREBASE",
-    storageBucket: "PASTE_FROM_FIREBASE",
-    messagingSenderId: "PASTE_FROM_FIREBASE",
-    appId: "PASTE_FROM_FIREBASE"
-  };
+  // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDLZeyhUr0LuXeODP8KNhMKFIQNp1N9p2E",
+  authDomain: "fps-photo-notes.firebaseapp.com",
+  projectId: "fps-photo-notes",
+  storageBucket: "fps-photo-notes.firebasestorage.app",
+  messagingSenderId: "670127560134",
+  appId: "1:670127560134:web:37729d50ba78be5ccecec7"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
