@@ -441,7 +441,7 @@ async function loadJobsFromCloud() {
   if (!currentUserId) return;
 
   try {
-    const ref = doc(db, "jobsBoards", currentUserId);
+    const ref = doc(db, "users", currentUserId);
     await setDoc(ref, {
       jobs: jobs,
       updatedAt: serverTimestamp()
