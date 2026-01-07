@@ -401,6 +401,67 @@ a.mapBtn:hover{
   import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
   // TODO (next step): paste your firebaseConfig here + init app/auth/db
+    // Firebase config (from your existing Firebase project)
+const firebaseConfig = {
+  apiKey: "PASTE_FROM_FIREBASE",
+  authDomain: "PASTE_FROM_FIREBASE",
+  projectId: "PASTE_FROM_FIREBASE",
+  storageBucket: "PASTE_FROM_FIREBASE",
+  messagingSenderId: "PASTE_FROM_FIREBASE",
+  appId: "PASTE_FROM_FIREBASE"
+};
+async function loadJobsFromCloud() {
+  if (!currentUserId) return;
+
+  try {
+    const ref = doc(db, "jobsBoards", currentUserId);
+    const snap = await getDoc(ref);
+
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Array.isArray(data.jobs)) {
+        jobs = data.jobs;
+        saveLocal();   // keep localStorage in sync
+        render();
+        console.log("Jobs loaded from cloud:", jobs.length);
+      }
+    } else {
+      console.log("No cloud jobs yet — using local data");
+    }
+  } catch (err) {
+    console.error("Failed to load jobs from cloud", err);
+  }
+}
+    async function saveJobsToCloud() {
+  if (!currentUserId) return;
+
+  try {
+    const ref = doc(db, "jobsBoards", currentUserId);
+    await setDoc(ref, {
+      jobs: jobs,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    console.log("Jobs saved to cloud:", jobs.length);
+  } catch (err) {
+    console.error("Failed to save jobs to cloud", err);
+  }
+    }
+// Init Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+    let currentUserId = null;
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUserId = user.uid;
+    console.log("Logged in as:", currentUserId);
+    loadJobsFromCloud();
+  } else {
+    alert("You must be logged in to use the jobs board.");
+  }
+});
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
   }
