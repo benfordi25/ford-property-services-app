@@ -98,7 +98,6 @@
       border-color: rgba(168,85,247,.45);
     }
 
-    /* Call button styled like other buttons */
     a.callBtn{
       display:inline-flex;
       align-items:center;
@@ -382,7 +381,7 @@
     </div>
   </div>
 
-  <!-- Dashboard button (inside body) -->
+  <!-- Dashboard button -->
   <a href="../dashboard/" style="
     position:fixed;
     top:10px;
@@ -398,16 +397,20 @@
   ">🏠 Dashboard</a>
 
   <script type="module">
-    // Firebase (Modular SDK) - imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import {
-  getAuth,
-  onAuthStateChanged,
-  signInAnonymously
-} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+      getAuth,
+      onAuthStateChanged,
+      signInAnonymously
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // Firebase config (from your existing Firebase project)
     const firebaseConfig = {
       apiKey: "PASTE_FROM_FIREBASE",
       authDomain: "PASTE_FROM_FIREBASE",
@@ -417,13 +420,10 @@
       appId: "PASTE_FROM_FIREBASE"
     };
 
-    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-signInAnonymously(auth).catch((error) => {
-  console.error("Anonymous sign-in failed:", error);
-});
+
     let currentUserId = null;
     let cloudLoaded = false;
     let pendingCloudSave = false;
@@ -433,7 +433,7 @@ signInAnonymously(auth).catch((error) => {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
     }
 
-    // Workflow starts at Requires Estimate
+    // Workflow
     const STATUSES = [
       { key: "req_est", label: "Requires Estimate" },
       { key: "est_visit_booked", label: "Estimate Visit Booked In" },
@@ -477,8 +477,6 @@ signInAnonymously(auth).catch((error) => {
     function statusLabel(key){
       return (STATUSES.find(s=>s.key===key)?.label) || key;
     }
-
-    // phone sanitiser for tel: links
     function telSan(s){
       return String(s || "").trim().replace(/[^\d+]/g, "");
     }
@@ -589,7 +587,28 @@ signInAnonymously(auth).catch((error) => {
       return j;
     }
 
-    // ===== Cloud sync (shared doc for your team) =====
+    function load(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        jobs = JSON.parse(raw).map(migrateJob);
+        savedStatusEl.textContent = "Loaded";
+        return;
+      }
+      const fallbackKeys = ["fps_jobs_board_workflow_v6","fps_jobs_board_workflow_v5","fps_jobs_board_workflow_v4","fps_jobs_board_workflow_v3"];
+      for(const k of fallbackKeys){
+        const r = localStorage.getItem(k);
+        if(r){
+          jobs = JSON.parse(r).map(migrateJob);
+          savedStatusEl.textContent = "Loaded (migrated)";
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+          return;
+        }
+      }
+      jobs = [];
+      savedStatusEl.textContent = "—";
+    }
+
+    // ===== Cloud sync (shared doc) =====
     async function loadJobsFromCloud() {
       if (!currentUserId) return;
 
@@ -597,22 +616,33 @@ signInAnonymously(auth).catch((error) => {
         const ref = doc(db, "jobsBoard", "shared");
         const snap = await getDoc(ref);
 
-        if (!snap.exists()) {
-          console.log("No cloud document yet – using local data");
-          cloudLoaded = true;
-          if (pendingCloudSave) { pendingCloudSave = false; await saveJobsToCloud(); }
-          return;
-        }
+        if (snap.exists()) {
+          const data = snap.data() || {};
+          const cloudJobs = Array.isArray(data.jobs) ? data.jobs.map(migrateJob) : [];
 
-        const data = snap.data();
-        if (Array.isArray(data.jobs)) {
-          jobs = data.jobs.map(migrateJob);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
-          savedStatusEl.textContent = "Loaded from cloud";
-          renderAll();
-          console.log("Jobs loaded from cloud:", jobs.length);
+          if (cloudJobs.length > 0) {
+            jobs = cloudJobs;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+            savedStatusEl.textContent = "Loaded from cloud";
+            renderAll();
+            console.log("Jobs loaded from cloud:", jobs.length);
+          } else {
+            console.log("Cloud is empty.");
+            // If cloud empty but local has jobs, push local up
+            if (jobs.length > 0) {
+              console.log("Uploading local jobs to cloud:", jobs.length);
+              await saveJobsToCloud();
+              savedStatusEl.textContent = "Uploaded local to cloud";
+            }
+          }
         } else {
-          console.log("Cloud doc exists but has no jobs array – using local data");
+          console.log("No cloud doc yet.");
+          // If no doc yet, but local has jobs, create it
+          if (jobs.length > 0) {
+            console.log("Creating cloud doc from local jobs:", jobs.length);
+            await saveJobsToCloud();
+            savedStatusEl.textContent = "Created cloud from local";
+          }
         }
 
         cloudLoaded = true;
@@ -640,17 +670,11 @@ signInAnonymously(auth).catch((error) => {
       }
     }
 
-    
-
-      
-    
-
     function save(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
       savedStatusEl.textContent = nowStamp();
       syncCalendarFeed(jobs);
 
-      // Don't overwrite cloud before we've loaded it (prevents blank/old local replacing cloud)
       if (!cloudLoaded) {
         pendingCloudSave = true;
         return;
@@ -658,26 +682,21 @@ signInAnonymously(auth).catch((error) => {
       saveJobsToCloud();
     }
 
-    function load(){
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw){
-        jobs = JSON.parse(raw).map(migrateJob);
-        savedStatusEl.textContent = "Loaded";
+    // Auth: ALWAYS set currentUserId, and ensure anonymous login happens if needed
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        await loadJobsFromCloud();
         return;
       }
-      const fallbackKeys = ["fps_jobs_board_workflow_v6","fps_jobs_board_workflow_v5","fps_jobs_board_workflow_v4","fps_jobs_board_workflow_v3"];
-      for(const k of fallbackKeys){
-        const r = localStorage.getItem(k);
-        if(r){
-          jobs = JSON.parse(r).map(migrateJob);
-          savedStatusEl.textContent = "Loaded (migrated)";
-          save();
-          return;
-        }
+
+      // Not logged in yet -> sign in anonymously
+      try{
+        await signInAnonymously(auth);
+      }catch(e){
+        console.error("Anonymous sign-in failed:", e);
       }
-      jobs = [];
-      savedStatusEl.textContent = "—";
-    }
+    });
 
     function norm(s){ return String(s||"").toLowerCase(); }
     function matches(job, q){
@@ -687,7 +706,6 @@ signInAnonymously(auth).catch((error) => {
         .some(x => norm(x).includes(q));
     }
 
-    // Modal
     function openModal(){ modalBack.style.display = 'flex'; }
     function closeModalFn(){ modalBack.style.display = 'none'; }
     function clearModal(){
@@ -758,7 +776,7 @@ signInAnonymously(auth).catch((error) => {
       save(); renderAll(); closeModalFn();
     }
 
-    // Quick booking modal (estimate visit OR works)
+    // Quick booking modal
     let quickJobId = null;
     let quickMode = null; // "estVisitDT" | "worksDT"
     function openQuick(jobId, mode){
@@ -807,7 +825,6 @@ signInAnonymously(auth).catch((error) => {
       save(); renderAll(); closeQuick();
     });
 
-    // Move Back
     function moveBack(job){
       const idx = STAGE_ORDER.indexOf(job.status);
       if(idx <= 0) return;
@@ -816,7 +833,6 @@ signInAnonymously(auth).catch((error) => {
       save(); renderAll();
     }
 
-    // Actions
     function doAction(job, act){
       if(act === "move_back") return moveBack(job);
 
@@ -836,7 +852,6 @@ signInAnonymously(auth).catch((error) => {
       save(); renderAll();
     }
 
-    // Bookings list (estimate visit + works)
     function renderBookings(filteredJobs){
       const now = Date.now();
       const items = [];
@@ -915,7 +930,6 @@ signInAnonymously(auth).catch((error) => {
           btns.push(`<button type="button" data-act="edit">Edit</button>`);
           btns.push(`<button type="button" class="warn" data-act="move_back">Move Back</button>`);
 
-          // Call + Maps button on specific stages only
           const canCall = ["req_est","est_visit_booked","est_accepted","works_booked"];
           if(canCall.includes(job.status) && (job.phone || "").trim()){
             const tel = telSan(job.phone);
@@ -988,7 +1002,6 @@ signInAnonymously(auth).catch((error) => {
       renderBoard(filtered);
     }
 
-    // CSV export
     function csvEscape(v){
       const s = String(v ?? "");
       if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
@@ -1019,7 +1032,6 @@ signInAnonymously(auth).catch((error) => {
       URL.revokeObjectURL(url);
     }
 
-    // Wire
     addBtn.addEventListener('click', openAdd);
     closeModal.addEventListener('click', closeModalFn);
     modalBack.addEventListener('click', (e)=>{ if(e.target === modalBack) closeModalFn(); });
@@ -1028,21 +1040,29 @@ signInAnonymously(auth).catch((error) => {
     exportBtn.addEventListener('click', exportCsv);
     searchEl.addEventListener('input', renderAll);
 
-    // Init
+    // Init local immediately (fast UI)
     load();
     renderAll();
 
-    // ===== Calendar feed sync (Jobs Board -> Calendar) =====
+    // ===== Calendar feed sync =====
     const CAL_FEED_KEY = "fps_calendar_feed_v1";
 
-    // Convert UK date DD/MM/YYYY → YYYY-MM-DD (for calendar)
-    function ukToISO(dateStr){
-      if(!dateStr) return "";
-      const parts = dateStr.split("/");
-      if(parts.length !== 3) return "";
-      const [dd, mm, yyyy] = parts;
-      if(!dd || !mm || !yyyy) return "";
-      return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+    // Supports:
+    // - "DD/MM/YYYY"
+    // - "YYYY-MM-DDTHH:mm" (datetime-local)
+    function toISODateKey(raw){
+      if(!raw) return "";
+      const s = String(raw).trim();
+
+      // datetime-local -> YYYY-MM-DD
+      const m1 = /^(\d{4})-(\d{2})-(\d{2})T/.exec(s);
+      if(m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+
+      // UK date -> YYYY-MM-DD
+      const m2 = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
+      if(m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
+
+      return "";
     }
 
     function syncCalendarFeed(jobs){
@@ -1050,38 +1070,30 @@ signInAnonymously(auth).catch((error) => {
         const feed = {};
 
         for (const j of (jobs || [])){
-          const rawDate = (
-            j.date ||
-            j.jobDate ||
-            j.scheduledDate ||
-            j.visitDate ||
-            j.bookingDate ||
-            j.estVisitDT ||
-            j.worksDT ||
-            j.estWorkDT ||
-            ""
-          ).trim();
+          const dateKey =
+            toISODateKey(j.estVisitDT) ||
+            toISODateKey(j.worksDT) ||
+            toISODateKey(j.date) ||
+            toISODateKey(j.jobDate) ||
+            toISODateKey(j.scheduledDate) ||
+            toISODateKey(j.visitDate) ||
+            toISODateKey(j.bookingDate) ||
+            "";
 
-          const date = ukToISO(rawDate); // NOTE: datetime-local won't match this format
-          if(!date) continue;
+          if(!dateKey) continue;
 
           const item = {
             id: j.id || j.jobId || j.ref || String(Math.random()),
             title: (j.address || j.ref || "Job").trim(),
             address: (j.address || "").trim(),
-            time: (j.time || j.jobTime || j.scheduledTime || j.visitTime || "").trim(),
+            time: "",
             ref: (j.ref || "").trim(),
             status: (j.status || "").trim(),
             updatedAt: j.updatedAt || j.createdAt || new Date().toISOString()
           };
 
-          if(!feed[date]) feed[date] = [];
-          feed[date].push(item);
-        }
-
-        // sort by time (optional)
-        for (const d of Object.keys(feed)){
-          feed[d].sort((a,b)=> String(a.time).localeCompare(String(b.time)));
+          if(!feed[dateKey]) feed[dateKey] = [];
+          feed[dateKey].push(item);
         }
 
         localStorage.setItem(CAL_FEED_KEY, JSON.stringify(feed));
