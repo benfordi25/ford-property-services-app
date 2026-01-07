@@ -61,9 +61,7 @@
     }
     .readonly .readonlyTag{display:block}
     .readonly input,
-    .readonly select{
-      opacity:.78;
-    }
+    .readonly select{ opacity:.78; }
   </style>
 </head>
 
@@ -206,7 +204,7 @@
             <div style="margin-top:14px">
               <span class="pill">Labour</span>
               <div class="hint">
-                Spent so far uses <b>Estimated</b> days until you enter <b>Actual</b> days (switches per person).
+                Totals update when you leave a box (blur) or press Done/Enter. (Stops Android keypad closing.)
               </div>
 
               <table>
@@ -407,7 +405,6 @@
 
     let currentJobId = null;
     let savingTimer = null;
-    let totalsTimer = null;
     let applyingRemote = false;
 
     const app = initializeApp(firebaseConfig);
@@ -449,14 +446,6 @@
       const remaining = netAfterCommission - spent;
 
       return { cur, labourUsed, materialsNet, spent, estNet, commPct, commAmt, netAfterCommission, remaining };
-    }
-
-    function scheduleTotals(){
-      clearTimeout(totalsTimer);
-      totalsTimer = setTimeout(() => {
-        // only update after user pauses typing (prevents Android keypad closing)
-        renderTotals();
-      }, 250);
     }
 
     function applyEditLock(){
@@ -510,6 +499,35 @@
       }
     }
 
+    // ---- BLUR-ONLY: update totals only when leaving the field (or Done/Enter) ----
+    function hookBlurOnly(el, applyStateFn, afterUpdateFn) {
+      const ro = isArchived();
+      if (ro) return;
+
+      // Keep state updated while typing (NO totals update)
+      el.addEventListener("input", () => {
+        applyStateFn();
+        queueSave(false); // save ok; does not touch totals or rerender
+      });
+
+      const commit = () => {
+        applyStateFn();
+        if (afterUpdateFn) afterUpdateFn();
+        renderTotals();     // ✅ only here
+        queueSave(false);
+      };
+
+      el.addEventListener("blur", commit);
+
+      // Android "Done" / Enter key
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          el.blur(); // triggers commit
+        }
+      });
+    }
+
     function renderLabour() {
       const body = $("labourBody");
       body.innerHTML = "";
@@ -527,7 +545,8 @@
           state.labour[idx].person = sel.value;
           if (sel.value !== "Other") state.labour[idx].otherName = "";
           queueSave(false);
-          renderLabour();
+          renderLabour(); // ok (dropdown change closes keypad anyway)
+          renderTotals();
         };
         personTd.appendChild(sel);
 
@@ -539,9 +558,9 @@
         other.value = row.otherName || "";
         other.disabled = ro || row.person !== "Other";
         other.oninput = () => { state.labour[idx].otherName = other.value; queueSave(false); };
+        other.onblur = () => { renderTotals(); queueSave(false); };
         otherTd.appendChild(other);
 
-        // SMALL BOXES: text + inputmode decimal
         const rateTd = document.createElement("td");
         const rate = document.createElement("input");
         rate.type = "text";
@@ -578,22 +597,19 @@
         total.value = money(num(row.rate) * usedDays(row), state.currency);
         totalTd.appendChild(total);
 
-        const onSmallInput = () => {
+        const applyState = () => {
           state.labour[idx].rate = rate.value;
           state.labour[idx].estDays = est.value;
           state.labour[idx].actDays = act.value;
-
+        };
+        const updateRowTotal = () => {
           const r = state.labour[idx];
           total.value = money(num(r.rate) * usedDays(r), state.currency);
-
-          // ✅ debounce totals (prevents Android keypad closing)
-          scheduleTotals();
-          queueSave(false);
         };
 
-        rate.addEventListener("input", onSmallInput);
-        est.addEventListener("input", onSmallInput);
-        act.addEventListener("input", onSmallInput);
+        hookBlurOnly(rate, applyState, updateRowTotal);
+        hookBlurOnly(est, applyState, updateRowTotal);
+        hookBlurOnly(act, applyState, updateRowTotal);
 
         [personTd, otherTd, rateTd, estTd, actTd, totalTd].forEach(td => tr.appendChild(td));
         body.appendChild(tr);
@@ -614,6 +630,7 @@
         date.value = m.date || todayISO();
         date.disabled = ro;
         date.oninput = () => { state.materials[idx].date = date.value; queueSave(false); };
+        date.onblur = () => { renderTotals(); queueSave(false); };
         dateTd.appendChild(date);
 
         const descTd = document.createElement("td");
@@ -634,12 +651,12 @@
         net.placeholder = "e.g., 80.00";
         net.value = m.net || "";
         net.disabled = ro;
-        net.oninput = () => {
-          state.materials[idx].net = net.value;
-          scheduleTotals();      // ✅ debounce totals
-          queueSave(false);
-        };
         netTd.appendChild(net);
+
+        hookBlurOnly(net,
+          () => { state.materials[idx].net = net.value; },
+          null
+        );
 
         const delTd = document.createElement("td");
         if (!ro) {
@@ -650,7 +667,7 @@
             state.materials.splice(idx, 1);
             if (state.materials.length === 0) state.materials.push({ date: todayISO(), desc:"", net:"" });
             renderMaterials();
-            scheduleTotals();
+            renderTotals();
             queueSave(false);
           };
           delTd.appendChild(del);
@@ -678,10 +695,9 @@
       applyEditLock();
     }
 
-    function queueSave(recalc = true) {
+    function queueSave(recalc = false) {
       if (!uid || !currentJobId || applyingRemote) return;
       if (isArchived()) return;
-      if (recalc) scheduleTotals();
       setSync("pending");
       clearTimeout(savingTimer);
       savingTimer = setTimeout(saveToCloud, 350);
@@ -899,7 +915,7 @@
       }
     }
 
-    // ---------------- CLEAN PDF ----------------
+    // ---------------- CLEAN PDF (headings + tables; no buttons) ----------------
     function formatDateISO(d){ return d || ""; }
 
     async function createCleanPdf(){
@@ -1055,7 +1071,7 @@
 
       pdf.save(`fps-job-costing-${namePart || "report"}.pdf`);
     }
-    // ------------------------------------------------------------
+    // -------------------------------------------------------------------------
 
     function wireInputs() {
       $("jobSelect").onchange = () => { const id = $("jobSelect").value; if (id) subscribeToJob(id); };
@@ -1069,13 +1085,24 @@
 
       $("propertyAddress").oninput = () => { state.propertyAddress = $("propertyAddress").value; queueSave(false); };
       $("jobLabel").oninput = () => { state.jobLabel = $("jobLabel").value; queueSave(false); };
-      $("estDuration").oninput = () => { state.estDuration = $("estDuration").value; scheduleTotals(); queueSave(false); };
       $("jobNotes").oninput = () => { state.jobNotes = $("jobNotes").value; queueSave(false); };
 
       $("currency").onchange = () => { state.currency = $("currency").value; queueSave(false); renderAll(); };
 
-      $("estimateNet").oninput = () => { state.estimateNet = $("estimateNet").value; scheduleTotals(); queueSave(false); };
-      $("commissionPct").oninput = () => { state.commissionPct = $("commissionPct").value; scheduleTotals(); queueSave(false); };
+      // BLUR-only totals for these:
+      const estDuration = $("estDuration");
+      estDuration.addEventListener("input", () => { state.estDuration = estDuration.value; queueSave(false); });
+      estDuration.addEventListener("blur", () => { renderTotals(); queueSave(false); });
+
+      const estimateNet = $("estimateNet");
+      estimateNet.addEventListener("input", () => { state.estimateNet = estimateNet.value; queueSave(false); });
+      estimateNet.addEventListener("blur", () => { renderTotals(); queueSave(false); });
+      estimateNet.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); estimateNet.blur(); } });
+
+      const commissionPct = $("commissionPct");
+      commissionPct.addEventListener("input", () => { state.commissionPct = commissionPct.value; queueSave(false); });
+      commissionPct.addEventListener("blur", () => { renderTotals(); queueSave(false); });
+      commissionPct.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commissionPct.blur(); } });
 
       $("estMaterialsNet").oninput = () => { state.estMaterialsNet = $("estMaterialsNet").value; queueSave(false); };
       $("estMaterialsNote").oninput = () => { state.estMaterialsNote = $("estMaterialsNote").value; queueSave(false); };
@@ -1084,7 +1111,6 @@
         if (isArchived()) return;
         state.materials.push({ date: todayISO(), desc:"", net:"" });
         renderMaterials();
-        scheduleTotals();
         queueSave(false);
       };
 
@@ -1113,6 +1139,24 @@
 
       $("pdfBtn").onclick = async () => { try { await createCleanPdf(); } catch (e) { console.error(e); alert("PDF failed."); } };
       $("signOutBtn").onclick = async () => { await signOut(auth); };
+    }
+
+    async function createJobFromInputs() {
+      const addr = safeName($("newAddress").value);
+      const lbl = safeName($("newLabel").value);
+
+      const job = defaultJob();
+      job.propertyAddress = addr;
+      job.jobLabel = lbl;
+      job.status = "active";
+      job.completedAt = null;
+      job.createdAt = serverTimestamp();
+      job.updatedAt = serverTimestamp();
+
+      const ref = await addDoc(jobsCol(uid), job);
+      $("newAddress").value = "";
+      $("newLabel").value = "";
+      subscribeToJob(ref.id);
     }
 
     $("loginBtn").onclick = async () => {
