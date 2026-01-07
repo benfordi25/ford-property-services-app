@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <title>Login – Ford Property Services</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body style="background:#0b1220;color:#e7eefc;font-family:system-ui;text-align:center;padding:40px">
+
+  <h2>Sign in</h2>
+  <p>You must be logged in to use the Jobs Board</p>
+
+  <button id="loginBtn" style="
+    padding:12px 18px;
+    font-size:16px;
+    border-radius:10px;
+    border:none;
+    background:#4aa3ff;
+    color:#08101f;
+    font-weight:700;
+  ">
+    Login
+  </button>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "PASTE_FROM_FIREBASE",
+      authDomain: "PASTE_FROM_FIREBASE",
+      projectId: "PASTE_FROM_FIREBASE",
+      storageBucket: "PASTE_FROM_FIREBASE",
+      messagingSenderId: "PASTE_FROM_FIREBASE",
+      appId: "PASTE_FROM_FIREBASE"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    document.getElementById("loginBtn").onclick = async () => {
+      await signInWithPopup(auth, provider);
+
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("next") || "../jobs-board/";
+      window.location.href = decodeURIComponent(next);
+    };
+  </script>
+
+</body>
+</html>
