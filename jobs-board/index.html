@@ -97,49 +97,38 @@
       background: linear-gradient(135deg, var(--purple), rgba(168,85,247,.25));
       border-color: rgba(168,85,247,.45);
     }
-    .primary { ... }
-.warn { ... }
-.ok { ... }
-.danger { ... }
-.purple { ... }
 
     /* Call button styled like other buttons */
     a.callBtn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:900;
+      text-decoration:none;
+      color:#ffffff;
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      border:1px solid rgba(34,197,94,.45);
+    }
+    a.callBtn:hover{ filter: brightness(1.08); }
 
-  padding:10px 12px;
-  border-radius:14px;
-  font-weight:900;
-  text-decoration:none;
-  color:#ffffff;
+    a.mapBtn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:900;
+      text-decoration:none;
+      color:#ffffff;
+      background:linear-gradient(135deg, #2563eb, #3b82f6);
+      border:1px solid rgba(59,130,246,.45);
+    }
+    a.mapBtn:hover{ filter:brightness(1.08); }
 
-  background: linear-gradient(135deg, #16a34a, #22c55e);
-  border:1px solid rgba(34,197,94,.45);
-}
-
-a.callBtn:hover{
-  filter: brightness(1.08);
-}
-a.mapBtn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  padding:10px 12px;
-  border-radius:14px;
-  font-weight:900;
-  text-decoration:none;
-  color:#ffffff;
-  background:linear-gradient(135deg, #2563eb, #3b82f6);
-  border:1px solid rgba(59,130,246,.45);
-}
-
-a.mapBtn:hover{
-  filter:brightness(1.08);
-}
     main{max-width:1700px;margin:0 auto;padding:16px}
     .card{
       background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
@@ -258,828 +247,848 @@ a.mapBtn:hover{
 </head>
 
 <body>
-<header>
-  <div class="wrap">
-    <div class="top">
-      <div class="brand">
-        <div class="logo" id="logoBox" title="Tap to upload logo">
-          <span id="logoFallback" style="font-weight:950;letter-spacing:.4px;color:#0b1220;">FPS</span>
-          <img id="logoImg" alt="Company logo" />
+  <header>
+    <div class="wrap">
+      <div class="top">
+        <div class="brand">
+          <div class="logo" id="logoBox" title="Tap to upload logo">
+            <span id="logoFallback" style="font-weight:950;letter-spacing:.4px;color:#0b1220;">FPS</span>
+            <img id="logoImg" alt="Company logo" />
+          </div>
+          <div>
+            <h1>Ford Property Services</h1>
+            <p>Jobs Board</p>
+          </div>
+        </div>
+
+        <div class="row" style="flex:1; justify-content:flex-end">
+          <input id="search" placeholder="Search jobs..." style="max-width:360px" />
+          <button id="addBtn" class="primary" type="button">Add Job</button>
+          <button id="exportBtn" type="button">Export CSV</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <input id="logoInput" type="file" accept="image/*" style="display:none" />
+
+  <main>
+    <div class="card">
+      <div class="toolbar">
+        <div class="row">
+          <span class="pill"><strong>Total Jobs:</strong> <span id="totalCount">0</span></span>
+          <span class="pill"><strong>Saved:</strong> <span id="savedStatus">—</span></span>
+        </div>
+        <div class="small">Workflow starts at Requires Estimate. Clear All removed.</div>
+      </div>
+
+      <div class="bookings">
+        <div class="bookingsHead">
+          <div style="font-weight:950; letter-spacing:.3px">Booked In List (Upcoming)</div>
+          <div class="small">Estimate visit bookings + works bookings</div>
+        </div>
+        <div id="bookingsList" class="bookingsList"></div>
+        <div id="bookingsEmpty" class="small" style="display:none">No upcoming bookings yet.</div>
+      </div>
+
+      <div class="board" id="board"></div>
+      <div class="hint">Install to Home Screen for app mode.</div>
+    </div>
+  </main>
+
+  <!-- Add/Edit Modal -->
+  <div class="modalBack" id="modalBack">
+    <div class="modal">
+      <div class="modalHead">
+        <h2 id="modalTitle">Add Job</h2>
+        <button type="button" id="closeModal">Close</button>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>Letting Agent</label>
+          <input id="mAgent" placeholder="e.g., Romans" />
         </div>
         <div>
-          <h1>Ford Property Services</h1>
-          <p>Jobs Board</p>
+          <label>Job Reference</label>
+          <input id="mRef" placeholder="Optional" />
+        </div>
+
+        <div style="grid-column:1/-1">
+          <label>Property Address</label>
+          <input id="mAddress" placeholder="Full address" />
+        </div>
+
+        <div>
+          <label>Estimate Number</label>
+          <input id="mEstNo" placeholder="e.g., EST-1021" />
+        </div>
+
+        <div>
+          <label>Status Folder</label>
+          <select id="mStatus"></select>
+        </div>
+
+        <div>
+          <label>Estimate Visit Booked In (Date + Time)</label>
+          <input id="mEstVisitDT" type="datetime-local" />
+        </div>
+
+        <div>
+          <label>Works Booked In (Date + Time)</label>
+          <input id="mWorksDT" type="datetime-local" />
+        </div>
+
+        <div>
+          <label>Invoice Ref (optional)</label>
+          <input id="mInvRef" placeholder="Optional" />
+        </div>
+
+        <div>
+          <label>Phone Number (optional)</label>
+          <input id="mPhone" inputmode="tel" placeholder="e.g., 07..." />
+        </div>
+
+        <div style="grid-column:1/-1">
+          <label>Notes</label>
+          <textarea id="mNotes" placeholder="Access info, parts needed, tenant details, etc."></textarea>
         </div>
       </div>
 
-      <div class="row" style="flex:1; justify-content:flex-end">
-        <input id="search" placeholder="Search jobs..." style="max-width:360px" />
-        <button id="addBtn" class="primary" type="button">Add Job</button>
-        <button id="exportBtn" type="button">Export CSV</button>
+      <div class="modalActions">
+        <button id="deleteBtn" class="danger" type="button" style="display:none">Delete Job</button>
+        <button id="saveJobBtn" class="ok" type="button">Save</button>
       </div>
     </div>
   </div>
-</header>
 
-<input id="logoInput" type="file" accept="image/*" style="display:none" />
-
-<main>
-  <div class="card">
-    <div class="toolbar">
-      <div class="row">
-        <span class="pill"><strong>Total Jobs:</strong> <span id="totalCount">0</span></span>
-        <span class="pill"><strong>Saved:</strong> <span id="savedStatus">—</span></span>
-      </div>
-      <div class="small">Workflow starts at Requires Estimate. Clear All removed.</div>
-    </div>
-
-    <div class="bookings">
-      <div class="bookingsHead">
-        <div style="font-weight:950; letter-spacing:.3px">Booked In List (Upcoming)</div>
-        <div class="small">Estimate visit bookings + works bookings</div>
-      </div>
-      <div id="bookingsList" class="bookingsList"></div>
-      <div id="bookingsEmpty" class="small" style="display:none">No upcoming bookings yet.</div>
-    </div>
-
-    <div class="board" id="board"></div>
-    <div class="hint">Install to Home Screen for app mode.</div>
-  </div>
-</main>
-
-<!-- Add/Edit Modal -->
-<div class="modalBack" id="modalBack">
-  <div class="modal">
-    <div class="modalHead">
-      <h2 id="modalTitle">Add Job</h2>
-      <button type="button" id="closeModal">Close</button>
-    </div>
-
-    <div class="grid2">
-      <div>
-        <label>Letting Agent</label>
-        <input id="mAgent" placeholder="e.g., Romans" />
-      </div>
-      <div>
-        <label>Job Reference</label>
-        <input id="mRef" placeholder="Optional" />
-      </div>
-
-      <div style="grid-column:1/-1">
-        <label>Property Address</label>
-        <input id="mAddress" placeholder="Full address" />
+  <!-- Quick Date/Time Modal -->
+  <div class="modalBack" id="quickBack">
+    <div class="modal" style="width:min(520px, 100%)">
+      <div class="modalHead">
+        <h2 id="quickTitle">Set Booking</h2>
+        <button type="button" id="quickClose">Close</button>
       </div>
 
       <div>
-        <label>Estimate Number</label>
-        <input id="mEstNo" placeholder="e.g., EST-1021" />
+        <label id="quickLabel">Choose date + time</label>
+        <input id="quickDT" type="datetime-local" />
+        <div class="small" style="margin-top:8px">Pick the date, then pick the time.</div>
       </div>
 
-      <div>
-        <label>Status Folder</label>
-        <select id="mStatus"></select>
+      <div class="modalActions">
+        <button id="quickSave" class="ok" type="button">Save</button>
       </div>
-
-      <div>
-        <label>Estimate Visit Booked In (Date + Time)</label>
-        <input id="mEstVisitDT" type="datetime-local" />
-      </div>
-
-      <div>
-        <label>Works Booked In (Date + Time)</label>
-        <input id="mWorksDT" type="datetime-local" />
-      </div>
-
-      <div>
-        <label>Invoice Ref (optional)</label>
-        <input id="mInvRef" placeholder="Optional" />
-      </div>
-
-      <div>
-        <label>Phone Number (optional)</label>
-        <input id="mPhone" inputmode="tel" placeholder="e.g., 07..." />
-      </div>
-
-      <div style="grid-column:1/-1">
-        <label>Notes</label>
-        <textarea id="mNotes" placeholder="Access info, parts needed, tenant details, etc."></textarea>
-      </div>
-    </div>
-
-    <div class="modalActions">
-      <button id="deleteBtn" class="danger" type="button" style="display:none">Delete Job</button>
-      <button id="saveJobBtn" class="ok" type="button">Save</button>
     </div>
   </div>
-</div>
 
-<!-- Quick Date/Time Modal -->
-<div class="modalBack" id="quickBack">
-  <div class="modal" style="width:min(520px, 100%)">
-    <div class="modalHead">
-      <h2 id="quickTitle">Set Booking</h2>
-      <button type="button" id="quickClose">Close</button>
-    </div>
-
-    <div>
-      <label id="quickLabel">Choose date + time</label>
-      <input id="quickDT" type="datetime-local" />
-      <div class="small" style="margin-top:8px">Pick the date, then pick the time.</div>
-    </div>
-
-    <div class="modalActions">
-      <button id="quickSave" class="ok" type="button">Save</button>
-    </div>
-  </div>
-</div>
-
+  <!-- Dashboard button (inside body) -->
+  <a href="../dashboard/" style="
+    position:fixed;
+    top:10px;
+    left:10px;
+    z-index:9999;
+    font-weight:900;
+    color:#9ecbff;
+    text-decoration:none;
+    border:1px solid rgba(255,255,255,.2);
+    padding:8px 12px;
+    border-radius:12px;
+    background:#0b1220;
+  ">🏠 Dashboard</a>
 
   <script type="module">
-  // Firebase (Modular SDK) - imports
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    // Firebase (Modular SDK) - imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-  // TODO (next step): paste your firebaseConfig here + init app/auth/db
     // Firebase config (from your existing Firebase project)
-const firebaseConfig = {
-  apiKey: "PASTE_FROM_FIREBASE",
-  authDomain: "PASTE_FROM_FIREBASE",
-  projectId: "PASTE_FROM_FIREBASE",
-  storageBucket: "PASTE_FROM_FIREBASE",
-  messagingSenderId: "PASTE_FROM_FIREBASE",
-  appId: "PASTE_FROM_FIREBASE"
-};
-async function loadJobsFromCloud() {
-  if (!currentUserId) return;
+    const firebaseConfig = {
+      apiKey: "PASTE_FROM_FIREBASE",
+      authDomain: "PASTE_FROM_FIREBASE",
+      projectId: "PASTE_FROM_FIREBASE",
+      storageBucket: "PASTE_FROM_FIREBASE",
+      messagingSenderId: "PASTE_FROM_FIREBASE",
+      appId: "PASTE_FROM_FIREBASE"
+    };
 
-  try {
-    const ref = doc(db, "jobsBoard", "shared");
-    const snap = await getDoc(ref);
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    if (snap.exists()) {
-      const data = snap.data();
-      if (Array.isArray(data.jobs)) {
-        jobs = data.jobs;
-        save();   // keep local + calendar + cloud in sync
-        render();
-        cloudLoaded = true;
-        console.log("Jobs loaded from cloud:", jobs.length);
-      }
-    
-    else {
-  console.log("No cloud jobs yet – using local data");
-  cloudLoaded = true;
-    }
-      
-    }
-  } catch (err) {
-    console.error("Failed to load jobs from cloud", err);
-  }
-}
-    async function saveJobsToCloud() {
-  if (!currentUserId) return;
-
-  try {
-    const ref = doc(db, "jobsBoard", "shared");
-    await setDoc(ref, {
-      jobs: jobs,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    console.log("Jobs saved to cloud:", jobs.length);
-  } catch (err) {
-    console.error("Failed to save jobs to cloud", err);
-  }
-    }
-// Init Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
     let currentUserId = null;
     let cloudLoaded = false;
+    let pendingCloudSave = false;
 
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUserId = user.uid;
-    loadJobsFromCloud();
-  } else {
-  console.log("Not logged in – waiting for login");
-  }
-});
-
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
-  }
-
-  // Workflow starts at Requires Estimate
-  const STATUSES = [
-    { key: "req_est", label: "Requires Estimate" },
-    { key: "est_visit_booked", label: "Estimate Visit Booked In" },
-    { key: "attended_est_required", label: "Attended – Estimate Required" },
-    { key: "est_complete", label: "Estimate Complete" },
-    { key: "est_accepted", label: "Estimate Accepted" },
-    { key: "est_not_accepted", label: "Estimate Not Accepted" },
-    { key: "works_booked", label: "Works Booked In" },
-    { key: "works_done_invoice_required", label: "Works Completed – Invoice Required" },
-    { key: "invoice_sent_complete", label: "Invoice Sent & Complete" },
-    { key: "invoice_paid", label: "Invoice Paid" }
-  ];
-  const STAGE_ORDER = STATUSES.map(s => s.key);
-
-  function pad2(n){ return String(n).padStart(2,'0'); }
-  function nowStamp(){
-    const d = new Date();
-    return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-  }
-  function uid(){ return "job_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16); }
-  function escapeHtml(str){
-    return String(str ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-  function ukDT(dtLocal){
-    if(!dtLocal) return "";
-    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(dtLocal);
-    if(!m) return "";
-    return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
-  }
-  function toMillis(dtLocal){
-    if(!dtLocal) return null;
-    const d = new Date(dtLocal);
-    const t = d.getTime();
-    return Number.isFinite(t) ? t : null;
-  }
-  function statusLabel(key){
-    return (STATUSES.find(s=>s.key===key)?.label) || key;
-  }
-
-  // phone sanitiser for tel: links
-  function telSan(s){
-    return String(s || "").trim().replace(/[^\d+]/g, "");
-  }
-
-  const boardEl = document.getElementById('board');
-  const totalCountEl = document.getElementById('totalCount');
-  const savedStatusEl = document.getElementById('savedStatus');
-  const searchEl = document.getElementById('search');
-
-  const bookingsListEl = document.getElementById('bookingsList');
-  const bookingsEmptyEl = document.getElementById('bookingsEmpty');
-
-  const addBtn = document.getElementById('addBtn');
-  const exportBtn = document.getElementById('exportBtn');
-
-  const modalBack = document.getElementById('modalBack');
-  const closeModal = document.getElementById('closeModal');
-  const modalTitle = document.getElementById('modalTitle');
-  const deleteBtn = document.getElementById('deleteBtn');
-  const saveJobBtn = document.getElementById('saveJobBtn');
-
-  const mAgent = document.getElementById('mAgent');
-  const mRef = document.getElementById('mRef');
-  const mAddress = document.getElementById('mAddress');
-  const mEstNo = document.getElementById('mEstNo');
-  const mStatus = document.getElementById('mStatus');
-  const mEstVisitDT = document.getElementById('mEstVisitDT');
-  const mWorksDT = document.getElementById('mWorksDT');
-  const mInvRef = document.getElementById('mInvRef');
-  const mPhone = document.getElementById('mPhone');
-  const mNotes = document.getElementById('mNotes');
-
-  const logoBox = document.getElementById('logoBox');
-  const logoInput = document.getElementById('logoInput');
-  const logoImg = document.getElementById('logoImg');
-  const logoFallback = document.getElementById('logoFallback');
-
-  const quickBack = document.getElementById('quickBack');
-  const quickClose = document.getElementById('quickClose');
-  const quickTitle = document.getElementById('quickTitle');
-  const quickLabel = document.getElementById('quickLabel');
-  const quickDT = document.getElementById('quickDT');
-  const quickSave = document.getElementById('quickSave');
-
-  // Status dropdown
-  STATUSES.forEach(s=>{
-    const o = document.createElement('option');
-    o.value = s.key;
-    o.textContent = s.label;
-    mStatus.appendChild(o);
-  });
-
-  // Shared logo
-  const savedLogo = localStorage.getItem('fps_logo_v1');
-  if(savedLogo){
-    logoImg.src = savedLogo;
-    logoImg.style.display = 'block';
-    logoFallback.style.display = 'none';
-  }
-  async function fileToDataURL(file, maxDim=900, quality=0.90){
-    const img = await new Promise((res, rej)=>{
-      const i = new Image();
-      i.onload=()=>res(i);
-      i.onerror=rej;
-      i.src = URL.createObjectURL(file);
-    });
-    const c = document.createElement('canvas');
-    let {width:w, height:h} = img;
-    const scale = Math.min(1, maxDim / Math.max(w,h));
-    w = Math.round(w*scale); h = Math.round(h*scale);
-    c.width=w; c.height=h;
-    c.getContext('2d').drawImage(img,0,0,w,h);
-    const url = c.toDataURL('image/jpeg', quality);
-    URL.revokeObjectURL(img.src);
-    return url;
-  }
-  logoBox.addEventListener('click', ()=> logoInput.click());
-  logoInput.addEventListener('change', async (e)=>{
-    const f = e.target.files && e.target.files[0];
-    if(!f) return;
-    const url = await fileToDataURL(f, 900, 0.90);
-    localStorage.setItem('fps_logo_v1', url);
-    logoImg.src = url;
-    logoImg.style.display = 'block';
-    logoFallback.style.display = 'none';
-  });
-
-  // Data
-  const STORAGE_KEY = "fps_jobs_board_workflow_v7";
-  let jobs = [];
-  let editingId = null;
-
-  function migrateJob(j){
-    if(!j || typeof j !== "object") return j;
-    j.estNo = j.estNo || "";
-    j.estVisitDT = j.estVisitDT || "";
-    j.worksDT = j.worksDT || j.estWorkDT || "";
-    j.invRef = j.invRef || "";
-    j.phone = j.phone || "";
-    j.notes = j.notes || "";
-    j.agent = j.agent || "";
-    j.ref = j.ref || "";
-    j.address = j.address || "";
-    j.createdAt = j.createdAt || new Date().toISOString();
-    j.updatedAt = j.updatedAt || new Date().toISOString();
-    if(!j.status || !STAGE_ORDER.includes(j.status)) j.status = "req_est";
-    return j;
-  }
-
-  function save(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
-  savedStatusEl.textContent = nowStamp();
-  syncCalendarFeed(jobs);
-  saveJobsToCloud(); // 🔥 THIS is the key line
-  }
-
-  function load(){
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      jobs = JSON.parse(raw).map(migrateJob);
-      savedStatusEl.textContent = "Loaded";
-      return;
+    // PWA service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
     }
-    const fallbackKeys = ["fps_jobs_board_workflow_v6","fps_jobs_board_workflow_v5","fps_jobs_board_workflow_v4","fps_jobs_board_workflow_v3"];
-    for(const k of fallbackKeys){
-      const r = localStorage.getItem(k);
-      if(r){
-        jobs = JSON.parse(r).map(migrateJob);
-        savedStatusEl.textContent = "Loaded (migrated)";
-        save();
+
+    // Workflow starts at Requires Estimate
+    const STATUSES = [
+      { key: "req_est", label: "Requires Estimate" },
+      { key: "est_visit_booked", label: "Estimate Visit Booked In" },
+      { key: "attended_est_required", label: "Attended – Estimate Required" },
+      { key: "est_complete", label: "Estimate Complete" },
+      { key: "est_accepted", label: "Estimate Accepted" },
+      { key: "est_not_accepted", label: "Estimate Not Accepted" },
+      { key: "works_booked", label: "Works Booked In" },
+      { key: "works_done_invoice_required", label: "Works Completed – Invoice Required" },
+      { key: "invoice_sent_complete", label: "Invoice Sent & Complete" },
+      { key: "invoice_paid", label: "Invoice Paid" }
+    ];
+    const STAGE_ORDER = STATUSES.map(s => s.key);
+
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function nowStamp(){
+      const d = new Date();
+      return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    }
+    function uid(){ return "job_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16); }
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+    function ukDT(dtLocal){
+      if(!dtLocal) return "";
+      const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(dtLocal);
+      if(!m) return "";
+      return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+    }
+    function toMillis(dtLocal){
+      if(!dtLocal) return null;
+      const d = new Date(dtLocal);
+      const t = d.getTime();
+      return Number.isFinite(t) ? t : null;
+    }
+    function statusLabel(key){
+      return (STATUSES.find(s=>s.key===key)?.label) || key;
+    }
+
+    // phone sanitiser for tel: links
+    function telSan(s){
+      return String(s || "").trim().replace(/[^\d+]/g, "");
+    }
+
+    const boardEl = document.getElementById('board');
+    const totalCountEl = document.getElementById('totalCount');
+    const savedStatusEl = document.getElementById('savedStatus');
+    const searchEl = document.getElementById('search');
+
+    const bookingsListEl = document.getElementById('bookingsList');
+    const bookingsEmptyEl = document.getElementById('bookingsEmpty');
+
+    const addBtn = document.getElementById('addBtn');
+    const exportBtn = document.getElementById('exportBtn');
+
+    const modalBack = document.getElementById('modalBack');
+    const closeModal = document.getElementById('closeModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const saveJobBtn = document.getElementById('saveJobBtn');
+
+    const mAgent = document.getElementById('mAgent');
+    const mRef = document.getElementById('mRef');
+    const mAddress = document.getElementById('mAddress');
+    const mEstNo = document.getElementById('mEstNo');
+    const mStatus = document.getElementById('mStatus');
+    const mEstVisitDT = document.getElementById('mEstVisitDT');
+    const mWorksDT = document.getElementById('mWorksDT');
+    const mInvRef = document.getElementById('mInvRef');
+    const mPhone = document.getElementById('mPhone');
+    const mNotes = document.getElementById('mNotes');
+
+    const logoBox = document.getElementById('logoBox');
+    const logoInput = document.getElementById('logoInput');
+    const logoImg = document.getElementById('logoImg');
+    const logoFallback = document.getElementById('logoFallback');
+
+    const quickBack = document.getElementById('quickBack');
+    const quickClose = document.getElementById('quickClose');
+    const quickTitle = document.getElementById('quickTitle');
+    const quickLabel = document.getElementById('quickLabel');
+    const quickDT = document.getElementById('quickDT');
+    const quickSave = document.getElementById('quickSave');
+
+    // Status dropdown
+    STATUSES.forEach(s=>{
+      const o = document.createElement('option');
+      o.value = s.key;
+      o.textContent = s.label;
+      mStatus.appendChild(o);
+    });
+
+    // Shared logo
+    const savedLogo = localStorage.getItem('fps_logo_v1');
+    if(savedLogo){
+      logoImg.src = savedLogo;
+      logoImg.style.display = 'block';
+      logoFallback.style.display = 'none';
+    }
+    async function fileToDataURL(file, maxDim=900, quality=0.90){
+      const img = await new Promise((res, rej)=>{
+        const i = new Image();
+        i.onload=()=>res(i);
+        i.onerror=rej;
+        i.src = URL.createObjectURL(file);
+      });
+      const c = document.createElement('canvas');
+      let {width:w, height:h} = img;
+      const scale = Math.min(1, maxDim / Math.max(w,h));
+      w = Math.round(w*scale); h = Math.round(h*scale);
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const url = c.toDataURL('image/jpeg', quality);
+      URL.revokeObjectURL(img.src);
+      return url;
+    }
+    logoBox.addEventListener('click', ()=> logoInput.click());
+    logoInput.addEventListener('change', async (e)=>{
+      const f = e.target.files && e.target.files[0];
+      if(!f) return;
+      const url = await fileToDataURL(f, 900, 0.90);
+      localStorage.setItem('fps_logo_v1', url);
+      logoImg.src = url;
+      logoImg.style.display = 'block';
+      logoFallback.style.display = 'none';
+    });
+
+    // Data
+    const STORAGE_KEY = "fps_jobs_board_workflow_v7";
+    let jobs = [];
+    let editingId = null;
+
+    function migrateJob(j){
+      if(!j || typeof j !== "object") return j;
+      j.id = j.id || uid();
+      j.estNo = j.estNo || "";
+      j.estVisitDT = j.estVisitDT || "";
+      j.worksDT = j.worksDT || j.estWorkDT || "";
+      j.invRef = j.invRef || "";
+      j.phone = j.phone || "";
+      j.notes = j.notes || "";
+      j.agent = j.agent || "";
+      j.ref = j.ref || "";
+      j.address = j.address || "";
+      j.createdAt = j.createdAt || new Date().toISOString();
+      j.updatedAt = j.updatedAt || new Date().toISOString();
+      if(!j.status || !STAGE_ORDER.includes(j.status)) j.status = "req_est";
+      return j;
+    }
+
+    // ===== Cloud sync (shared doc for your team) =====
+    async function loadJobsFromCloud() {
+      if (!currentUserId) return;
+
+      try {
+        const ref = doc(db, "jobsBoard", "shared");
+        const snap = await getDoc(ref);
+
+        if (!snap.exists()) {
+          console.log("No cloud document yet – using local data");
+          cloudLoaded = true;
+          if (pendingCloudSave) { pendingCloudSave = false; await saveJobsToCloud(); }
+          return;
+        }
+
+        const data = snap.data();
+        if (Array.isArray(data.jobs)) {
+          jobs = data.jobs.map(migrateJob);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+          savedStatusEl.textContent = "Loaded from cloud";
+          renderAll();
+          console.log("Jobs loaded from cloud:", jobs.length);
+        } else {
+          console.log("Cloud doc exists but has no jobs array – using local data");
+        }
+
+        cloudLoaded = true;
+        if (pendingCloudSave) { pendingCloudSave = false; await saveJobsToCloud(); }
+      } catch (err) {
+        console.error("Failed to load jobs from cloud", err);
+        cloudLoaded = true;
+        if (pendingCloudSave) { pendingCloudSave = false; await saveJobsToCloud(); }
+      }
+    }
+
+    async function saveJobsToCloud() {
+      if (!currentUserId) return;
+
+      try {
+        const ref = doc(db, "jobsBoard", "shared");
+        await setDoc(ref, {
+          jobs: jobs,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        console.log("Jobs saved to cloud:", jobs.length);
+      } catch (err) {
+        console.error("Failed to save jobs to cloud", err);
+      }
+    }
+
+    // Auth: sign in anonymously so it works on any device (enable Anonymous provider in Firebase Auth)
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        await loadJobsFromCloud();
+      } else {
+        console.log("Not logged in – signing in anonymously...");
+        try { await signInAnonymously(auth); } catch(e){ console.error("Anonymous sign-in failed", e); }
+      }
+    });
+
+    function save(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+      savedStatusEl.textContent = nowStamp();
+      syncCalendarFeed(jobs);
+
+      // Don't overwrite cloud before we've loaded it (prevents blank/old local replacing cloud)
+      if (!cloudLoaded) {
+        pendingCloudSave = true;
         return;
       }
-    }
-    jobs = [];
-    savedStatusEl.textContent = "—";
-  }
-
-  function norm(s){ return String(s||"").toLowerCase(); }
-  function matches(job, q){
-    if(!q) return true;
-    q = norm(q);
-    return [job.agent, job.ref, job.address, job.notes, job.estNo, job.invRef, job.phone, job.estVisitDT, job.worksDT]
-      .some(x => norm(x).includes(q));
-  }
-
-  // Modal
-  function openModal(){ modalBack.style.display = 'flex'; }
-  function closeModalFn(){ modalBack.style.display = 'none'; }
-  function clearModal(){
-    editingId = null;
-    modalTitle.textContent = "Add Job";
-    deleteBtn.style.display = 'none';
-    mAgent.value = "";
-    mRef.value = "";
-    mAddress.value = "";
-    mEstNo.value = "";
-    mStatus.value = "req_est";
-    mEstVisitDT.value = "";
-    mWorksDT.value = "";
-    mInvRef.value = "";
-    mPhone.value = "";
-    mNotes.value = "";
-  }
-  function openAdd(){ clearModal(); openModal(); }
-  function openEdit(id){
-    const job = jobs.find(j=>j.id===id);
-    if(!job) return;
-    editingId = id;
-    modalTitle.textContent = "Edit Job";
-    deleteBtn.style.display = 'inline-block';
-    mAgent.value = job.agent || "";
-    mRef.value = job.ref || "";
-    mAddress.value = job.address || "";
-    mEstNo.value = job.estNo || "";
-    mStatus.value = job.status || "req_est";
-    mEstVisitDT.value = job.estVisitDT || "";
-    mWorksDT.value = job.worksDT || "";
-    mInvRef.value = job.invRef || "";
-    mPhone.value = job.phone || "";
-    mNotes.value = job.notes || "";
-    openModal();
-  }
-  function upsertJob(){
-    const payload = {
-      id: editingId || uid(),
-      agent: mAgent.value.trim(),
-      ref: mRef.value.trim(),
-      address: mAddress.value.trim(),
-      estNo: mEstNo.value.trim(),
-      status: mStatus.value,
-      estVisitDT: mEstVisitDT.value || "",
-      worksDT: mWorksDT.value || "",
-      invRef: mInvRef.value.trim(),
-      phone: mPhone.value.trim(),
-      notes: mNotes.value.trim(),
-      updatedAt: new Date().toISOString()
-    };
-    if(!payload.address){
-      if(!confirm("No address entered. Save anyway?")) return;
-    }
-    if(editingId){
-      const i = jobs.findIndex(j=>j.id===editingId);
-      if(i>=0) jobs[i] = { ...jobs[i], ...payload };
-    }else{
-      payload.createdAt = new Date().toISOString();
-      jobs.unshift(payload);
-    }
-    save(); renderAll(); closeModalFn();
-  }
-  function deleteJob(){
-    if(!editingId) return;
-    if(!confirm("Delete this job?")) return;
-    jobs = jobs.filter(j=>j.id!==editingId);
-    save(); renderAll(); closeModalFn();
-  }
-
-  // Quick booking modal (estimate visit OR works)
-  let quickJobId = null;
-  let quickMode = null; // "estVisitDT" | "worksDT"
-  function openQuick(jobId, mode){
-    const job = jobs.find(j=>j.id===jobId);
-    if(!job) return;
-    quickJobId = jobId;
-    quickMode = mode;
-
-    if(mode === "estVisitDT"){
-      quickTitle.textContent = "Book Estimate Visit";
-      quickLabel.textContent = "Choose estimate visit date + time";
-      quickDT.value = job.estVisitDT || "";
-    } else {
-      quickTitle.textContent = "Works Booked In";
-      quickLabel.textContent = "Choose works date + time";
-      quickDT.value = job.worksDT || "";
-    }
-    quickBack.style.display = "flex";
-  }
-  function closeQuick(){
-    quickBack.style.display = "none";
-    quickJobId = null;
-    quickMode = null;
-    quickDT.value = "";
-  }
-  quickClose.addEventListener('click', closeQuick);
-  quickBack.addEventListener('click', (e)=>{ if(e.target===quickBack) closeQuick(); });
-
-  quickSave.addEventListener('click', ()=>{
-    const job = jobs.find(j=>j.id===quickJobId);
-    if(!job) return closeQuick();
-    if(!quickDT.value){
-      alert("Please choose a date and time.");
-      return;
+      saveJobsToCloud();
     }
 
-    if(quickMode === "estVisitDT"){
-      job.estVisitDT = quickDT.value;
-      job.status = "est_visit_booked";
-    } else {
-      job.worksDT = quickDT.value;
-      job.status = "works_booked";
+    function load(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        jobs = JSON.parse(raw).map(migrateJob);
+        savedStatusEl.textContent = "Loaded";
+        return;
+      }
+      const fallbackKeys = ["fps_jobs_board_workflow_v6","fps_jobs_board_workflow_v5","fps_jobs_board_workflow_v4","fps_jobs_board_workflow_v3"];
+      for(const k of fallbackKeys){
+        const r = localStorage.getItem(k);
+        if(r){
+          jobs = JSON.parse(r).map(migrateJob);
+          savedStatusEl.textContent = "Loaded (migrated)";
+          save();
+          return;
+        }
+      }
+      jobs = [];
+      savedStatusEl.textContent = "—";
     }
 
-    job.updatedAt = new Date().toISOString();
-    save(); renderAll(); closeQuick();
-  });
-
-  // Move Back
-  function moveBack(job){
-    const idx = STAGE_ORDER.indexOf(job.status);
-    if(idx <= 0) return;
-    job.status = STAGE_ORDER[idx - 1];
-    job.updatedAt = new Date().toISOString();
-    save(); renderAll();
-  }
-
-  // Actions
-  function doAction(job, act){
-    if(act === "move_back") return moveBack(job);
-
-    if(act === "book_est_visit") return openQuick(job.id, "estVisitDT");
-    if(act === "to_attended_est_required") job.status = "attended_est_required";
-    if(act === "to_est_complete") job.status = "est_complete";
-
-    if(act === "to_est_accepted") job.status = "est_accepted";
-    if(act === "to_est_not_accepted") job.status = "est_not_accepted";
-
-    if(act === "book_works") return openQuick(job.id, "worksDT");
-    if(act === "to_works_done_invoice_required") job.status = "works_done_invoice_required";
-    if(act === "to_invoice_sent_complete") job.status = "invoice_sent_complete";
-    if(act === "to_invoice_paid") job.status = "invoice_paid";
-
-    job.updatedAt = new Date().toISOString();
-    save(); renderAll();
-  }
-
-  // Bookings list (estimate visit + works)
-  function renderBookings(filteredJobs){
-    const now = Date.now();
-    const items = [];
-
-    for(const j of filteredJobs){
-      const t2 = toMillis(j.estVisitDT);
-      if(t2 && t2 >= now) items.push({ when: t2, kind: "Estimate Visit", dt: j.estVisitDT, job: j });
-
-      const t3 = toMillis(j.worksDT);
-      if(t3 && t3 >= now) items.push({ when: t3, kind: "Works Booking", dt: j.worksDT, job: j });
+    function norm(s){ return String(s||"").toLowerCase(); }
+    function matches(job, q){
+      if(!q) return true;
+      q = norm(q);
+      return [job.agent, job.ref, job.address, job.notes, job.estNo, job.invRef, job.phone, job.estVisitDT, job.worksDT]
+        .some(x => norm(x).includes(q));
     }
 
-    items.sort((a,b)=>a.when-b.when);
-
-    bookingsListEl.innerHTML = "";
-    if(items.length === 0){
-      bookingsEmptyEl.style.display = "block";
-      return;
+    // Modal
+    function openModal(){ modalBack.style.display = 'flex'; }
+    function closeModalFn(){ modalBack.style.display = 'none'; }
+    function clearModal(){
+      editingId = null;
+      modalTitle.textContent = "Add Job";
+      deleteBtn.style.display = 'none';
+      mAgent.value = "";
+      mRef.value = "";
+      mAddress.value = "";
+      mEstNo.value = "";
+      mStatus.value = "req_est";
+      mEstVisitDT.value = "";
+      mWorksDT.value = "";
+      mInvRef.value = "";
+      mPhone.value = "";
+      mNotes.value = "";
     }
-    bookingsEmptyEl.style.display = "none";
+    function openAdd(){ clearModal(); openModal(); }
+    function openEdit(id){
+      const job = jobs.find(j=>j.id===id);
+      if(!job) return;
+      editingId = id;
+      modalTitle.textContent = "Edit Job";
+      deleteBtn.style.display = 'inline-block';
+      mAgent.value = job.agent || "";
+      mRef.value = job.ref || "";
+      mAddress.value = job.address || "";
+      mEstNo.value = job.estNo || "";
+      mStatus.value = job.status || "req_est";
+      mEstVisitDT.value = job.estVisitDT || "";
+      mWorksDT.value = job.worksDT || "";
+      mInvRef.value = job.invRef || "";
+      mPhone.value = job.phone || "";
+      mNotes.value = job.notes || "";
+      openModal();
+    }
+    function upsertJob(){
+      const payload = {
+        id: editingId || uid(),
+        agent: mAgent.value.trim(),
+        ref: mRef.value.trim(),
+        address: mAddress.value.trim(),
+        estNo: mEstNo.value.trim(),
+        status: mStatus.value,
+        estVisitDT: mEstVisitDT.value || "",
+        worksDT: mWorksDT.value || "",
+        invRef: mInvRef.value.trim(),
+        phone: mPhone.value.trim(),
+        notes: mNotes.value.trim(),
+        updatedAt: new Date().toISOString()
+      };
+      if(!payload.address){
+        if(!confirm("No address entered. Save anyway?")) return;
+      }
+      if(editingId){
+        const i = jobs.findIndex(j=>j.id===editingId);
+        if(i>=0) jobs[i] = { ...jobs[i], ...payload };
+      }else{
+        payload.createdAt = new Date().toISOString();
+        jobs.unshift(payload);
+      }
+      save(); renderAll(); closeModalFn();
+    }
+    function deleteJob(){
+      if(!editingId) return;
+      if(!confirm("Delete this job?")) return;
+      jobs = jobs.filter(j=>j.id!==editingId);
+      save(); renderAll(); closeModalFn();
+    }
 
-    items.slice(0, 14).forEach(it=>{
-      const title = it.job.address?.trim() ? it.job.address.trim() : "(No address)";
-      const agent = it.job.agent?.trim() ? it.job.agent.trim() : "-";
-      const ref = it.job.ref?.trim() ? it.job.ref.trim() : "-";
-      const estNo = it.job.estNo?.trim() ? it.job.estNo.trim() : "";
+    // Quick booking modal (estimate visit OR works)
+    let quickJobId = null;
+    let quickMode = null; // "estVisitDT" | "worksDT"
+    function openQuick(jobId, mode){
+      const job = jobs.find(j=>j.id===jobId);
+      if(!job) return;
+      quickJobId = jobId;
+      quickMode = mode;
 
-      const el = document.createElement("div");
-      el.className = "bookingItem";
-      el.innerHTML = `
-        <div>
-          <b>${escapeHtml(it.kind)} • ${escapeHtml(ukDT(it.dt))}</b>
-          <div class="small">${escapeHtml(title)}${estNo ? " • Est: " + escapeHtml(estNo) : ""}</div>
-          <div class="small">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
-        </div>
-        <div class="row">
-          <button type="button">Open</button>
-        </div>
-      `;
-      el.querySelector("button").addEventListener("click", ()=> openEdit(it.job.id));
-      bookingsListEl.appendChild(el);
+      if(mode === "estVisitDT"){
+        quickTitle.textContent = "Book Estimate Visit";
+        quickLabel.textContent = "Choose estimate visit date + time";
+        quickDT.value = job.estVisitDT || "";
+      } else {
+        quickTitle.textContent = "Works Booked In";
+        quickLabel.textContent = "Choose works date + time";
+        quickDT.value = job.worksDT || "";
+      }
+      quickBack.style.display = "flex";
+    }
+    function closeQuick(){
+      quickBack.style.display = "none";
+      quickJobId = null;
+      quickMode = null;
+      quickDT.value = "";
+    }
+    quickClose.addEventListener('click', closeQuick);
+    quickBack.addEventListener('click', (e)=>{ if(e.target===quickBack) closeQuick(); });
+
+    quickSave.addEventListener('click', ()=>{
+      const job = jobs.find(j=>j.id===quickJobId);
+      if(!job) return closeQuick();
+      if(!quickDT.value){
+        alert("Please choose a date and time.");
+        return;
+      }
+
+      if(quickMode === "estVisitDT"){
+        job.estVisitDT = quickDT.value;
+        job.status = "est_visit_booked";
+      } else {
+        job.worksDT = quickDT.value;
+        job.status = "works_booked";
+      }
+
+      job.updatedAt = new Date().toISOString();
+      save(); renderAll(); closeQuick();
     });
-  }
 
-  function renderBoard(filteredJobs){
-    boardEl.innerHTML = "";
+    // Move Back
+    function moveBack(job){
+      const idx = STAGE_ORDER.indexOf(job.status);
+      if(idx <= 0) return;
+      job.status = STAGE_ORDER[idx - 1];
+      job.updatedAt = new Date().toISOString();
+      save(); renderAll();
+    }
 
-    STATUSES.forEach(status=>{
-      const col = document.createElement('div');
-      col.className = 'col';
+    // Actions
+    function doAction(job, act){
+      if(act === "move_back") return moveBack(job);
 
-      const list = filteredJobs.filter(j=>j.status===status.key);
+      if(act === "book_est_visit") return openQuick(job.id, "estVisitDT");
+      if(act === "to_attended_est_required") job.status = "attended_est_required";
+      if(act === "to_est_complete") job.status = "est_complete";
 
-      const head = document.createElement('div');
-      head.className = 'colHead';
-      head.innerHTML = `<div class="colTitle">${status.label}</div><div class="count">${list.length}</div>`;
-      col.appendChild(head);
+      if(act === "to_est_accepted") job.status = "est_accepted";
+      if(act === "to_est_not_accepted") job.status = "est_not_accepted";
 
-      list.forEach(job=>{
-        const el = document.createElement('div');
-        el.className = 'job';
+      if(act === "book_works") return openQuick(job.id, "worksDT");
+      if(act === "to_works_done_invoice_required") job.status = "works_done_invoice_required";
+      if(act === "to_invoice_sent_complete") job.status = "invoice_sent_complete";
+      if(act === "to_invoice_paid") job.status = "invoice_paid";
 
-        const title = job.address?.trim() ? job.address.trim() : "(No address)";
-        const agent = job.agent?.trim() ? job.agent.trim() : "-";
-        const ref = job.ref?.trim() ? job.ref.trim() : "-";
-        const estNo = job.estNo?.trim() ? job.estNo.trim() : "";
+      job.updatedAt = new Date().toISOString();
+      save(); renderAll();
+    }
 
-        const chips = [];
-        if(job.estVisitDT) chips.push(`Est visit: ${ukDT(job.estVisitDT)}`);
-        if(job.worksDT) chips.push(`Works: ${ukDT(job.worksDT)}`);
-        if(estNo) chips.push(`Estimate No: ${estNo}`);
-        if(job.invRef) chips.push(`Invoice: ${job.invRef}`);
-        if((job.phone || "").trim()) chips.push(`Phone: ${job.phone.trim()}`);
+    // Bookings list (estimate visit + works)
+    function renderBookings(filteredJobs){
+      const now = Date.now();
+      const items = [];
 
-        const btns = [];
-        btns.push(`<button type="button" data-act="edit">Edit</button>`);
-        btns.push(`<button type="button" class="warn" data-act="move_back">Move Back</button>`);
+      for(const j of filteredJobs){
+        const t2 = toMillis(j.estVisitDT);
+        if(t2 && t2 >= now) items.push({ when: t2, kind: "Estimate Visit", dt: j.estVisitDT, job: j });
 
-        // Call button on specific stages only
-        const canCall = ["req_est","est_visit_booked","est_accepted","works_booked"];
-        if(canCall.includes(job.status) && (job.phone || "").trim()){
-          const tel = telSan(job.phone);
-          if(tel) btns.push(`<a class="callBtn" href="tel:${escapeHtml(tel)}">📞 Call</a>`);
-        }
-// Maps button if address exists
-if(canCall.includes(job.status) && (job.address || "").trim()){
-  const addr = encodeURIComponent(job.address);
-  btns.push(`<a class="mapBtn" href="https://www.google.com/maps/search/?api=1&query=${addr}" target="_blank">🗺️ Open Maps</a>`);
-}
-        if(job.status === "req_est"){
-          btns.push(`<button type="button" class="primary" data-act="book_est_visit">Book Estimate Visit</button>`);
-        }
-        if(job.status === "est_visit_booked"){
-          btns.push(`<button type="button" class="purple" data-act="to_attended_est_required">Attended – Estimate Required</button>`);
-        }
-        if(job.status === "attended_est_required"){
-          btns.push(`<button type="button" class="purple" data-act="to_est_complete">Estimate Complete</button>`);
-        }
-        if(job.status === "est_complete"){
-          btns.push(`<button type="button" class="ok" data-act="to_est_accepted">Accepted</button>`);
-          btns.push(`<button type="button" class="danger" data-act="to_est_not_accepted">Not Accepted</button>`);
-        }
-        if(job.status === "est_accepted"){
-          btns.push(`<button type="button" class="primary" data-act="book_works">Works Booked In</button>`);
-        }
-        if(job.status === "works_booked"){
-          btns.push(`<button type="button" class="ok" data-act="to_works_done_invoice_required">Works Completed – Invoice Required</button>`);
-        }
-        if(job.status === "works_done_invoice_required"){
-          btns.push(`<button type="button" class="ok" data-act="to_invoice_sent_complete">Invoice Sent & Complete</button>`);
-        }
-        if(job.status === "invoice_sent_complete"){
-          btns.push(`<button type="button" class="ok" data-act="to_invoice_paid">Invoice Paid</button>`);
-        }
+        const t3 = toMillis(j.worksDT);
+        if(t3 && t3 >= now) items.push({ when: t3, kind: "Works Booking", dt: j.worksDT, job: j });
+      }
 
+      items.sort((a,b)=>a.when-b.when);
+
+      bookingsListEl.innerHTML = "";
+      if(items.length === 0){
+        bookingsEmptyEl.style.display = "block";
+        return;
+      }
+      bookingsEmptyEl.style.display = "none";
+
+      items.slice(0, 14).forEach(it=>{
+        const title = it.job.address?.trim() ? it.job.address.trim() : "(No address)";
+        const agent = it.job.agent?.trim() ? it.job.agent.trim() : "-";
+        const ref = it.job.ref?.trim() ? it.job.ref.trim() : "-";
+        const estNo = it.job.estNo?.trim() ? it.job.estNo.trim() : "";
+
+        const el = document.createElement("div");
+        el.className = "bookingItem";
         el.innerHTML = `
-          <div class="jobTop">
-            <div>
-              <div class="jobTitle">
-                ${escapeHtml(title)}${estNo ? ` <span style="color:var(--muted);font-weight:800">• Est: ${escapeHtml(estNo)}</span>` : ""}
-              </div>
-              <div class="meta">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
-              ${job.notes ? `<div class="meta" style="margin-top:6px">${escapeHtml(job.notes).slice(0,160)}${job.notes.length>160?'…':''}</div>` : ""}
-              ${chips.length ? `<div class="chip">${escapeHtml(chips.join(" • "))}</div>` : ""}
-            </div>
-            <div class="jobBtns">${btns.join("")}</div>
+          <div>
+            <b>${escapeHtml(it.kind)} • ${escapeHtml(ukDT(it.dt))}</b>
+            <div class="small">${escapeHtml(title)}${estNo ? " • Est: " + escapeHtml(estNo) : ""}</div>
+            <div class="small">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
+          </div>
+          <div class="row">
+            <button type="button">Open</button>
           </div>
         `;
+        el.querySelector("button").addEventListener("click", ()=> openEdit(it.job.id));
+        bookingsListEl.appendChild(el);
+      });
+    }
 
-        el.querySelector('[data-act="edit"]').addEventListener('click', ()=> openEdit(job.id));
-        el.querySelectorAll('[data-act]').forEach(b=>{
-          const act = b.getAttribute('data-act');
-          if(act === "edit") return;
-          b.addEventListener('click', ()=> doAction(job, act));
+    function renderBoard(filteredJobs){
+      boardEl.innerHTML = "";
+
+      STATUSES.forEach(status=>{
+        const col = document.createElement('div');
+        col.className = 'col';
+
+        const list = filteredJobs.filter(j=>j.status===status.key);
+
+        const head = document.createElement('div');
+        head.className = 'colHead';
+        head.innerHTML = `<div class="colTitle">${status.label}</div><div class="count">${list.length}</div>`;
+        col.appendChild(head);
+
+        list.forEach(job=>{
+          const el = document.createElement('div');
+          el.className = 'job';
+
+          const title = job.address?.trim() ? job.address.trim() : "(No address)";
+          const agent = job.agent?.trim() ? job.agent.trim() : "-";
+          const ref = job.ref?.trim() ? job.ref.trim() : "-";
+          const estNo = job.estNo?.trim() ? job.estNo.trim() : "";
+
+          const chips = [];
+          if(job.estVisitDT) chips.push(`Est visit: ${ukDT(job.estVisitDT)}`);
+          if(job.worksDT) chips.push(`Works: ${ukDT(job.worksDT)}`);
+          if(estNo) chips.push(`Estimate No: ${estNo}`);
+          if(job.invRef) chips.push(`Invoice: ${job.invRef}`);
+          if((job.phone || "").trim()) chips.push(`Phone: ${job.phone.trim()}`);
+
+          const btns = [];
+          btns.push(`<button type="button" data-act="edit">Edit</button>`);
+          btns.push(`<button type="button" class="warn" data-act="move_back">Move Back</button>`);
+
+          // Call + Maps button on specific stages only
+          const canCall = ["req_est","est_visit_booked","est_accepted","works_booked"];
+          if(canCall.includes(job.status) && (job.phone || "").trim()){
+            const tel = telSan(job.phone);
+            if(tel) btns.push(`<a class="callBtn" href="tel:${escapeHtml(tel)}">📞 Call</a>`);
+          }
+          if(canCall.includes(job.status) && (job.address || "").trim()){
+            const addr = encodeURIComponent(job.address);
+            btns.push(`<a class="mapBtn" href="https://www.google.com/maps/search/?api=1&query=${addr}" target="_blank">🗺️ Open Maps</a>`);
+          }
+
+          if(job.status === "req_est"){
+            btns.push(`<button type="button" class="primary" data-act="book_est_visit">Book Estimate Visit</button>`);
+          }
+          if(job.status === "est_visit_booked"){
+            btns.push(`<button type="button" class="purple" data-act="to_attended_est_required">Attended – Estimate Required</button>`);
+          }
+          if(job.status === "attended_est_required"){
+            btns.push(`<button type="button" class="purple" data-act="to_est_complete">Estimate Complete</button>`);
+          }
+          if(job.status === "est_complete"){
+            btns.push(`<button type="button" class="ok" data-act="to_est_accepted">Accepted</button>`);
+            btns.push(`<button type="button" class="danger" data-act="to_est_not_accepted">Not Accepted</button>`);
+          }
+          if(job.status === "est_accepted"){
+            btns.push(`<button type="button" class="primary" data-act="book_works">Works Booked In</button>`);
+          }
+          if(job.status === "works_booked"){
+            btns.push(`<button type="button" class="ok" data-act="to_works_done_invoice_required">Works Completed – Invoice Required</button>`);
+          }
+          if(job.status === "works_done_invoice_required"){
+            btns.push(`<button type="button" class="ok" data-act="to_invoice_sent_complete">Invoice Sent & Complete</button>`);
+          }
+          if(job.status === "invoice_sent_complete"){
+            btns.push(`<button type="button" class="ok" data-act="to_invoice_paid">Invoice Paid</button>`);
+          }
+
+          el.innerHTML = `
+            <div class="jobTop">
+              <div>
+                <div class="jobTitle">
+                  ${escapeHtml(title)}${estNo ? ` <span style="color:var(--muted);font-weight:800">• Est: ${escapeHtml(estNo)}</span>` : ""}
+                </div>
+                <div class="meta">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
+                ${job.notes ? `<div class="meta" style="margin-top:6px">${escapeHtml(job.notes).slice(0,160)}${job.notes.length>160?'…':''}</div>` : ""}
+                ${chips.length ? `<div class="chip">${escapeHtml(chips.join(" • "))}</div>` : ""}
+              </div>
+              <div class="jobBtns">${btns.join("")}</div>
+            </div>
+          `;
+
+          el.querySelector('[data-act="edit"]').addEventListener('click', ()=> openEdit(job.id));
+          el.querySelectorAll('[data-act]').forEach(b=>{
+            const act = b.getAttribute('data-act');
+            if(act === "edit") return;
+            b.addEventListener('click', ()=> doAction(job, act));
+          });
+
+          col.appendChild(el);
         });
 
-        col.appendChild(el);
+        boardEl.appendChild(col);
       });
-
-      boardEl.appendChild(col);
-    });
-  }
-
-  function renderAll(){
-    const q = searchEl.value.trim();
-    const filtered = jobs.filter(j => matches(j, q));
-    totalCountEl.textContent = String(filtered.length);
-    renderBookings(filtered);
-    renderBoard(filtered);
-  }
-
-  // CSV export
-  function csvEscape(v){
-    const s = String(v ?? "");
-    if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
-    return s;
-  }
-  function exportCsv(){
-    const header = [
-      "id","status","status_label","letting_agent","job_ref","address","estimate_no",
-      "estimate_visit_dt","works_booked_dt","invoice_ref","phone","notes","created_at","updated_at"
-    ];
-    const rows = jobs.map(j=>[
-      j.id, j.status, statusLabel(j.status),
-      j.agent || "", j.ref || "", j.address || "", j.estNo || "",
-      j.estVisitDT || "", j.worksDT || "",
-      j.invRef || "", j.phone || "",
-      (j.notes || "").replace(/\n/g," "),
-      j.createdAt || "", j.updatedAt || ""
-    ]);
-    const csv = [header, ...rows].map(r=>r.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = "fps_jobs_board.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  // Wire
-  addBtn.addEventListener('click', openAdd);
-  closeModal.addEventListener('click', closeModalFn);
-  modalBack.addEventListener('click', (e)=>{ if(e.target === modalBack) closeModalFn(); });
-  saveJobBtn.addEventListener('click', upsertJob);
-  deleteBtn.addEventListener('click', deleteJob);
-  exportBtn.addEventListener('click', exportCsv);
-  searchEl.addEventListener('input', renderAll);
-
-  // Init
-  load();
-  renderAll();
-
-  // ===== Calendar feed sync (Jobs Board -> Calendar) =====
-  const CAL_FEED_KEY = "fps_calendar_feed_v1";
-  // Convert UK date DD/MM/YYYY → YYYY-MM-DD (for calendar)
-  function ukToISO(dateStr){
-    if(!dateStr) return "";
-    const parts = dateStr.split("/");
-    if(parts.length !== 3) return "";
-    const [dd, mm, yyyy] = parts;
-    if(!dd || !mm || !yyyy) return "";
-    return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
-  }
-
-  function syncCalendarFeed(jobs){
-    try{
-      const feed = {};
-
-      for (const j of (jobs || [])){
-        const rawDate = (
-          j.date ||
-          j.jobDate ||
-          j.scheduledDate ||
-          j.visitDate ||
-          j.bookingDate ||
-          j.estVisitDT ||
-          j.worksDT ||
-          j.estWorkDT ||
-          ""
-        ).trim();
-
-        const date = ukToISO(rawDate);
-        if(!date) continue;
-
-        const item = {
-          id: j.id || j.jobId || j.ref || String(Math.random()),
-          title: (j.address || j.ref || "Job").trim(),
-          address: (j.address || "").trim(),
-          time: (j.time || j.jobTime || j.scheduledTime || j.visitTime || "").trim(),
-          ref: (j.ref || "").trim(),
-          status: (j.status || "").trim(),
-          updatedAt: j.updatedAt || j.createdAt || new Date().toISOString()
-        };
-
-        if(!feed[date]) feed[date] = [];
-        feed[date].push(item);
-      }
-
-      // sort by time (optional)
-      for (const d of Object.keys(feed)){
-        feed[d].sort((a,b)=> String(a.time).localeCompare(String(b.time)));
-      }
-
-      // write once, after loops
-      localStorage.setItem(CAL_FEED_KEY, JSON.stringify(feed));
-    } catch(e){
-      console.warn("Calendar feed sync failed", e);
     }
-  }
-</script>
+
+    function renderAll(){
+      const q = searchEl.value.trim();
+      const filtered = jobs.filter(j => matches(j, q));
+      totalCountEl.textContent = String(filtered.length);
+      renderBookings(filtered);
+      renderBoard(filtered);
+    }
+
+    // CSV export
+    function csvEscape(v){
+      const s = String(v ?? "");
+      if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    }
+    function exportCsv(){
+      const header = [
+        "id","status","status_label","letting_agent","job_ref","address","estimate_no",
+        "estimate_visit_dt","works_booked_dt","invoice_ref","phone","notes","created_at","updated_at"
+      ];
+      const rows = jobs.map(j=>[
+        j.id, j.status, statusLabel(j.status),
+        j.agent || "", j.ref || "", j.address || "", j.estNo || "",
+        j.estVisitDT || "", j.worksDT || "",
+        j.invRef || "", j.phone || "",
+        (j.notes || "").replace(/\n/g," "),
+        j.createdAt || "", j.updatedAt || ""
+      ]);
+      const csv = [header, ...rows].map(r=>r.map(csvEscape).join(",")).join("\n");
+      const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "fps_jobs_board.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // Wire
+    addBtn.addEventListener('click', openAdd);
+    closeModal.addEventListener('click', closeModalFn);
+    modalBack.addEventListener('click', (e)=>{ if(e.target === modalBack) closeModalFn(); });
+    saveJobBtn.addEventListener('click', upsertJob);
+    deleteBtn.addEventListener('click', deleteJob);
+    exportBtn.addEventListener('click', exportCsv);
+    searchEl.addEventListener('input', renderAll);
+
+    // Init
+    load();
+    renderAll();
+
+    // ===== Calendar feed sync (Jobs Board -> Calendar) =====
+    const CAL_FEED_KEY = "fps_calendar_feed_v1";
+
+    // Convert UK date DD/MM/YYYY → YYYY-MM-DD (for calendar)
+    function ukToISO(dateStr){
+      if(!dateStr) return "";
+      const parts = dateStr.split("/");
+      if(parts.length !== 3) return "";
+      const [dd, mm, yyyy] = parts;
+      if(!dd || !mm || !yyyy) return "";
+      return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+    }
+
+    function syncCalendarFeed(jobs){
+      try{
+        const feed = {};
+
+        for (const j of (jobs || [])){
+          const rawDate = (
+            j.date ||
+            j.jobDate ||
+            j.scheduledDate ||
+            j.visitDate ||
+            j.bookingDate ||
+            j.estVisitDT ||
+            j.worksDT ||
+            j.estWorkDT ||
+            ""
+          ).trim();
+
+          const date = ukToISO(rawDate); // NOTE: datetime-local won't match this format
+          if(!date) continue;
+
+          const item = {
+            id: j.id || j.jobId || j.ref || String(Math.random()),
+            title: (j.address || j.ref || "Job").trim(),
+            address: (j.address || "").trim(),
+            time: (j.time || j.jobTime || j.scheduledTime || j.visitTime || "").trim(),
+            ref: (j.ref || "").trim(),
+            status: (j.status || "").trim(),
+            updatedAt: j.updatedAt || j.createdAt || new Date().toISOString()
+          };
+
+          if(!feed[date]) feed[date] = [];
+          feed[date].push(item);
+        }
+
+        // sort by time (optional)
+        for (const d of Object.keys(feed)){
+          feed[d].sort((a,b)=> String(a.time).localeCompare(String(b.time)));
+        }
+
+        localStorage.setItem(CAL_FEED_KEY, JSON.stringify(feed));
+      } catch(e){
+        console.warn("Calendar feed sync failed", e);
+      }
+    }
+  </script>
 </body>
 </html>
-<a href="../dashboard/" style="
-  position:fixed;
-  top:10px;
-  left:10px;
-  z-index:9999;
-  font-weight:900;
-  color:#9ecbff;
-  text-decoration:none;
-  border:1px solid rgba(255,255,255,.2);
-  padding:8px 12px;
-  border-radius:12px;
-  background:#0b1220;
-">
-  🏠 Dashboard
-</a>
