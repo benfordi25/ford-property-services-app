@@ -428,26 +428,21 @@ const db = getFirestore(app);
 let currentUserId = null;
 let cloudLoaded = false;
 let pendingCloudSave = false;
-
-// Auth: sign in anonymously so it works on any device (Anonymous provider must be enabled)
-onAuthStateChanged(auth, async (user) => {
+    onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUserId = user.uid;
+    console.log("Signed in:", currentUserId);
     await loadJobsFromCloud();
-    cloudLoaded = true;
-
-    if (pendingCloudSave) {
-      pendingCloudSave = false;
-      await saveJobsToCloud();
-    }
   } else {
-    // Trigger anonymous login
+    console.log("Not logged in – signing in anonymously...");
     signInAnonymously(auth).catch((error) => {
       console.error("Anonymous sign-in failed:", error);
-      cloudLoaded = true; // let app continue locally if auth fails
     });
   }
 });
+
+
+  
 
     // PWA service worker
     if ('serviceWorker' in navigator) {
