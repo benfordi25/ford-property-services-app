@@ -389,6 +389,182 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    // ===============================
+// Cloud sync (Firestore) - DROP-IN PATCH
+// Keeps your existing UI/fields. Only syncs your jobs array/object.
+// ===============================
+
+// CHANGE THESE ONLY IF YOUR FIRESTORE PATH IS DIFFERENT:
+const CLOUD_COLLECTION = "jobsBoard";
+const CLOUD_DOC_ID = "shared"; // you are looking at jobsBoard/shared in screenshots
+
+const deviceId = (() => {
+  const k = "fps_device_id";
+  let v = localStorage.getItem(k);
+  if (!v) {
+    v = (crypto?.randomUUID?.() || ("dev_" + Math.random().toString(16).slice(2)));
+    localStorage.setItem(k, v);
+  }
+  return v;
+})();
+
+let cloudReady = false;
+let suppressCloudApply = false;
+let lastLocalChangeMs = 0;
+let lastAppliedCloudMs = 0;
+let pendingCloudSaveTimer = null;
+
+const cloudDocRef = doc(db, CLOUD_COLLECTION, CLOUD_DOC_ID);
+
+// ---- Helpers: you must provide these two functions (likely already exist in your code)
+// 1) getJobsForSync(): return your current jobs data (array/object) from your app state
+// 2) applyJobsFromSync(jobsData): apply jobs into your app state + re-render UI
+//
+// To avoid changing your fields/UI, we do NOT touch DOM here.
+// You will "wire" these at the end (Step 3).
+
+function queueCloudSave() {
+  lastLocalChangeMs = Date.now();
+  if (!cloudReady) return;
+
+  if (pendingCloudSaveTimer) clearTimeout(pendingCloudSaveTimer);
+  pendingCloudSaveTimer = setTimeout(async () => {
+    try {
+      const jobsData = getJobsForSync(); // <-- your app state
+      // If nothing to save, skip
+      if (jobsData == null) return;
+
+      await setDoc(cloudDocRef, {
+        jobs: jobsData,
+        updatedAtMs: Date.now(),
+        updatedBy: deviceId,
+      }, { merge: true });
+
+      // console.log("[cloud] saved ok", new Date().toISOString());
+    } catch (e) {
+      console.error("[cloud] save failed:", e);
+    }
+  }, 800);
+}
+
+async function startCloudListener() {
+  onSnapshot(cloudDocRef, (snap) => {
+    if (!snap.exists()) {
+      // Doc not created yet — that's fine. First save will create it.
+      // console.log("[cloud] doc does not exist yet");
+      return;
+    }
+    const data = snap.data() || {};
+    const cloudMs = Number(data.updatedAtMs || 0);
+    const cloudJobs = data.jobs;
+
+    // Ignore if no jobs payload
+    if (cloudJobs == null) return;
+
+    // Prevent loop when we just wrote
+    if (suppressCloudApply) return;
+
+    // If cloud is newer than what we've applied, apply it
+    if (cloudMs > lastAppliedCloudMs) {
+      // If we have unsaved local changes very recently, don't instantly overwrite
+      // (prevents “I type then it disappears”)
+      const localIsDirty = (Date.now() - lastLocalChangeMs) < 2000;
+      if (localIsDirty) {
+        // Let local win: push local again shortly
+        // console.log("[cloud] local dirty, pushing local to win");
+        queueCloudSave();
+        return;
+      }
+
+      lastAppliedCloudMs = cloudMs;
+      try {
+        suppressCloudApply = true;
+        applyJobsFromSync(cloudJobs); // <-- your app state + render
+      } finally {
+        suppressCloudApply = false;
+      }
+      // console.log("[cloud] applied", cloudMs);
+    }
+  }, (err) => {
+    console.error("[cloud] onSnapshot error:", err);
+  });
+}
+
+async function ensureSignedIn() {
+  // If user already signed in, good
+  const u = auth.currentUser;
+  if (u) return u;
+
+  // Wait for auth state once
+  const user = await new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, (usr) => {
+      unsub();
+      resolve(usr);
+    });
+  });
+
+  if (user) return user;
+
+  // Otherwise sign in anonymously
+  try {
+    const cred = await signInAnonymously(auth);
+    return cred.user;
+  } catch (e) {
+    console.error("[auth] signInAnonymously failed:", e);
+    throw e;
+  }
+}
+
+async function initCloudSync() {
+  try {
+    const user = await ensureSignedIn();
+    // console.log("[auth] signed in uid:", user.uid);
+
+    cloudReady = true;
+    await startCloudListener();
+
+    // Create doc if it doesn't exist by doing a lightweight merge write
+    await setDoc(cloudDocRef, {
+      createdAtMs: Date.now(),
+      createdBy: deviceId
+    }, { merge: true });
+
+    // Push local up once on start (creates doc + gets your data into cloud)
+    queueCloudSave();
+
+  } catch (e) {
+    cloudReady = false;
+    console.error("[cloud] init failed:", e);
+  }
+}
+
+// Call this once after Firebase init and after your app state is ready:
+initCloudSync();
+
+// Expose hook you can call from your existing code whenever jobs change:
+window.__queueCloudSave = queueCloudSave;
+    // ===============================
+// 🔗 WIRE CLOUD SYNC TO YOUR APP
+// ===============================
+
+// IMPORTANT:
+// Replace `jobs` if your variable is named differently
+// Replace `render()` if your render function has a different name
+
+function getJobsForSync() {
+  return jobs;
+}
+
+function applyJobsFromSync(jobsData) {
+  jobs = jobsData;
+
+  // keep your existing local backup (important)
+  try {
+    localStorage.setItem("jobs", JSON.stringify(jobs));
+  } catch (e) {}
+
+  render();
+}
 
     // PWA service worker (safe even if sw.js is empty)
     if ('serviceWorker' in navigator) {
