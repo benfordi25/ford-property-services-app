@@ -421,7 +421,7 @@ async function loadJobsFromCloud() {
       const data = snap.data();
       if (Array.isArray(data.jobs)) {
         jobs = data.jobs;
-        saveLocal();   // keep localStorage in sync
+        save();   // keep local + calendar + cloud in sync
         render();
         console.log("Jobs loaded from cloud:", jobs.length);
       }
