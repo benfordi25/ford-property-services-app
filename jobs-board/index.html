@@ -99,30 +99,16 @@
     }
 
     a.callBtn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:900;
-      text-decoration:none;
-      color:#ffffff;
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      padding:10px 12px;border-radius:14px;font-weight:900;text-decoration:none;color:#fff;
       background: linear-gradient(135deg, #16a34a, #22c55e);
       border:1px solid rgba(34,197,94,.45);
     }
     a.callBtn:hover{ filter: brightness(1.08); }
 
     a.mapBtn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:900;
-      text-decoration:none;
-      color:#ffffff;
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      padding:10px 12px;border-radius:14px;font-weight:900;text-decoration:none;color:#fff;
       background:linear-gradient(135deg, #2563eb, #3b82f6);
       border:1px solid rgba(59,130,246,.45);
     }
@@ -176,17 +162,9 @@
     }
     .bookingItem b{font-size:12px}
 
-    .board{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:12px;
-    }
-    @media(min-width:980px){
-      .board{ grid-template-columns: repeat(4, 1fr); }
-    }
-    @media(min-width:1400px){
-      .board{ grid-template-columns: repeat(10, 1fr); }
-    }
+    .board{display:grid;grid-template-columns: 1fr;gap:12px;}
+    @media(min-width:980px){ .board{ grid-template-columns: repeat(4, 1fr); } }
+    @media(min-width:1400px){ .board{ grid-template-columns: repeat(10, 1fr); } }
 
     .col{
       border:1px solid rgba(255,255,255,.12);
@@ -195,10 +173,7 @@
       padding:10px;
       min-height:170px;
     }
-    .colHead{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      margin-bottom:10px;
-    }
+    .colHead{display:flex; align-items:center; justify-content:space-between; gap:10px;margin-bottom:10px;}
     .colTitle{font-weight:950; letter-spacing:.3px; font-size:12px; text-transform:uppercase}
     .count{color:var(--muted); font-size:12px}
 
@@ -215,13 +190,11 @@
     .jobBtns{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center}
     .chip{
       display:inline-flex; gap:8px; align-items:center;
-      padding:6px 8px;
-      border-radius:999px;
+      padding:6px 8px;border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.04);
       color: var(--muted);
-      font-size:12px;
-      margin-top:8px;
+      font-size:12px;margin-top:8px;
     }
 
     .modalBack{
@@ -278,7 +251,7 @@
           <span class="pill"><strong>Total Jobs:</strong> <span id="totalCount">0</span></span>
           <span class="pill"><strong>Saved:</strong> <span id="savedStatus">—</span></span>
         </div>
-        <div class="small">Workflow starts at Requires Estimate. Clear All removed.</div>
+        <div class="small">Workflow starts at Requires Estimate.</div>
       </div>
 
       <div class="bookings">
@@ -383,17 +356,10 @@
 
   <!-- Dashboard button -->
   <a href="../dashboard/" style="
-    position:fixed;
-    top:10px;
-    left:10px;
-    z-index:9999;
-    font-weight:900;
-    color:#9ecbff;
-    text-decoration:none;
+    position:fixed; top:10px; left:10px; z-index:9999;
+    font-weight:900; color:#9ecbff; text-decoration:none;
     border:1px solid rgba(255,255,255,.2);
-    padding:8px 12px;
-    border-radius:12px;
-    background:#0b1220;
+    padding:8px 12px; border-radius:12px; background:#0b1220;
   ">🏠 Dashboard</a>
 
   <script type="module">
@@ -420,28 +386,27 @@
       appId: "PASTE_FROM_FIREBASE"
     };
 
-    // Init Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-let currentUserId = null;
-let cloudLoaded = false;
-let pendingCloudSave = false;
-    onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    currentUserId = user.uid;
-    console.log("Signed in:", currentUserId);
-    await loadJobsFromCloud();
-  } else {
-    console.log("Not logged in – signing in anonymously...");
-    signInAnonymously(auth).catch((error) => {
-      console.error("Anonymous sign-in failed:", error);
-    });
-  }
-});
+    // PWA service worker (safe even if sw.js is empty)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+    }
 
-
+    // Workflow starts at Requires Estimate
+    const STATUSES = [
+      { key: "req_est", label: "Requires Estimate" },
+      { key: "est_visit_booked", label: "Estimate Visit Booked In" },
+      { key: "attended_est_required", label: "Attended – Estimate Required" },
+      { key: "est_complete", label: "Estimate Complete" },
+      { key: "est_accepted", label: "Estimate Accepted" },
+      { key: "est_not_accepted", label: "Estimate Not Accepted" },
+      { key: "works_booked", label: "Works Booked In" },
+      { key: "works_done_invoice_required", label: "Works Completed – Invoice Required" },
+      { key: "invoice_sent_complete", label: "Invoice Sent & Complete" },
+      { key: "invoice_paid", label: "Invoice Paid" }
     ];
     const STAGE_ORDER = STATUSES.map(s => s.key);
 
@@ -474,9 +439,7 @@ let pendingCloudSave = false;
     function statusLabel(key){
       return (STATUSES.find(s=>s.key===key)?.label) || key;
     }
-    function telSan(s){
-      return String(s || "").trim().replace(/[^\d+]/g, "");
-    }
+    function telSan(s){ return String(s || "").trim().replace(/[^\d+]/g, ""); }
 
     const boardEl = document.getElementById('board');
     const totalCountEl = document.getElementById('totalCount');
@@ -526,7 +489,7 @@ let pendingCloudSave = false;
       mStatus.appendChild(o);
     });
 
-    // Shared logo
+    // Shared logo (local only)
     const savedLogo = localStorage.getItem('fps_logo_v1');
     if(savedLogo){
       logoImg.src = savedLogo;
@@ -561,7 +524,7 @@ let pendingCloudSave = false;
       logoFallback.style.display = 'none';
     });
 
-    // Data
+    // ===== Data =====
     const STORAGE_KEY = "fps_jobs_board_workflow_v7";
     let jobs = [];
     let editingId = null;
@@ -584,116 +547,111 @@ let pendingCloudSave = false;
       return j;
     }
 
-    function load(){
+    function loadLocal(){
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
-        jobs = JSON.parse(raw).map(migrateJob);
-        savedStatusEl.textContent = "Loaded";
-        return;
-      }
-      const fallbackKeys = ["fps_jobs_board_workflow_v6","fps_jobs_board_workflow_v5","fps_jobs_board_workflow_v4","fps_jobs_board_workflow_v3"];
-      for(const k of fallbackKeys){
-        const r = localStorage.getItem(k);
-        if(r){
-          jobs = JSON.parse(r).map(migrateJob);
-          savedStatusEl.textContent = "Loaded (migrated)";
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+        try{
+          jobs = JSON.parse(raw).map(migrateJob);
+          savedStatusEl.textContent = "Loaded (local)";
           return;
-        }
+        }catch{}
       }
       jobs = [];
       savedStatusEl.textContent = "—";
     }
 
-    // ===== Cloud sync (shared doc) =====
-    async function loadJobsFromCloud() {
-      if (!currentUserId) return;
-
-      try {
-        const ref = doc(db, "jobsBoard", "shared");
-        const snap = await getDoc(ref);
-
-        if (snap.exists()) {
-          const data = snap.data() || {};
-          const cloudJobs = Array.isArray(data.jobs) ? data.jobs.map(migrateJob) : [];
-
-          if (cloudJobs.length > 0) {
-            jobs = cloudJobs;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
-            savedStatusEl.textContent = "Loaded from cloud";
-            renderAll();
-            console.log("Jobs loaded from cloud:", jobs.length);
-          } else {
-            console.log("Cloud is empty.");
-            // If cloud empty but local has jobs, push local up
-            if (jobs.length > 0) {
-              console.log("Uploading local jobs to cloud:", jobs.length);
-              await saveJobsToCloud();
-              savedStatusEl.textContent = "Uploaded local to cloud";
-            }
-          }
-        } else {
-          console.log("No cloud doc yet.");
-          // If no doc yet, but local has jobs, create it
-          if (jobs.length > 0) {
-            console.log("Creating cloud doc from local jobs:", jobs.length);
-            await saveJobsToCloud();
-            savedStatusEl.textContent = "Created cloud from local";
-          }
-        }
-
-        cloudLoaded = true;
-        if (pendingCloudSave) { pendingCloudSave = false; await saveJobsToCloud(); }
-      } catch (err) {
-        console.error("Failed to load jobs from cloud", err);
-        cloudLoaded = true;
-        if (pendingCloudSave) { pendingCloudSave = false; await saveJobsToCloud(); }
-      }
-    }
-
-    async function saveJobsToCloud() {
-      if (!currentUserId) return;
-
-      try {
-        const ref = doc(db, "jobsBoard", "shared");
-        await setDoc(ref, {
-          jobs: jobs,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-
-        console.log("Jobs saved to cloud:", jobs.length);
-      } catch (err) {
-        console.error("Failed to save jobs to cloud", err);
-      }
-    }
-
-    function save(){
+    function saveLocal(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
       savedStatusEl.textContent = nowStamp();
-      syncCalendarFeed(jobs);
-
-      if (!cloudLoaded) {
-        pendingCloudSave = true;
-        return;
-      }
-      saveJobsToCloud();
     }
 
-    // Auth: ALWAYS set currentUserId, and ensure anonymous login happens if needed
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUserId = user.uid;
-        await loadJobsFromCloud();
+    // ===== Cloud sync =====
+    let currentUserId = null;
+    let cloudLoaded = false;
+
+    async function loadJobsFromCloud(){
+      try{
+        const ref = doc(db, "jobsBoard", "shared");
+        const snap = await getDoc(ref);
+        if(!snap.exists()){
+          return { exists:false, jobs:[] };
+        }
+        const data = snap.data() || {};
+        const arr = Array.isArray(data.jobs) ? data.jobs.map(migrateJob) : [];
+        return { exists:true, jobs:arr };
+      }catch(e){
+        console.error("Cloud load failed:", e);
+        return { exists:false, jobs:[] };
+      }
+    }
+
+    async function saveJobsToCloud(){
+      try{
+        const ref = doc(db, "jobsBoard", "shared");
+        await setDoc(ref, { jobs, updatedAt: serverTimestamp() }, { merge:true });
+        console.log("Saved to cloud:", jobs.length);
+      }catch(e){
+        console.error("Cloud save failed:", e);
+      }
+    }
+
+    // Never overwrite cloud with blank local.
+    async function syncBoot(){
+      // 1) load local first (so UI works even if offline)
+      loadLocal();
+      renderAll();
+
+      // 2) ensure signed in (anon) then load cloud
+      const ensureSignedIn = async ()=>{
+        if(auth.currentUser) return auth.currentUser;
+        await signInAnonymously(auth);
+        return auth.currentUser;
+      };
+
+      try{
+        await ensureSignedIn();
+      }catch(e){
+        console.error("Anonymous sign-in failed:", e);
+        // still let app run local-only
+        cloudLoaded = true;
         return;
       }
 
-      // Not logged in yet -> sign in anonymously
-      try{
-        await signInAnonymously(auth);
-      }catch(e){
-        console.error("Anonymous sign-in failed:", e);
+      currentUserId = auth.currentUser?.uid || null;
+
+      // 3) load cloud
+      const cloud = await loadJobsFromCloud();
+      cloudLoaded = true;
+
+      // 4) decide what to use
+      const localCount = jobs.length;
+      const cloudCount = cloud.jobs.length;
+
+      if(cloudCount > 0){
+        jobs = cloud.jobs;
+        saveLocal();
+        savedStatusEl.textContent = "Loaded from cloud";
+        renderAll();
+        return;
       }
-    });
+
+      // Cloud empty or missing:
+      // If local has jobs, seed cloud. If local empty too, just stay empty.
+      if(localCount > 0){
+        await saveJobsToCloud();
+        savedStatusEl.textContent = "Seeded cloud from local";
+      }else{
+        savedStatusEl.textContent = "Cloud empty";
+      }
+    }
+
+    // Save wrapper used by app actions
+    function save(){
+      saveLocal();
+      // only try cloud after boot and auth available
+      if(!cloudLoaded || !currentUserId) return;
+      saveJobsToCloud();
+    }
 
     function norm(s){ return String(s||"").toLowerCase(); }
     function matches(job, q){
@@ -703,6 +661,7 @@ let pendingCloudSave = false;
         .some(x => norm(x).includes(q));
     }
 
+    // Modal
     function openModal(){ modalBack.style.display = 'flex'; }
     function closeModalFn(){ modalBack.style.display = 'none'; }
     function clearModal(){
@@ -822,6 +781,7 @@ let pendingCloudSave = false;
       save(); renderAll(); closeQuick();
     });
 
+    // Move Back
     function moveBack(job){
       const idx = STAGE_ORDER.indexOf(job.status);
       if(idx <= 0) return;
@@ -830,6 +790,7 @@ let pendingCloudSave = false;
       save(); renderAll();
     }
 
+    // Actions
     function doAction(job, act){
       if(act === "move_back") return moveBack(job);
 
@@ -849,6 +810,7 @@ let pendingCloudSave = false;
       save(); renderAll();
     }
 
+    // Bookings list
     function renderBookings(filteredJobs){
       const now = Date.now();
       const items = [];
@@ -999,6 +961,7 @@ let pendingCloudSave = false;
       renderBoard(filtered);
     }
 
+    // CSV export
     function csvEscape(v){
       const s = String(v ?? "");
       if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
@@ -1029,6 +992,7 @@ let pendingCloudSave = false;
       URL.revokeObjectURL(url);
     }
 
+    // Wire
     addBtn.addEventListener('click', openAdd);
     closeModal.addEventListener('click', closeModalFn);
     modalBack.addEventListener('click', (e)=>{ if(e.target === modalBack) closeModalFn(); });
@@ -1037,67 +1001,8 @@ let pendingCloudSave = false;
     exportBtn.addEventListener('click', exportCsv);
     searchEl.addEventListener('input', renderAll);
 
-    // Init local immediately (fast UI)
-    load();
-    renderAll();
-
-    // ===== Calendar feed sync =====
-    const CAL_FEED_KEY = "fps_calendar_feed_v1";
-
-    // Supports:
-    // - "DD/MM/YYYY"
-    // - "YYYY-MM-DDTHH:mm" (datetime-local)
-    function toISODateKey(raw){
-      if(!raw) return "";
-      const s = String(raw).trim();
-
-      // datetime-local -> YYYY-MM-DD
-      const m1 = /^(\d{4})-(\d{2})-(\d{2})T/.exec(s);
-      if(m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
-
-      // UK date -> YYYY-MM-DD
-      const m2 = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
-      if(m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
-
-      return "";
-    }
-
-    function syncCalendarFeed(jobs){
-      try{
-        const feed = {};
-
-        for (const j of (jobs || [])){
-          const dateKey =
-            toISODateKey(j.estVisitDT) ||
-            toISODateKey(j.worksDT) ||
-            toISODateKey(j.date) ||
-            toISODateKey(j.jobDate) ||
-            toISODateKey(j.scheduledDate) ||
-            toISODateKey(j.visitDate) ||
-            toISODateKey(j.bookingDate) ||
-            "";
-
-          if(!dateKey) continue;
-
-          const item = {
-            id: j.id || j.jobId || j.ref || String(Math.random()),
-            title: (j.address || j.ref || "Job").trim(),
-            address: (j.address || "").trim(),
-            time: "",
-            ref: (j.ref || "").trim(),
-            status: (j.status || "").trim(),
-            updatedAt: j.updatedAt || j.createdAt || new Date().toISOString()
-          };
-
-          if(!feed[dateKey]) feed[dateKey] = [];
-          feed[dateKey].push(item);
-        }
-
-        localStorage.setItem(CAL_FEED_KEY, JSON.stringify(feed));
-      } catch(e){
-        console.warn("Calendar feed sync failed", e);
-      }
-    }
+    // Boot sync
+    syncBoot();
   </script>
 </body>
 </html>
