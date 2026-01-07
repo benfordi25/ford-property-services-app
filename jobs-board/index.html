@@ -423,10 +423,15 @@ async function loadJobsFromCloud() {
         jobs = data.jobs;
         save();   // keep local + calendar + cloud in sync
         render();
+        cloudLoaded = true;
         console.log("Jobs loaded from cloud:", jobs.length);
       }
-    } else {
-      console.log("No cloud jobs yet — using local data");
+    
+    else {
+  console.log("No cloud jobs yet – using local data");
+  cloudLoaded = true;
+    }
+      
     }
   } catch (err) {
     console.error("Failed to load jobs from cloud", err);
@@ -452,6 +457,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
     let currentUserId = null;
+    let cloudLoaded = false;
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
