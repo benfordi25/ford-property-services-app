@@ -806,7 +806,11 @@ a.callBtn:hover{
           const tel = telSan(job.phone);
           if(tel) btns.push(`<a class="callBtn" href="tel:${escapeHtml(tel)}">📞 Call</a>`);
         }
-
+// Maps button if address exists
+if(canCall.includes(job.status) && (job.address || "").trim()){
+  const addr = encodeURIComponent(job.address);
+  btns.push(`<a class="mapBtn" href="https://www.google.com/maps/search/?api=1&query=${addr}" target="_blank">🗺️ Maps</a>`);
+}
         if(job.status === "req_est"){
           btns.push(`<button type="button" class="primary" data-act="book_est_visit">Book Estimate Visit</button>`);
         }
