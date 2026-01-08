@@ -462,8 +462,33 @@
       </div>
       <div id="detailsBody" class="small"></div>
       <div class="modalActions">
+        <button id="detailsPrint" class="purple" type="button">Print PDF</button>
         <button id="detailsDocs" type="button">Documents</button>
         <button id="detailsEdit" class="primary" type="button">Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Booking modal (Book Now) -->
+  <div class="modalBack" id="bookBack">
+    <div class="modal" style="width:min(520px, 100%)">
+      <div class="modalHead">
+        <h2 id="bookTitle">Book</h2>
+        <button type="button" id="bookClose">Close</button>
+      </div>
+
+      <div class="grid2" style="grid-template-columns:1fr">
+        <div style="grid-column:1/-1">
+          <label id="bookLabel">Choose date & time</label>
+          <input id="bookDT" type="datetime-local" />
+          <div class="small" id="bookHint" style="margin-top:8px">
+            This will save into the job (so your calendar app picks it up).
+          </div>
+        </div>
+      </div>
+
+      <div class="modalActions">
+        <button id="bookSave" class="ok" type="button">Save Booking</button>
       </div>
     </div>
   </div>
@@ -597,6 +622,16 @@
     const detailsBody  = document.getElementById('detailsBody');
     const detailsDocs  = document.getElementById('detailsDocs');
     const detailsEdit  = document.getElementById('detailsEdit');
+    const detailsPrint = document.getElementById('detailsPrint');
+
+    // ✅ Book Now modal refs
+    const bookBack  = document.getElementById('bookBack');
+    const bookClose = document.getElementById('bookClose');
+    const bookSave  = document.getElementById('bookSave');
+    const bookTitle = document.getElementById('bookTitle');
+    const bookLabel = document.getElementById('bookLabel');
+    const bookDT    = document.getElementById('bookDT');
+    const bookHint  = document.getElementById('bookHint');
 
     STATUSES.forEach(s=>{
       const o = document.createElement('option');
@@ -878,7 +913,7 @@
     function refreshJobSheetDocsUI(){
       const canUse = !!editingId && !!jobs.find(j=>j.id===editingId);
       mDocsHint.style.display = canUse ? "none" : "block";
-      mDocsAdd.disabled = false;   // ✅ we allow click (we'll auto-save draft)
+      mDocsAdd.disabled = false;
       mDocsOpen.disabled = !canUse;
 
       if(!canUse){
@@ -899,7 +934,6 @@
       }).join(" • ") + (docs.length>3 ? ` • +${docs.length-3} more` : "");
     }
 
-    // ✅ NEW: Save as draft (without closing modal) so Add Photo/PDF works even on a brand new job
     function saveDraftForDocs(){
       const payload = {
         id: editingId || uid(),
@@ -927,7 +961,7 @@
         payload.createdAt = new Date().toISOString();
         payload.docs = [];
         jobs.unshift(payload);
-        editingId = payload.id; // ✅ now it's a real saved job
+        editingId = payload.id;
         modalTitle.textContent = "Edit Job";
         deleteBtn.style.display = 'inline-block';
       }
@@ -938,7 +972,6 @@
       return editingId;
     }
 
-    // ✅ NEW: the function your click handlers were calling (it was missing)
     function ensureJobSavedForDocs(){
       if(editingId && jobs.some(j=>j.id===editingId)) return editingId;
       return saveDraftForDocs();
@@ -987,9 +1020,13 @@
     detailsClose.addEventListener("click", closeDetails);
     detailsBack.addEventListener("click", (e)=>{ if(e.target===detailsBack) closeDetails(); });
 
+    let detailsJobId = null;
+
     function openDetailsModal(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
+
+      detailsJobId = jobId;
 
       const title = job.address?.trim() ? job.address.trim() : "(No address)";
       detailsTitle.textContent = "Job Details";
@@ -1021,9 +1058,165 @@
 
       detailsDocs.onclick = ()=> openDocs(jobId);
       detailsEdit.onclick = ()=> { closeDetails(); openEdit(jobId); };
+      detailsPrint.onclick = ()=> printJobPdf(jobId);
 
       detailsBack.style.display = "flex";
     }
+
+    function printJobPdf(jobId){
+      const job = jobs.find(j=>j.id===jobId);
+      if(!job) return;
+
+      const logo = localStorage.getItem("fps_logo_v1") || "";
+      const title = job.address?.trim() ? job.address.trim() : "(No address)";
+      const docsCount = Array.isArray(job.docs) ? job.docs.length : 0;
+
+      const html = `
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Job - ${escapeHtml(title)}</title>
+<style>
+  body{ font-family: Arial, sans-serif; margin: 28px; color:#0b1220; }
+  .head{ display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+  .logo{ width:70px; height:70px; border:1px solid #ddd; border-radius:14px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#fff; }
+  .logo img{ width:100%; height:100%; object-fit:contain; }
+  h1{ margin:0; font-size:18px; }
+  .muted{ color:#475569; font-size:12px; margin-top:4px; }
+  .box{ border:1px solid #e2e8f0; border-radius:14px; padding:14px; margin-top:12px; }
+  .row{ display:flex; gap:18px; flex-wrap:wrap; }
+  .kv{ margin:6px 0; }
+  .kv b{ display:inline-block; min-width:130px; }
+  .chips{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{ border:1px solid #e2e8f0; padding:6px 10px; border-radius:999px; font-size:12px; }
+  pre{ white-space:pre-wrap; font-family: inherit; }
+  @media print{ .noPrint{ display:none; } }
+</style>
+</head>
+<body>
+  <div class="head">
+    <div class="logo">${logo ? `<img src="${logo}" alt="logo"/>` : `<div style="font-weight:900">FPS</div>`}</div>
+    <div>
+      <h1>Ford Property Services — Job Summary</h1>
+      <div class="muted">Generated: ${escapeHtml(nowStamp())}</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="kv"><b>Property:</b> ${escapeHtml(title)}</div>
+    <div class="row">
+      <div style="min-width:240px">
+        <div class="kv"><b>Letting Agent:</b> ${escapeHtml(job.agent||"-")}</div>
+        <div class="kv"><b>Assigned Agent:</b> ${escapeHtml(job.ref||"-")}</div>
+        <div class="kv"><b>Status:</b> ${escapeHtml(statusLabel(job.status))}</div>
+      </div>
+      <div style="min-width:240px">
+        <div class="kv"><b>Estimate No:</b> ${escapeHtml(job.estNo||"-")}</div>
+        <div class="kv"><b>Invoice Ref:</b> ${escapeHtml(job.invRef||"-")}</div>
+        <div class="kv"><b>Phone:</b> ${escapeHtml(job.phone||"-")}</div>
+      </div>
+    </div>
+
+    <div class="chips">
+      ${job.estVisitDT ? `<div class="chip">Estimate Visit: ${escapeHtml(ukDT(job.estVisitDT))}</div>` : ""}
+      ${job.worksDT ? `<div class="chip">Works Booking: ${escapeHtml(ukDT(job.worksDT))}</div>` : ""}
+      <div class="chip">Documents: ${escapeHtml(String(docsCount))}</div>
+    </div>
+
+    <div class="box" style="margin-top:14px">
+      <div style="font-weight:900;margin-bottom:6px">Notes</div>
+      ${job.notes ? `<pre>${escapeHtml(job.notes)}</pre>` : `<div class="muted">No notes.</div>`}
+    </div>
+  </div>
+
+  <div class="noPrint" style="margin-top:16px; font-size:12px; color:#475569">
+    Tip: choose “Save as PDF” in the print options.
+  </div>
+
+  <script>
+    setTimeout(()=>{ window.print(); }, 250);
+  <\/script>
+</body>
+</html>`;
+
+      const w = window.open("", "_blank");
+      if(!w){ alert("Pop-up blocked. Allow pop-ups to print PDF."); return; }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+    }
+
+    // ===== Book Now modal logic =====
+    let bookJobId = null;
+    let bookMode = null; // "estimate" | "works"
+
+    function openBookNow(jobId){
+      const job = jobs.find(j=>j.id===jobId);
+      if(!job) return;
+
+      bookJobId = jobId;
+
+      if(job.status === "req_est"){
+        bookMode = "estimate";
+        bookTitle.textContent = "Book Estimate Visit";
+        bookLabel.textContent = "Estimate visit date + time";
+        bookDT.value = job.estVisitDT || "";
+        bookHint.textContent = "This will save into Estimate Visit Booked In (so your calendar app picks it up).";
+      } else if(job.status === "est_accepted"){
+        bookMode = "works";
+        bookTitle.textContent = "Book Works";
+        bookLabel.textContent = "Works booking date + time";
+        bookDT.value = job.worksDT || "";
+        bookHint.textContent = "This will save into Works Booked In (so your calendar app picks it up).";
+      } else {
+        // safety: only intended for those 2 statuses
+        bookMode = null;
+        return;
+      }
+
+      bookBack.style.display = "flex";
+      setTimeout(()=> bookDT.focus(), 60);
+    }
+
+    function closeBookNow(){
+      bookBack.style.display = "none";
+      bookJobId = null;
+      bookMode = null;
+      bookDT.value = "";
+    }
+
+    bookClose.addEventListener("click", closeBookNow);
+    bookBack.addEventListener("click", (e)=>{ if(e.target===bookBack) closeBookNow(); });
+
+    bookSave.addEventListener("click", ()=>{
+      if(!bookJobId || !bookMode) return;
+      const job = jobs.find(j=>j.id===bookJobId);
+      if(!job) return closeBookNow();
+
+      const dt = bookDT.value || "";
+      if(!dt){
+        alert("Please choose a date and time.");
+        return;
+      }
+
+      // ✅ Set the SAME fields you already use (your calendar app will see it)
+      if(bookMode === "estimate"){
+        job.estVisitDT = dt;
+        // move forward in workflow automatically
+        job.status = "est_visit_booked";
+      }
+      if(bookMode === "works"){
+        job.worksDT = dt;
+        job.status = "works_booked";
+      }
+
+      job.updatedAt = new Date().toISOString();
+      save();
+      renderAll();
+      closeBookNow();
+    });
 
     // ===== Documents (per job) =====
     let docsJobId = null;
@@ -1103,7 +1296,7 @@
               <div>
                 <b>${escapeHtml(name)}</b>
                 <div class="small">${escapeHtml(mime || "file")}${size ? " • " + escapeHtml(size) : ""}${when ? " • " + escapeHtml(when) : ""}</div>
-                ${docItem.url ? `<div class="small"><a href="${escapeHtml(docItem.url)}\\"
+                ${docItem.url ? `<div class="small"><a href="${escapeHtml(docItem.url)}"
                    target="_blank" style="color:#9ecbff;text-decoration:none;font-weight:900">Open</a></div>` : ""}
               </div>
             </div>
@@ -1290,6 +1483,11 @@
           btns.push(`<button type="button" data-act="details">Details</button>`);
           btns.push(`<button type="button" data-act="documents">Documents</button>`);
 
+          // ✅ Book Now button only for the two statuses you asked for
+          if(job.status === "req_est" || job.status === "est_accepted"){
+            btns.push(`<button type="button" class="purple" data-act="book">Book Now</button>`);
+          }
+
           const canCall = ["req_est","est_visit_booked","est_accepted","works_booked"];
           if(canCall.includes(job.status) && (job.phone || "").trim()){
             const tel = telSan(job.phone);
@@ -1319,6 +1517,9 @@
           el.querySelector('[data-act="edit"]').addEventListener('click', ()=> openEdit(job.id));
           el.querySelector('[data-act="details"]').addEventListener('click', ()=> openDetailsModal(job.id));
           el.querySelector('[data-act="documents"]').addEventListener('click', ()=> openDocs(job.id));
+
+          const bookBtn = el.querySelector('[data-act="book"]');
+          if(bookBtn) bookBtn.addEventListener('click', ()=> openBookNow(job.id));
 
           body.appendChild(el);
         });
@@ -1377,7 +1578,7 @@
     exportBtn.addEventListener('click', exportCsv);
     searchEl.addEventListener('input', renderAll);
 
-    // ✅ FIXED: Add Photo/PDF now works in Add Job modal too (auto-saves draft if needed)
+    // Add Photo/PDF works in Add Job modal too (auto-saves draft if needed)
     mDocsOpen.addEventListener('click', ()=>{
       const id = ensureJobSavedForDocs();
       if(!id) return;
