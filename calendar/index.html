@@ -63,7 +63,13 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   gap:10px;
 }
 .toolbar > div{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+
+/* ✅ Month grid: force no overflow on phones */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  gap:10px;
+}
 .dow{color:var(--muted);text-align:center;font-size:12px}
 .day{
   border:1px solid rgba(255,255,255,.12);
@@ -72,6 +78,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   min-height:90px;
   padding:8px;
   cursor:pointer;
+  min-width:0; /* critical for grid children */
 }
 .day.today{border-color:var(--blue);background:rgba(74,163,255,.10)}
 .dayNum{font-weight:950;margin-bottom:4px}
@@ -84,6 +91,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   background:rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.14);
   max-width:100%;
+  min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -135,6 +143,18 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.06);
   cursor:pointer;
+  min-width:0;
+}
+
+/* ✅ Phone tweaks for month view fit */
+@media(max-width:520px){
+  .wrap{padding:12px 12px}
+  main{padding:12px}
+  .card{padding:12px}
+  .grid{gap:6px}
+  .day{min-height:72px;padding:6px;border-radius:14px}
+  .event{font-size:11px;padding:5px 6px;border-radius:11px}
+  .btn{padding:8px 10px}
 }
 </style>
 </head>
@@ -228,8 +248,15 @@ function eventsFor(dateISO){
   }).sort((a,b)=>a.t.localeCompare(b.t));
 }
 
+function setSelected(d){
+  selected = new Date(d);
+  view = new Date(selected.getFullYear(), selected.getMonth(), 1); // keep month header in sync
+}
+
 function render(){
-  title.textContent=selected.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+  // ✅ Title now matches what you're actually viewing
+  const titleDate = (mode==="month") ? view : selected;
+  title.textContent = titleDate.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
 
   monthGrid.innerHTML="";
   weekView.innerHTML="";
@@ -247,6 +274,7 @@ function render(){
 
     for(let i=0;i<offset;i++){
       const blank=document.createElement("div");
+      blank.className="day";
       blank.style.opacity="0";
       blank.style.pointerEvents="none";
       monthGrid.appendChild(blank);
@@ -267,7 +295,7 @@ function render(){
       });
 
       box.onclick=()=>{
-        selected=date;
+        setSelected(date);
         mode="day";
         render();
       };
@@ -312,11 +340,10 @@ function render(){
         });
       }
 
-      // tap column header area (or empty space) to open that day view
       col.addEventListener("click",(evt)=>{
-        if(evt.target.closest(".event")) return; // clicking event already handled
-        selected = d;
-        mode = "day";
+        if(evt.target.closest(".event")) return;
+        setSelected(d);
+        mode="day";
         render();
       });
 
@@ -355,13 +382,32 @@ function render(){
   }
 }
 
-document.getElementById("prev").onclick=()=>{ view.setMonth(view.getMonth()-1); render(); };
-document.getElementById("next").onclick=()=>{ view.setMonth(view.getMonth()+1); render(); };
+/* ✅ Prev/Next now behaves properly for Month/Week/Day (no weird title issues) */
+document.getElementById("prev").onclick=()=>{
+  if(mode==="month"){
+    view.setMonth(view.getMonth()-1);
+  }else if(mode==="week"){
+    const d=new Date(selected); d.setDate(d.getDate()-7); setSelected(d);
+  }else{
+    const d=new Date(selected); d.setDate(d.getDate()-1); setSelected(d);
+  }
+  render();
+};
+document.getElementById("next").onclick=()=>{
+  if(mode==="month"){
+    view.setMonth(view.getMonth()+1);
+  }else if(mode==="week"){
+    const d=new Date(selected); d.setDate(d.getDate()+7); setSelected(d);
+  }else{
+    const d=new Date(selected); d.setDate(d.getDate()+1); setSelected(d);
+  }
+  render();
+};
 
 document.getElementById("todayBtn").onclick=()=>{
   const t=new Date();
-  view=new Date(t.getFullYear(),t.getMonth(),1);
-  selected=t;
+  setSelected(t);
+  // keep your current mode (month/week/day) but jump to today correctly
   render();
 };
 
