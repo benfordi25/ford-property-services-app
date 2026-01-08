@@ -14,165 +14,83 @@
       --text:#e7eefc;
       --muted:#a9b7d3;
       --line:rgba(255,255,255,.14);
-      --shadow: 0 10px 30px rgba(0,0,0,.35);
-      --radius: 18px;
-      --accent: rgba(74,163,255,.95);
-      --ok: rgba(34,197,94,.95);
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --accent:#4aa3ff;
+      --ok:#22c55e;
     }
     *{box-sizing:border-box}
     body{
       margin:0;
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:
         radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
         radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
         var(--bg);
+      color:var(--text);
     }
     header{
-      position:sticky; top:0; z-index:10;
-      background: rgba(11,18,32,.82);
-      backdrop-filter: blur(10px);
+      position:sticky;top:0;z-index:10;
+      background:rgba(11,18,32,.82);
+      backdrop-filter:blur(10px);
       border-bottom:1px solid var(--line);
     }
     .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
-    .top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
-    .brand{display:flex; align-items:center; gap:10px;}
-    .brand h1{margin:0;font-size:16px;line-height:1.1}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .brand h1{margin:0;font-size:16px}
     .brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
-    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
 
-    button, .btn{
+    .btn{
       border:1px solid rgba(255,255,255,.16);
-      background: rgba(255,255,255,.06);
+      background:rgba(255,255,255,.06);
       color:var(--text);
       padding:10px 12px;
       border-radius:14px;
-      cursor:pointer;
       font-weight:900;
-      white-space:nowrap;
       text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
     }
-    button:active,.btn:active{transform:scale(.98)}
-    .btnPrimary{ background: rgba(74,163,255,.18); border-color: rgba(74,163,255,.35); }
-    .btnOk{ background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.30); }
-    .btnDanger{ background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.28); }
 
     main{max-width:1100px;margin:0 auto;padding:16px}
     .card{
-      background: linear-gradient(180deg, var(--card), var(--card2));
+      background:linear-gradient(180deg,var(--card),var(--card2));
       border:1px solid rgba(255,255,255,.12);
       border-radius:18px;
-      box-shadow: var(--shadow);
+      box-shadow:var(--shadow);
       padding:14px;
     }
 
     .toolbar{
-      display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
       margin-bottom:12px;
     }
-    .monthTitle{
-      font-weight:950;
-      letter-spacing:.2px;
-    }
 
-    .grid{
-      display:grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap:10px;
-    }
-    .dow{
-      color:var(--muted);
-      font-size:12px;
-      text-align:center;
-      padding:6px 0;
-      user-select:none;
-    }
+    .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+    .dow{color:var(--muted);text-align:center;font-size:12px}
     .day{
       border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
+      background:rgba(0,0,0,.18);
       border-radius:16px;
       min-height:90px;
       padding:10px;
-      cursor:pointer;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
     }
-    .day:hover{ border-color: rgba(255,255,255,.22); }
-    .day:active{ transform: scale(.99); }
-    .dayNum{ font-weight:950; }
-    .muted{ color:var(--muted); font-size:12px; }
+    .dayNum{font-weight:950}
 
     .tag{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      font-size:12px;
+      margin-top:8px;
       padding:6px 10px;
       border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      max-width:100%;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-    .tagDot{
-      width:8px;height:8px;border-radius:999px;background: var(--accent);
-      flex:0 0 auto;
-    }
-
-    dialog{
-      width:min(720px, 96vw);
-      border:1px solid rgba(255,255,255,.16);
-      border-radius:18px;
-      padding:0;
-      background: rgba(11,18,32,.95);
-      color:var(--text);
-      box-shadow: var(--shadow);
-    }
-    dialog::backdrop{ background: rgba(0,0,0,.55); }
-    .dlgHead{
-      padding:14px 14px 10px;
-      border-bottom:1px solid var(--line);
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-    }
-    .dlgHead strong{ font-size:14px; }
-    .dlgBody{ padding:14px; display:grid; gap:10px; }
-    .field{display:grid; gap:6px;}
-    label{font-size:12px;color:var(--muted);}
-    input, textarea{
-      width:100%;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color:var(--text);
-      border-radius:14px;
-      padding:10px 12px;
-      outline:none;
-    }
-    textarea{min-height:110px; resize:vertical;}
-    .dlgActions{
-      padding:14px;
-      border-top:1px solid var(--line);
+      font-size:12px;
       display:flex;
-      gap:10px;
-      justify-content:flex-end;
-      flex-wrap:wrap;
+      gap:6px;
+      align-items:center;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14);
+      cursor:pointer;
     }
-    .two{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:10px;
+    .dot{
+      width:8px;height:8px;border-radius:999px;
+      background:var(--accent);
     }
-    @media(min-width:700px){
-      .two{grid-template-columns: 1fr 1fr;}
-    }
+    .dot.ok{background:var(--ok)}
   </style>
 </head>
 
@@ -181,15 +99,10 @@
   <div class="wrap">
     <div class="top">
       <div class="brand">
-        <div>
-          <h1>Ford Property Services</h1>
-          <p>Calendar (links to Jobs Board)</p>
-        </div>
+        <h1>Ford Property Services</h1>
+        <p>Calendar (Jobs Board)</p>
       </div>
-      <div class="row">
-        <a class="btn" href="../dashboard/">← Dashboard</a>
-        <a class="btn btnPrimary" id="openJobsBoardTop" href="../jobs-board/">Open Jobs Board</a>
-      </div>
+      <a class="btn" href="../jobs-board/">Open Jobs Board</a>
     </div>
   </div>
 </header>
@@ -197,303 +110,106 @@
 <main>
   <div class="card">
     <div class="toolbar">
-      <div class="row">
-        <button id="prevMonth" type="button">←</button>
-        <div class="monthTitle" id="monthTitle">Month</div>
-        <button id="nextMonth" type="button">→</button>
+      <div>
+        <button class="btn" id="prev">←</button>
+        <strong id="month"></strong>
+        <button class="btn" id="next">→</button>
       </div>
-
-      <div class="row">
-        <button id="todayBtn" type="button">Today</button>
-        <button id="newEventBtn" class="btnOk" type="button">+ New event</button>
-      </div>
+      <button class="btn" id="today">Today</button>
     </div>
 
-    <div class="grid" id="dowRow"></div>
-    <div class="grid" id="calGrid" style="margin-top:10px;"></div>
-
-    <p class="muted" style="margin:12px 0 0;">
-      Tap a day to add/view an event. “Open Jobs Board” will pass the selected date.
-    </p>
+    <div class="grid" id="dow"></div>
+    <div class="grid" id="grid"></div>
   </div>
 </main>
 
-<dialog id="eventDlg">
-  <div class="dlgHead">
-    <strong id="dlgTitle">Event</strong>
-    <button id="closeDlg" type="button" class="btn">✕</button>
-  </div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-  <div class="dlgBody">
-    <div class="two">
-      <div class="field">
-        <label>Date</label>
-        <input id="evtDate" type="date" />
-      </div>
-      <div class="field">
-        <label>Time (optional)</label>
-        <input id="evtTime" type="time" />
-      </div>
-    </div>
+const firebaseConfig = {
+  apiKey: "AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
+  authDomain: "fps-jobs-board.firebaseapp.com",
+  projectId: "fps-jobs-board"
+};
 
-    <div class="field">
-      <label>Title</label>
-      <input id="evtTitle" type="text" placeholder="e.g. 12 High Street – Boiler issue" />
-    </div>
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+await signInAnonymously(auth);
 
-    <div class="field">
-      <label>Notes (optional)</label>
-      <textarea id="evtNotes" placeholder="Key details..."></textarea>
-    </div>
+const boardRef = doc(db,"jobsBoard","shared");
 
-    <div class="two">
-      <div class="field">
-        <label>Property address (optional)</label>
-        <input id="evtAddress" type="text" placeholder="Used for PDF name / job details" />
-      </div>
-      <div class="field">
-        <label>Jobs Board link</label>
-        <input id="jobsLink" type="text" readonly />
-      </div>
-    </div>
-  </div>
+let jobs = [];
+onSnapshot(boardRef,snap=>{
+  jobs = (snap.data()?.jobs || []);
+  render();
+});
 
-  <div class="dlgActions">
-    <button id="deleteBtn" type="button" class="btn btnDanger">Delete</button>
-    <a id="openJobsBtn" class="btn btnPrimary" href="../jobs-board/">Open Jobs Board</a>
-    <button id="saveBtn" type="button" class="btn btnOk">Save</button>
-  </div>
-</dialog>
+const view = new Date(); view.setDate(1);
 
-<script>
-  // --- Settings ---
-  const STORAGE_KEY = "fps_calendar_events_v1";   // calendar’s own manual events
-const FEED_KEY    = "fps_calendar_feed_v1";     // jobs board feed (auto)
+const monthEl = document.getElementById("month");
+const grid = document.getElementById("grid");
+const dow = document.getElementById("dow");
 
-  // If your Jobs Board folder name differs, change this:
-  const JOBS_BOARD_PATH = "../jobs-board/";
+["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=>{
+  const el=document.createElement("div");
+  el.className="dow";el.textContent=d;dow.appendChild(el);
+});
 
-  // --- Helpers ---
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const toISODate = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+function iso(d){return d.toISOString().slice(0,10);}
 
-  function loadEvents(){
-  let manual = {};
-  try { manual = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch {}
+function render(){
+  grid.innerHTML="";
+  monthEl.textContent=view.toLocaleString("en-GB",{month:"long",year:"numeric"});
 
-  let feed = {};
-  try { feed = JSON.parse(localStorage.getItem(FEED_KEY) || "{}"); } catch {}
+  const y=view.getFullYear(), m=view.getMonth();
+  const first=new Date(y,m,1);
+  const offset=(first.getDay()+6)%7;
+  const days=new Date(y,m+1,0).getDate();
 
-  // Merge: manual overrides feed if same date key exists
-  return { ...feed, ...manual };
-  }
-  function saveEvents(obj){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+  for(let i=0;i<offset;i++){
+    const b=document.createElement("div");
+    b.style.opacity="0";grid.appendChild(b);
   }
 
-  function buildJobsLink(dateISO){
-    // Pass selected date to Jobs Board (Jobs Board can ignore it safely)
-    // You can later update Jobs Board to read ?date=YYYY-MM-DD
-    return `${JOBS_BOARD_PATH}?date=${encodeURIComponent(dateISO)}`;
-  }
+  for(let d=1;d<=days;d++){
+    const date=new Date(y,m,d);
+    const dayBox=document.createElement("div");
+    dayBox.className="day";
+    dayBox.innerHTML=`<div class="dayNum">${d}</div>`;
 
-  // --- State ---
-  let view = new Date();
-  view.setDate(1);
+    const todayISO=iso(date);
 
-  let events = loadEvents(); // { "YYYY-MM-DD": { title,time,notes,address } }
-
-  // --- UI refs ---
-  const monthTitle = document.getElementById("monthTitle");
-  const calGrid = document.getElementById("calGrid");
-  const dowRow = document.getElementById("dowRow");
-
-  const dlg = document.getElementById("eventDlg");
-  const dlgTitle = document.getElementById("dlgTitle");
-  const closeDlg = document.getElementById("closeDlg");
-  const evtDate = document.getElementById("evtDate");
-  const evtTime = document.getElementById("evtTime");
-  const evtTitle = document.getElementById("evtTitle");
-  const evtNotes = document.getElementById("evtNotes");
-  const evtAddress = document.getElementById("evtAddress");
-  const jobsLink = document.getElementById("jobsLink");
-  const openJobsBtn = document.getElementById("openJobsBtn");
-  const deleteBtn = document.getElementById("deleteBtn");
-  const saveBtn = document.getElementById("saveBtn");
-
-  const openJobsBoardTop = document.getElementById("openJobsBoardTop");
-
-  // --- Render ---
-  const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-
-  function renderDOW(){
-    dowRow.innerHTML = "";
-    for(const d of DOW){
-      const el = document.createElement("div");
-      el.className = "dow";
-      el.textContent = d;
-      dowRow.appendChild(el);
-    }
-  }
-
-  function renderCalendar(){
-    const y = view.getFullYear();
-    const m = view.getMonth();
-
-    const monthName = view.toLocaleString("en-GB", { month: "long", year: "numeric" });
-    monthTitle.textContent = monthName;
-
-    // Top “Open Jobs Board” should default to month’s first day
-    const defaultDate = toISODate(new Date(y, m, 1));
-    openJobsBoardTop.href = buildJobsLink(defaultDate);
-
-    calGrid.innerHTML = "";
-
-    // Calculate start offset (Monday-first)
-    const first = new Date(y, m, 1);
-    const firstDowSunday0 = first.getDay(); // Sun=0
-    const mondayFirstIndex = (firstDowSunday0 + 6) % 7; // Mon=0 ... Sun=6
-
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-
-    // Fill leading blanks
-    for(let i=0;i<mondayFirstIndex;i++){
-      const blank = document.createElement("div");
-      blank.style.opacity = "0";
-      blank.style.pointerEvents = "none";
-      blank.className = "day";
-      calGrid.appendChild(blank);
-    }
-
-    // Days
-    for(let day=1; day<=daysInMonth; day++){
-      const date = new Date(y, m, day);
-      const iso = toISODate(date);
-
-      const box = document.createElement("div");
-      box.className = "day";
-      box.setAttribute("data-date", iso);
-
-      const top = document.createElement("div");
-      top.style.display = "flex";
-      top.style.alignItems = "center";
-      top.style.justifyContent = "space-between";
-      top.style.gap = "10px";
-
-      const num = document.createElement("div");
-      num.className = "dayNum";
-      num.textContent = day;
-
-      const small = document.createElement("div");
-      small.className = "muted";
-      small.textContent = date.toLocaleDateString("en-GB", { weekday:"short" });
-
-      top.appendChild(num);
-      top.appendChild(small);
-      box.appendChild(top);
-
-      const evt = events[iso];
-      if (evt && (evt.title || evt.address || evt.notes || evt.time)){
-        const tag = document.createElement("div");
-        tag.className = "tag";
-        tag.title = evt.title || evt.address || "Event";
-
-        const dot = document.createElement("span");
-        dot.className = "tagDot";
-        tag.appendChild(dot);
-
-        const text = document.createElement("span");
-        const label = evt.title?.trim() || evt.address?.trim() || "Event";
-        const time = evt.time ? ` • ${evt.time}` : "";
-        text.textContent = `${label}${time}`;
-        tag.appendChild(text);
-
-        box.appendChild(tag);
-      } else {
-        const hint = document.createElement("div");
-        hint.className = "muted";
-        hint.textContent = "Tap to add";
-        box.appendChild(hint);
+    jobs.forEach(j=>{
+      if(j.estVisitDT?.startsWith(todayISO)){
+        dayBox.appendChild(tag("Estimate",j.address,j.id,false));
       }
+      if(j.worksDT?.startsWith(todayISO)){
+        dayBox.appendChild(tag("Works",j.address,j.id,true));
+      }
+    });
 
-      box.addEventListener("click", () => openDialogForDate(iso));
-      calGrid.appendChild(box);
-    }
+    grid.appendChild(dayBox);
   }
+}
 
-  // --- Dialog logic ---
-  function openDialogForDate(iso){
-    const existing = events[iso] || {};
-    dlgTitle.textContent = `Event • ${new Date(iso).toLocaleDateString("en-GB", { weekday:"long", day:"2-digit", month:"long", year:"numeric" })}`;
+function tag(label,address,id,isWorks){
+  const t=document.createElement("div");
+  t.className="tag";
+  t.innerHTML=`<span class="dot ${isWorks?"ok":""}"></span>${label}: ${address||""}`;
+  t.onclick=()=>location.href=`../jobs-board/?job=${id}`;
+  return t;
+}
 
-    evtDate.value = iso;
-    evtTime.value = existing.time || "";
-    evtTitle.value = existing.title || "";
-    evtNotes.value = existing.notes || "";
-    evtAddress.value = existing.address || "";
+document.getElementById("prev").onclick=()=>{view.setMonth(view.getMonth()-1);render();}
+document.getElementById("next").onclick=()=>{view.setMonth(view.getMonth()+1);render();}
+document.getElementById("today").onclick=()=>{
+  const n=new Date();view.setFullYear(n.getFullYear(),n.getMonth(),1);render();
+};
 
-    const link = buildJobsLink(iso);
-    jobsLink.value = link;
-    openJobsBtn.href = link;
-
-    deleteBtn.style.display = events[iso] ? "inline-flex" : "none";
-
-    dlg.showModal();
-  }
-
-  closeDlg.addEventListener("click", () => dlg.close());
-
-  saveBtn.addEventListener("click", () => {
-    const iso = evtDate.value;
-    if(!iso) return;
-
-    events[iso] = {
-      time: evtTime.value.trim(),
-      title: evtTitle.value.trim(),
-      notes: evtNotes.value.trim(),
-      address: evtAddress.value.trim()
-    };
-
-    // If everything empty, remove the event
-    const e = events[iso];
-    if(!e.time && !e.title && !e.notes && !e.address){
-      delete events[iso];
-    }
-
-    saveEvents(events);
-    dlg.close();
-    renderCalendar();
-  });
-
-  deleteBtn.addEventListener("click", () => {
-    const iso = evtDate.value;
-    if(events[iso]) delete events[iso];
-    saveEvents(events);
-    dlg.close();
-    renderCalendar();
-  });
-
-  // --- Toolbar buttons ---
-  document.getElementById("prevMonth").addEventListener("click", () => {
-    view.setMonth(view.getMonth() - 1);
-    renderCalendar();
-  });
-  document.getElementById("nextMonth").addEventListener("click", () => {
-    view.setMonth(view.getMonth() + 1);
-    renderCalendar();
-  });
-  document.getElementById("todayBtn").addEventListener("click", () => {
-    const t = new Date();
-    view = new Date(t.getFullYear(), t.getMonth(), 1);
-    renderCalendar();
-  });
-  document.getElementById("newEventBtn").addEventListener("click", () => {
-    openDialogForDate(toISODate(new Date()));
-  });
-
-  // Init
-  renderDOW();
-  renderCalendar();
+render();
 </script>
 </body>
 </html>
