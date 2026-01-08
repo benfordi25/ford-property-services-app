@@ -1422,12 +1422,36 @@
       });
     }
 
+    // ===== Deep link: open job details when arriving with ?job=JOB_ID =====
+    const urlParams = new URLSearchParams(location.search);
+    let pendingJobId = urlParams.get("job");
+    let openedDeepLink = false;
+
+    function tryOpenDeepLink(){
+      if(openedDeepLink) return;
+      if(!pendingJobId) return;
+
+      const job = jobs.find(j => j.id === pendingJobId);
+      if(!job) return; // jobs not loaded yet
+
+      openedDeepLink = true;
+      openDetailsModal(pendingJobId);
+
+      // Clean URL so refresh doesn't reopen
+      try{
+        const clean = new URL(location.href);
+        clean.searchParams.delete("job");
+        history.replaceState({}, "", clean.toString());
+      }catch{}
+    }
+
     function renderAll(){
       const q = searchEl.value.trim();
       const filtered = jobs.filter(j => matches(j, q));
       totalCountEl.textContent = String(filtered.length);
       renderBookings(filtered);
       renderBoard(filtered);
+      tryOpenDeepLink();
     }
 
     function csvEscape(v){
