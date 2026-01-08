@@ -44,6 +44,7 @@ header{
   border-radius:14px;
   font-weight:900;
   text-decoration:none;
+  cursor:pointer;
 }
 main{max-width:1100px;margin:0 auto;padding:16px}
 .card{
@@ -57,7 +58,6 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
   margin-bottom:12px;
 }
-.toggle button{margin-left:6px}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
 .dow{color:var(--muted);text-align:center;font-size:12px}
 .day{
@@ -66,11 +66,9 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   border-radius:16px;
   min-height:90px;
   padding:8px;
+  cursor:pointer;
 }
-.day.today{
-  border-color:var(--blue);
-  background:rgba(74,163,255,.10);
-}
+.day.today{border-color:var(--blue);background:rgba(74,163,255,.10)}
 .dayNum{font-weight:950;margin-bottom:4px}
 .event{
   margin-top:6px;
@@ -83,22 +81,21 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 }
 .event.est{border-left:4px solid var(--blue)}
 .event.works{border-left:4px solid var(--green)}
-.week{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:10px;
-}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
 .weekCol{
   border:1px solid rgba(255,255,255,.12);
   border-radius:16px;
   padding:10px;
 }
-.weekCol.today{
-  border-color:var(--blue);
-}
-.weekHead{
-  font-weight:900;
-  margin-bottom:8px;
+.weekCol.today{border-color:var(--blue)}
+.weekHead{font-weight:900;margin-bottom:8px}
+.list{display:grid;gap:10px}
+.listItem{
+  padding:10px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  cursor:pointer;
 }
 .muted{color:var(--muted);font-size:12px}
 </style>
@@ -125,9 +122,10 @@ main{max-width:1100px;margin:0 auto;padding:16px}
       <strong id="title"></strong>
       <button class="btn" id="next">→</button>
     </div>
-    <div class="toggle">
+    <div>
       <button class="btn" id="monthBtn">Month</button>
       <button class="btn" id="weekBtn">Week</button>
+      <button class="btn" id="dayBtn">Day</button>
       <button class="btn" id="todayBtn">Today</button>
     </div>
   </div>
@@ -138,6 +136,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   </div>
 
   <div id="weekView" style="display:none"></div>
+  <div id="dayView" style="display:none"></div>
 </div>
 </main>
 
@@ -163,6 +162,7 @@ onSnapshot(doc(db,"jobsBoard","shared"),snap=>{
 const title=document.getElementById("title");
 const monthGrid=document.getElementById("monthGrid");
 const weekView=document.getElementById("weekView");
+const dayView=document.getElementById("dayView");
 const dow=document.getElementById("dow");
 
 ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=>{
@@ -170,7 +170,8 @@ const dow=document.getElementById("dow");
   el.className="dow";el.textContent=d;dow.appendChild(el);
 });
 
-let view=new Date();view.setDate(1);
+let view=new Date(); view.setDate(1);
+let selected=new Date();
 let mode="month";
 
 const iso=d=>d.toISOString().slice(0,10);
@@ -188,11 +189,13 @@ function eventsFor(dateISO){
 }
 
 function render(){
-  title.textContent=view.toLocaleString("en-GB",{month:"long",year:"numeric"});
+  title.textContent=selected.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
   monthGrid.innerHTML="";
   weekView.innerHTML="";
-  document.getElementById("monthView").style.display=mode==="month"?"block":"none";
+  dayView.innerHTML="";
+  monthView.style.display=mode==="month"?"block":"none";
   weekView.style.display=mode==="week"?"grid":"none";
+  dayView.style.display=mode==="day"?"block":"none";
 
   if(mode==="month"){
     const y=view.getFullYear(),m=view.getMonth();
@@ -205,23 +208,31 @@ function render(){
     for(let d=1;d<=days;d++){
       const date=new Date(y,m,d);
       const box=document.createElement("div");
-      const today=iso(date)===iso(new Date());
-      box.className="day"+(today?" today":"");
+      box.className="day"+(iso(date)===iso(new Date())?" today":"");
       box.innerHTML=`<div class="dayNum">${d}</div>`;
       eventsFor(iso(date)).forEach(e=>{
         const ev=document.createElement("div");
         ev.className=`event ${e.type}`;
         ev.textContent=`${e.t} • ${e.a}`;
-        ev.onclick=()=>location.href=`../jobs-board/?job=${e.id}`;
         box.appendChild(ev);
       });
+      box.onclick=()=>{
+        selected=date;
+        mode="day";
+        render();
+      };
       monthGrid.appendChild(box);
     }
-  } else {
+  }
+
+  if(mode==="week"){
+    const base=new Date(selected);
+    const start=new Date(base);
+    start.setDate(base.getDate()-((base.getDay()+6)%7));
     weekView.className="week";
-    const start=new Date();start.setDate(start.getDate()-((start.getDay()+6)%7));
+
     for(let i=0;i<7;i++){
-      const d=new Date(start);d.setDate(start.getDate()+i);
+      const d=new Date(start); d.setDate(start.getDate()+i);
       const col=document.createElement("div");
       col.className="weekCol"+(iso(d)===iso(new Date())?" today":"");
       col.innerHTML=`<div class="weekHead">${d.toLocaleDateString("en-GB",{weekday:"short",day:"2-digit"})}</div>`;
@@ -237,13 +248,34 @@ function render(){
       weekView.appendChild(col);
     }
   }
+
+  if(mode==="day"){
+    const list=document.createElement("div");
+    list.className="list";
+    const evs=eventsFor(iso(selected));
+    if(!evs.length) list.innerHTML=`<div class="muted">No appointments</div>`;
+    evs.forEach(e=>{
+      const li=document.createElement("div");
+      li.className="listItem";
+      li.textContent=`${e.t} • ${e.a}`;
+      li.onclick=()=>location.href=`../jobs-board/?job=${e.id}`;
+      list.appendChild(li);
+    });
+    dayView.appendChild(list);
+  }
 }
 
 document.getElementById("prev").onclick=()=>{view.setMonth(view.getMonth()-1);render();}
 document.getElementById("next").onclick=()=>{view.setMonth(view.getMonth()+1);render();}
-document.getElementById("todayBtn").onclick=()=>{view=new Date();view.setDate(1);render();}
+document.getElementById("todayBtn").onclick=()=>{
+  const t=new Date();
+  view=new Date(t.getFullYear(),t.getMonth(),1);
+  selected=t;
+  render();
+};
 document.getElementById("monthBtn").onclick=()=>{mode="month";render();}
 document.getElementById("weekBtn").onclick=()=>{mode="week";render();}
+document.getElementById("dayBtn").onclick=()=>{mode="day";render();}
 
 render();
 </script>
