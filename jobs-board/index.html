@@ -241,6 +241,8 @@
       display:none; align-items:center; justify-content:center;
       padding:16px; z-index:50;
     }
+
+    /* ✅ CHANGED: modal becomes a flex column with max-height */
     .modal{
       width:min(900px, 100%);
       background: linear-gradient(180deg, rgba(15,27,51,.98), rgba(12,23,48,.98));
@@ -248,12 +250,42 @@
       border-radius: 18px;
       box-shadow: var(--shadow);
       padding:14px;
+
+      max-height: calc(100vh - 32px);
+      display:flex;
+      flex-direction:column;
     }
+
     .modalHead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}
     .modalHead h2{margin:0;font-size:16px}
-    .grid2{display:grid;grid-template-columns:1fr;gap:10px}
+
+    /* ✅ CHANGED: grid becomes the scroll area */
+    .grid2{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+
+      overflow:auto;
+      padding-right:4px;
+      -webkit-overflow-scrolling: touch;
+    }
     @media(min-width:720px){ .grid2{grid-template-columns:1fr 1fr} }
-    .modalActions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px}
+
+    /* ✅ CHANGED: sticky action bar */
+    .modalActions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+
+      position: sticky;
+      bottom: 0;
+      margin-top: 12px;
+      padding-top: 12px;
+      background: rgba(11,18,32,.92);
+      border-top: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(10px);
+    }
   </style>
 </head>
 
@@ -365,7 +397,7 @@
           <textarea id="mNotes" placeholder="Access info, parts needed, tenant details, etc."></textarea>
         </div>
 
-        <!-- Job Sheet Documents controls -->
+        <!-- NEW: Job Sheet Documents controls -->
         <div style="grid-column:1/-1">
           <label>Documents</label>
           <div class="row">
@@ -429,7 +461,7 @@
     </div>
   </div>
 
-  <!-- Details (read-only) screen -->
+  <!-- NEW: Details (read-only) screen -->
   <div class="modalBack" id="detailsBack">
     <div class="modal" style="width:min(760px, 100%)">
       <div class="modalHead">
@@ -457,9 +489,25 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signInAnonymously
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import {
+      getStorage,
+      ref as sRef,
+      uploadBytes,
+      getDownloadURL,
+      deleteObject
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
@@ -564,6 +612,7 @@
     const quickDT = document.getElementById('quickDT');
     const quickSave = document.getElementById('quickSave');
 
+    // Documents modal elements
     const docsBack = document.getElementById('docsBack');
     const docsClose = document.getElementById('docsClose');
     const docsDone = document.getElementById('docsDone');
@@ -574,11 +623,13 @@
     const docsEmpty = document.getElementById('docsEmpty');
     const docsInput = document.getElementById('docsInput');
 
+    // Job sheet documents controls
     const mDocsOpen = document.getElementById('mDocsOpen');
     const mDocsAdd  = document.getElementById('mDocsAdd');
     const mDocsHint = document.getElementById('mDocsHint');
     const mDocsMini = document.getElementById('mDocsMini');
 
+    // Details screen elements
     const detailsBack  = document.getElementById('detailsBack');
     const detailsClose = document.getElementById('detailsClose');
     const detailsTitle = document.getElementById('detailsTitle');
@@ -586,29 +637,6 @@
     const detailsDocs  = document.getElementById('detailsDocs');
     const detailsEdit  = document.getElementById('detailsEdit');
     let detailsJobId = null;
-
-    // ✅ Deep-link: read ?job=... (from Calendar)
-    const deepLinkJobId = (new URLSearchParams(location.search).get("job") || "").trim();
-    let deepLinkHandled = false;
-
-    function cleanJobParamFromUrl(){
-      try{
-        const u = new URL(location.href);
-        u.searchParams.delete("job");
-        history.replaceState({}, "", u.toString());
-      }catch{}
-    }
-
-    function tryOpenDeepLink(){
-      if(deepLinkHandled) return;
-      if(!deepLinkJobId) return;
-      const job = jobs.find(j=>j.id===deepLinkJobId);
-      if(!job) return; // not loaded yet
-      deepLinkHandled = true;
-      // open details after UI has drawn
-      setTimeout(()=> openDetailsModal(job.id), 50);
-      cleanJobParamFromUrl();
-    }
 
     // Status dropdown
     STATUSES.forEach(s=>{
@@ -812,9 +840,6 @@
       }catch(e){
         console.error("[cloud] boot check failed:", e);
       }
-
-      // ✅ after boot, attempt deep link (if any)
-      tryOpenDeepLink();
     }
 
     window.__queueCloudSave = queueCloudSave;
@@ -1290,7 +1315,7 @@
             <button type="button">Open</button>
           </div>
         `;
-        el.querySelector("button").addEventListener("click", ()=> openDetailsModal(it.job.id));
+        el.querySelector("button").addEventListener("click", ()=> openEdit(it.job.id));
         bookingsListEl.appendChild(el);
       });
     }
@@ -1403,9 +1428,6 @@
       totalCountEl.textContent = String(filtered.length);
       renderBookings(filtered);
       renderBoard(filtered);
-
-      // ✅ If we arrived from calendar with ?job=..., open details when available
-      tryOpenDeepLink();
     }
 
     function csvEscape(v){
