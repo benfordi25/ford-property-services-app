@@ -1,126 +1,144 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Ford Property Services • Calendar</title>
-  <meta name="theme-color" content="#0b1220" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Ford Property Services • Calendar</title>
+<meta name="theme-color" content="#0b1220" />
 
-  <style>
-    :root{
-      --bg:#0b1220;
-      --card: rgba(15,27,51,.92);
-      --card2: rgba(12,23,48,.92);
-      --text:#e7eefc;
-      --muted:#a9b7d3;
-      --line:rgba(255,255,255,.14);
-      --shadow:0 10px 30px rgba(0,0,0,.35);
-      --accent:#4aa3ff;
-      --ok:#22c55e;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:
-        radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
-        radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
-        var(--bg);
-      color:var(--text);
-    }
-    header{
-      position:sticky;top:0;z-index:10;
-      background:rgba(11,18,32,.82);
-      backdrop-filter:blur(10px);
-      border-bottom:1px solid var(--line);
-    }
-    .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-    .brand h1{margin:0;font-size:16px}
-    .brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
-
-    .btn{
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:900;
-      text-decoration:none;
-    }
-
-    main{max-width:1100px;margin:0 auto;padding:16px}
-    .card{
-      background:linear-gradient(180deg,var(--card),var(--card2));
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:18px;
-      box-shadow:var(--shadow);
-      padding:14px;
-    }
-
-    .toolbar{
-      display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
-      margin-bottom:12px;
-    }
-
-    .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
-    .dow{color:var(--muted);text-align:center;font-size:12px}
-    .day{
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.18);
-      border-radius:16px;
-      min-height:90px;
-      padding:10px;
-    }
-    .dayNum{font-weight:950}
-
-    .tag{
-      margin-top:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:12px;
-      display:flex;
-      gap:6px;
-      align-items:center;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.14);
-      cursor:pointer;
-    }
-    .dot{
-      width:8px;height:8px;border-radius:999px;
-      background:var(--accent);
-    }
-    .dot.ok{background:var(--ok)}
-  </style>
+<style>
+:root{
+  --bg:#0b1220;
+  --card:rgba(15,27,51,.92);
+  --card2:rgba(12,23,48,.92);
+  --text:#e7eefc;
+  --muted:#a9b7d3;
+  --line:rgba(255,255,255,.14);
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  --blue:#4aa3ff;
+  --green:#22c55e;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:
+    radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
+    radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
+    var(--bg);
+  color:var(--text);
+}
+header{
+  position:sticky;top:0;z-index:10;
+  background:rgba(11,18,32,.82);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.btn{
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  padding:8px 12px;
+  border-radius:14px;
+  font-weight:900;
+  text-decoration:none;
+}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.card{
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  padding:14px;
+}
+.toolbar{
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.toggle button{margin-left:6px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+.dow{color:var(--muted);text-align:center;font-size:12px}
+.day{
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.18);
+  border-radius:16px;
+  min-height:90px;
+  padding:8px;
+}
+.day.today{
+  border-color:var(--blue);
+  background:rgba(74,163,255,.10);
+}
+.dayNum{font-weight:950;margin-bottom:4px}
+.event{
+  margin-top:6px;
+  padding:6px 8px;
+  border-radius:12px;
+  font-size:12px;
+  cursor:pointer;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);
+}
+.event.est{border-left:4px solid var(--blue)}
+.event.works{border-left:4px solid var(--green)}
+.week{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:10px;
+}
+.weekCol{
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;
+  padding:10px;
+}
+.weekCol.today{
+  border-color:var(--blue);
+}
+.weekHead{
+  font-weight:900;
+  margin-bottom:8px;
+}
+.muted{color:var(--muted);font-size:12px}
+</style>
 </head>
 
 <body>
 <header>
   <div class="wrap">
     <div class="top">
-      <div class="brand">
-        <h1>Ford Property Services</h1>
-        <p>Calendar (Jobs Board)</p>
+      <div>
+        <strong>Ford Property Services</strong><br>
+        <span class="muted">Calendar</span>
       </div>
-      <a class="btn" href="../jobs-board/">Open Jobs Board</a>
+      <a class="btn" href="../jobs-board/">Jobs Board</a>
     </div>
   </div>
 </header>
 
 <main>
-  <div class="card">
-    <div class="toolbar">
-      <div>
-        <button class="btn" id="prev">←</button>
-        <strong id="month"></strong>
-        <button class="btn" id="next">→</button>
-      </div>
-      <button class="btn" id="today">Today</button>
+<div class="card">
+  <div class="toolbar">
+    <div>
+      <button class="btn" id="prev">←</button>
+      <strong id="title"></strong>
+      <button class="btn" id="next">→</button>
     </div>
-
-    <div class="grid" id="dow"></div>
-    <div class="grid" id="grid"></div>
+    <div class="toggle">
+      <button class="btn" id="monthBtn">Month</button>
+      <button class="btn" id="weekBtn">Week</button>
+      <button class="btn" id="todayBtn">Today</button>
+    </div>
   </div>
+
+  <div id="monthView">
+    <div class="grid" id="dow"></div>
+    <div class="grid" id="monthGrid"></div>
+  </div>
+
+  <div id="weekView" style="display:none"></div>
+</div>
 </main>
 
 <script type="module">
@@ -128,86 +146,104 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/fireba
 import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
-  authDomain: "fps-jobs-board.firebaseapp.com",
-  projectId: "fps-jobs-board"
-};
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  apiKey:"AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
+  authDomain:"fps-jobs-board.firebaseapp.com",
+  projectId:"fps-jobs-board"
+});
+await signInAnonymously(getAuth(app));
 const db = getFirestore(app);
-const auth = getAuth(app);
-await signInAnonymously(auth);
 
-const boardRef = doc(db,"jobsBoard","shared");
-
-let jobs = [];
-onSnapshot(boardRef,snap=>{
-  jobs = (snap.data()?.jobs || []);
+let jobs=[];
+onSnapshot(doc(db,"jobsBoard","shared"),snap=>{
+  jobs=snap.data()?.jobs||[];
   render();
 });
 
-const view = new Date(); view.setDate(1);
-
-const monthEl = document.getElementById("month");
-const grid = document.getElementById("grid");
-const dow = document.getElementById("dow");
+const title=document.getElementById("title");
+const monthGrid=document.getElementById("monthGrid");
+const weekView=document.getElementById("weekView");
+const dow=document.getElementById("dow");
 
 ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=>{
   const el=document.createElement("div");
   el.className="dow";el.textContent=d;dow.appendChild(el);
 });
 
-function iso(d){return d.toISOString().slice(0,10);}
+let view=new Date();view.setDate(1);
+let mode="month";
 
-function render(){
-  grid.innerHTML="";
-  monthEl.textContent=view.toLocaleString("en-GB",{month:"long",year:"numeric"});
+const iso=d=>d.toISOString().slice(0,10);
+const firstLine=a=>(a||"").split(",")[0];
 
-  const y=view.getFullYear(), m=view.getMonth();
-  const first=new Date(y,m,1);
-  const offset=(first.getDay()+6)%7;
-  const days=new Date(y,m+1,0).getDate();
-
-  for(let i=0;i<offset;i++){
-    const b=document.createElement("div");
-    b.style.opacity="0";grid.appendChild(b);
-  }
-
-  for(let d=1;d<=days;d++){
-    const date=new Date(y,m,d);
-    const dayBox=document.createElement("div");
-    dayBox.className="day";
-    dayBox.innerHTML=`<div class="dayNum">${d}</div>`;
-
-    const todayISO=iso(date);
-
-    jobs.forEach(j=>{
-      if(j.estVisitDT?.startsWith(todayISO)){
-        dayBox.appendChild(tag("Estimate",j.address,j.id,false));
-      }
-      if(j.worksDT?.startsWith(todayISO)){
-        dayBox.appendChild(tag("Works",j.address,j.id,true));
-      }
-    });
-
-    grid.appendChild(dayBox);
-  }
+function eventsFor(dateISO){
+  return jobs.flatMap(j=>{
+    const out=[];
+    if(j.estVisitDT?.startsWith(dateISO))
+      out.push({t:j.estVisitDT.slice(11,16),a:firstLine(j.address),id:j.id,type:"est"});
+    if(j.worksDT?.startsWith(dateISO))
+      out.push({t:j.worksDT.slice(11,16),a:firstLine(j.address),id:j.id,type:"works"});
+    return out;
+  }).sort((a,b)=>a.t.localeCompare(b.t));
 }
 
-function tag(label,address,id,isWorks){
-  const t=document.createElement("div");
-  t.className="tag";
-  t.innerHTML=`<span class="dot ${isWorks?"ok":""}"></span>${label}: ${address||""}`;
-  t.onclick=()=>location.href=`../jobs-board/?job=${id}`;
-  return t;
+function render(){
+  title.textContent=view.toLocaleString("en-GB",{month:"long",year:"numeric"});
+  monthGrid.innerHTML="";
+  weekView.innerHTML="";
+  document.getElementById("monthView").style.display=mode==="month"?"block":"none";
+  weekView.style.display=mode==="week"?"grid":"none";
+
+  if(mode==="month"){
+    const y=view.getFullYear(),m=view.getMonth();
+    const first=new Date(y,m,1);
+    const offset=(first.getDay()+6)%7;
+    const days=new Date(y,m+1,0).getDate();
+
+    for(let i=0;i<offset;i++) monthGrid.appendChild(document.createElement("div"));
+
+    for(let d=1;d<=days;d++){
+      const date=new Date(y,m,d);
+      const box=document.createElement("div");
+      const today=iso(date)===iso(new Date());
+      box.className="day"+(today?" today":"");
+      box.innerHTML=`<div class="dayNum">${d}</div>`;
+      eventsFor(iso(date)).forEach(e=>{
+        const ev=document.createElement("div");
+        ev.className=`event ${e.type}`;
+        ev.textContent=`${e.t} • ${e.a}`;
+        ev.onclick=()=>location.href=`../jobs-board/?job=${e.id}`;
+        box.appendChild(ev);
+      });
+      monthGrid.appendChild(box);
+    }
+  } else {
+    weekView.className="week";
+    const start=new Date();start.setDate(start.getDate()-((start.getDay()+6)%7));
+    for(let i=0;i<7;i++){
+      const d=new Date(start);d.setDate(start.getDate()+i);
+      const col=document.createElement("div");
+      col.className="weekCol"+(iso(d)===iso(new Date())?" today":"");
+      col.innerHTML=`<div class="weekHead">${d.toLocaleDateString("en-GB",{weekday:"short",day:"2-digit"})}</div>`;
+      const evs=eventsFor(iso(d));
+      if(!evs.length) col.innerHTML+=`<div class="muted">No bookings</div>`;
+      evs.forEach(e=>{
+        const ev=document.createElement("div");
+        ev.className=`event ${e.type}`;
+        ev.textContent=`${e.t} • ${e.a}`;
+        ev.onclick=()=>location.href=`../jobs-board/?job=${e.id}`;
+        col.appendChild(ev);
+      });
+      weekView.appendChild(col);
+    }
+  }
 }
 
 document.getElementById("prev").onclick=()=>{view.setMonth(view.getMonth()-1);render();}
 document.getElementById("next").onclick=()=>{view.setMonth(view.getMonth()+1);render();}
-document.getElementById("today").onclick=()=>{
-  const n=new Date();view.setFullYear(n.getFullYear(),n.getMonth(),1);render();
-};
+document.getElementById("todayBtn").onclick=()=>{view=new Date();view.setDate(1);render();}
+document.getElementById("monthBtn").onclick=()=>{mode="month";render();}
+document.getElementById("weekBtn").onclick=()=>{mode="week";render();}
 
 render();
 </script>
