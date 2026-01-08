@@ -197,6 +197,18 @@
       font-size:12px;margin-top:8px;
     }
 
+    /* NEW: subtle highlight chips for bookings (no layout change) */
+    .chip.bookingEst{
+      color: var(--text);
+      border-color: rgba(74,163,255,.45);
+      background: rgba(74,163,255,.12);
+    }
+    .chip.bookingWorks{
+      color: var(--text);
+      border-color: rgba(34,197,94,.45);
+      background: rgba(34,197,94,.12);
+    }
+
     .modalBack{
       position:fixed; inset:0; background: rgba(0,0,0,.55);
       display:none; align-items:center; justify-content:center;
@@ -282,7 +294,7 @@
           <input id="mAgent" placeholder="e.g., Romans" />
         </div>
         <div>
-          <label>Job Reference</label>
+          <label>Assigned Agent</label>
           <input id="mRef" placeholder="Optional" />
         </div>
 
@@ -354,6 +366,34 @@
     </div>
   </div>
 
+  <!-- NEW: Documents Modal -->
+  <div class="modalBack" id="docsBack">
+    <div class="modal" style="width:min(780px, 100%)">
+      <div class="modalHead">
+        <h2 id="docsTitle">Documents</h2>
+        <button type="button" id="docsClose">Close</button>
+      </div>
+
+      <div class="bookings" style="margin-bottom:0">
+        <div class="bookingsHead">
+          <div class="small" id="docsSub">Add photos & PDFs for this job.</div>
+          <div class="row">
+            <button id="docsAddBtn" class="primary" type="button">Add Documents</button>
+          </div>
+        </div>
+        <div id="docsList" class="bookingsList"></div>
+        <div id="docsEmpty" class="small" style="display:none">No documents uploaded yet.</div>
+      </div>
+
+      <div class="modalActions">
+        <button id="docsDone" class="ok" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- hidden input for documents -->
+  <input id="docsInput" type="file" accept="image/*,application/pdf" multiple style="display:none" />
+
   <!-- Dashboard button -->
   <a href="../dashboard/" style="
     position:fixed; top:10px; left:10px; z-index:9999;
@@ -376,27 +416,27 @@
       setDoc,
       onSnapshot
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import {
+      getStorage,
+      ref as sRef,
+      uploadBytes,
+      getDownloadURL,
+      deleteObject
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
-    // Import the functions you need from the SDKs you need
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
-  authDomain: "fps-jobs-board.firebaseapp.com",
-  projectId: "fps-jobs-board",
-  storageBucket: "fps-jobs-board.firebasestorage.app",
-  messagingSenderId: "386598717430",
-  appId: "1:386598717430:web:06a2b508f1d7fcc92069d7"
-};
-
-
+    const firebaseConfig = {
+      apiKey: "AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
+      authDomain: "fps-jobs-board.firebaseapp.com",
+      projectId: "fps-jobs-board",
+      storageBucket: "fps-jobs-board.firebasestorage.app",
+      messagingSenderId: "386598717430",
+      appId: "1:386598717430:web:06a2b508f1d7fcc92069d7"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const storage = getStorage(app);
 
     // PWA service worker (safe even if sw.js is empty)
     if ('serviceWorker' in navigator) {
@@ -467,7 +507,7 @@ const firebaseConfig = {
     const saveJobBtn = document.getElementById('saveJobBtn');
 
     const mAgent = document.getElementById('mAgent');
-    const mRef = document.getElementById('mRef');
+    const mRef = document.getElementById('mRef'); // now "Assigned Agent"
     const mAddress = document.getElementById('mAddress');
     const mEstNo = document.getElementById('mEstNo');
     const mStatus = document.getElementById('mStatus');
@@ -488,6 +528,17 @@ const firebaseConfig = {
     const quickLabel = document.getElementById('quickLabel');
     const quickDT = document.getElementById('quickDT');
     const quickSave = document.getElementById('quickSave');
+
+    // Documents modal elements
+    const docsBack = document.getElementById('docsBack');
+    const docsClose = document.getElementById('docsClose');
+    const docsDone = document.getElementById('docsDone');
+    const docsTitle = document.getElementById('docsTitle');
+    const docsSub = document.getElementById('docsSub');
+    const docsAddBtn = document.getElementById('docsAddBtn');
+    const docsList = document.getElementById('docsList');
+    const docsEmpty = document.getElementById('docsEmpty');
+    const docsInput = document.getElementById('docsInput');
 
     // Status dropdown
     STATUSES.forEach(s=>{
@@ -533,7 +584,7 @@ const firebaseConfig = {
     });
 
     // ===== Data =====
-    const STORAGE_KEY = "fps_jobs_board_workflow_v7";
+    const STORAGE_KEY = "fps_jobs_board_workflow_v8"; // bumped (safe)
     let jobs = [];
     let editingId = null;
 
@@ -547,8 +598,9 @@ const firebaseConfig = {
       j.phone = j.phone || "";
       j.notes = j.notes || "";
       j.agent = j.agent || "";
-      j.ref = j.ref || "";
+      j.ref = j.ref || "";     // now labelled "Assigned Agent"
       j.address = j.address || "";
+      j.docs = Array.isArray(j.docs) ? j.docs : []; // NEW
       j.createdAt = j.createdAt || new Date().toISOString();
       j.updatedAt = j.updatedAt || new Date().toISOString();
       if(!j.status || !STAGE_ORDER.includes(j.status)) j.status = "req_est";
@@ -610,7 +662,6 @@ const firebaseConfig = {
             updatedAtMs: Date.now(),
             updatedBy: currentUserId
           }, { merge:true });
-          // console.log("[cloud] saved", jobs.length);
         }catch(e){
           console.error("[cloud] save failed:", e);
         }
@@ -706,13 +757,12 @@ const firebaseConfig = {
       }
     }
 
-    // Expose hook (you asked for this)
+    // Expose hook
     window.__queueCloudSave = queueCloudSave;
 
     // Save wrapper used by app actions
     function save(){
       saveLocal();
-      // cloud save (debounced)
       queueCloudSave();
     }
 
@@ -761,11 +811,23 @@ const firebaseConfig = {
       mNotes.value = job.notes || "";
       openModal();
     }
+
+    // NEW: Details button -> open edit + focus notes
+    function openDetails(id){
+      openEdit(id);
+      setTimeout(()=>{
+        try{
+          mNotes.scrollIntoView({behavior:"smooth", block:"center"});
+          mNotes.focus();
+        }catch{}
+      }, 50);
+    }
+
     function upsertJob(){
       const payload = {
         id: editingId || uid(),
         agent: mAgent.value.trim(),
-        ref: mRef.value.trim(),
+        ref: mRef.value.trim(), // assigned agent
         address: mAddress.value.trim(),
         estNo: mEstNo.value.trim(),
         status: mStatus.value,
@@ -784,12 +846,11 @@ const firebaseConfig = {
         if(i>=0) jobs[i] = { ...jobs[i], ...payload };
       }else{
         payload.createdAt = new Date().toISOString();
+        payload.docs = [];
         jobs.unshift(payload);
       }
 
-      // ✅ you asked for this call everywhere it needs to go:
       window.__queueCloudSave?.();
-
       save(); renderAll(); closeModalFn();
     }
     function deleteJob(){
@@ -798,7 +859,6 @@ const firebaseConfig = {
       jobs = jobs.filter(j=>j.id!==editingId);
 
       window.__queueCloudSave?.();
-
       save(); renderAll(); closeModalFn();
     }
 
@@ -848,9 +908,7 @@ const firebaseConfig = {
       }
 
       job.updatedAt = new Date().toISOString();
-
       window.__queueCloudSave?.();
-
       save(); renderAll(); closeQuick();
     });
 
@@ -862,13 +920,15 @@ const firebaseConfig = {
       job.updatedAt = new Date().toISOString();
 
       window.__queueCloudSave?.();
-
       save(); renderAll();
     }
 
     // Actions
     function doAction(job, act){
       if(act === "move_back") return moveBack(job);
+
+      if(act === "details") return openDetails(job.id);
+      if(act === "documents") return openDocs(job.id);
 
       if(act === "book_est_visit") return openQuick(job.id, "estVisitDT");
       if(act === "to_attended_est_required") job.status = "attended_est_required";
@@ -883,11 +943,179 @@ const firebaseConfig = {
       if(act === "to_invoice_paid") job.status = "invoice_paid";
 
       job.updatedAt = new Date().toISOString();
-
       window.__queueCloudSave?.();
-
       save(); renderAll();
     }
+
+    // ===== Documents per job =====
+    let docsJobId = null;
+
+    function openDocs(jobId){
+      const job = jobs.find(j=>j.id===jobId);
+      if(!job) return;
+      docsJobId = jobId;
+
+      const title = job.address?.trim() ? job.address.trim() : "(No address)";
+      docsTitle.textContent = "Documents";
+      docsSub.textContent = title;
+
+      renderDocs();
+      docsBack.style.display = "flex";
+    }
+
+    function closeDocs(){
+      docsBack.style.display = "none";
+      docsJobId = null;
+      docsInput.value = "";
+    }
+
+    docsClose.addEventListener("click", closeDocs);
+    docsDone.addEventListener("click", closeDocs);
+    docsBack.addEventListener("click", (e)=>{ if(e.target===docsBack) closeDocs(); });
+
+    docsAddBtn.addEventListener("click", ()=>{
+      if(!docsJobId) return;
+      docsInput.click();
+    });
+
+    function bytesToNice(n){
+      const b = Number(n||0);
+      if(!b) return "";
+      const units = ["B","KB","MB","GB"];
+      let v=b, i=0;
+      while(v>=1024 && i<units.length-1){ v/=1024; i++; }
+      return `${v.toFixed(i===0?0:1)} ${units[i]}`;
+    }
+
+    function isImg(mime, name){
+      if((mime||"").startsWith("image/")) return true;
+      return /\.(png|jpe?g|webp|gif)$/i.test(name||"");
+    }
+
+    function renderDocs(){
+      const job = jobs.find(j=>j.id===docsJobId);
+      if(!job) return closeDocs();
+
+      const arr = Array.isArray(job.docs) ? job.docs : [];
+      docsList.innerHTML = "";
+
+      if(arr.length === 0){
+        docsEmpty.style.display = "block";
+        return;
+      }
+      docsEmpty.style.display = "none";
+
+      arr
+        .slice()
+        .sort((a,b)=> (b.createdAtMs||0) - (a.createdAtMs||0))
+        .forEach(docItem=>{
+          const el = document.createElement("div");
+          el.className = "bookingItem";
+
+          const name = docItem.name || "document";
+          const mime = docItem.mime || "";
+          const size = docItem.size ? bytesToNice(docItem.size) : "";
+          const when = docItem.createdAtMs ? new Date(docItem.createdAtMs).toLocaleString("en-GB") : "";
+          const isImage = isImg(mime, name);
+
+          el.innerHTML = `
+            <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+              ${isImage && docItem.url ? `<img src="${escapeHtml(docItem.url)}" alt="" style="width:56px;height:56px;border-radius:12px;object-fit:cover;border:1px solid rgba(255,255,255,.12)" />` : ""}
+              <div>
+                <b>${escapeHtml(name)}</b>
+                <div class="small">${escapeHtml(mime || "file")}${size ? " • " + escapeHtml(size) : ""}${when ? " • " + escapeHtml(when) : ""}</div>
+                ${docItem.url ? `<div class="small"><a href="${escapeHtml(docItem.url)}" target="_blank" style="color:#9ecbff;text-decoration:none;font-weight:900">Open</a></div>` : ""}
+              </div>
+            </div>
+            <div class="row">
+              <button type="button" class="danger" data-del="1">Delete</button>
+            </div>
+          `;
+
+          el.querySelector('[data-del="1"]').addEventListener("click", async ()=>{
+            if(!confirm("Delete this document?")) return;
+            await deleteDocForJob(docItem.id);
+          });
+
+          docsList.appendChild(el);
+        });
+    }
+
+    async function deleteDocForJob(docId){
+      const job = jobs.find(j=>j.id===docsJobId);
+      if(!job) return;
+
+      const docItem = (job.docs||[]).find(d=>d.id===docId);
+      if(!docItem) return;
+
+      // remove from job first (fast UI)
+      job.docs = (job.docs||[]).filter(d=>d.id!==docId);
+      job.updatedAt = new Date().toISOString();
+      window.__queueCloudSave?.();
+      save();
+      renderDocs();
+      renderAll();
+
+      // try delete from storage (best effort)
+      try{
+        if(docItem.storagePath){
+          await deleteObject(sRef(storage, docItem.storagePath));
+        }
+      }catch(e){
+        console.warn("Storage delete failed:", e);
+      }
+    }
+
+    docsInput.addEventListener("change", async (e)=>{
+      const files = Array.from(e.target.files || []);
+      if(files.length === 0) return;
+      const job = jobs.find(j=>j.id===docsJobId);
+      if(!job) return closeDocs();
+
+      // ensure signed in / cloud ready before storage ops
+      try{ await ensureSignedIn(); }catch{}
+
+      docsAddBtn.disabled = true;
+      docsAddBtn.textContent = "Uploading...";
+
+      try{
+        for(const f of files){
+          const docId = "doc_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+          const safeName = (f.name || "file").replace(/[^\w.\-() ]+/g, "_");
+          const path = `jobsBoard/shared/jobs/${job.id}/${docId}_${safeName}`;
+
+          const storageRef = sRef(storage, path);
+          await uploadBytes(storageRef, f, { contentType: f.type || undefined });
+          const url = await getDownloadURL(storageRef);
+
+          const item = {
+            id: docId,
+            name: f.name || "file",
+            mime: f.type || "",
+            size: f.size || 0,
+            url,
+            storagePath: path,
+            createdAtMs: Date.now()
+          };
+
+          job.docs = Array.isArray(job.docs) ? job.docs : [];
+          job.docs.push(item);
+        }
+
+        job.updatedAt = new Date().toISOString();
+        window.__queueCloudSave?.();
+        save();
+        renderDocs();
+        renderAll();
+      }catch(err){
+        console.error("Upload failed:", err);
+        alert("Upload failed. Check your internet / Firebase Storage rules.");
+      }finally{
+        docsAddBtn.disabled = false;
+        docsAddBtn.textContent = "Add Documents";
+        docsInput.value = "";
+      }
+    });
 
     // Bookings list
     function renderBookings(filteredJobs){
@@ -923,7 +1151,7 @@ const firebaseConfig = {
           <div>
             <b>${escapeHtml(it.kind)} • ${escapeHtml(ukDT(it.dt))}</b>
             <div class="small">${escapeHtml(title)}${estNo ? " • Est: " + escapeHtml(estNo) : ""}</div>
-            <div class="small">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
+            <div class="small">Letting Agent: ${escapeHtml(agent)} • Assigned Agent: ${escapeHtml(ref)}</div>
           </div>
           <div class="row">
             <button type="button">Open</button>
@@ -957,15 +1185,18 @@ const firebaseConfig = {
           const ref = job.ref?.trim() ? job.ref.trim() : "-";
           const estNo = job.estNo?.trim() ? job.estNo.trim() : "";
 
-          const chips = [];
-          if(job.estVisitDT) chips.push(`Est visit: ${ukDT(job.estVisitDT)}`);
-          if(job.worksDT) chips.push(`Works: ${ukDT(job.worksDT)}`);
-          if(estNo) chips.push(`Estimate No: ${estNo}`);
-          if(job.invRef) chips.push(`Invoice: ${job.invRef}`);
-          if((job.phone || "").trim()) chips.push(`Phone: ${job.phone.trim()}`);
+          // chips (bookings highlighted)
+          const chipsHtml = [];
+          if(job.estVisitDT) chipsHtml.push(`<div class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))}</div>`);
+          if(job.worksDT) chipsHtml.push(`<div class="chip bookingWorks">Works: ${escapeHtml(ukDT(job.worksDT))}</div>`);
+          if(estNo) chipsHtml.push(`<div class="chip">Estimate No: ${escapeHtml(estNo)}</div>`);
+          if(job.invRef) chipsHtml.push(`<div class="chip">Invoice: ${escapeHtml(job.invRef)}</div>`);
+          if((job.phone || "").trim()) chipsHtml.push(`<div class="chip">Phone: ${escapeHtml(job.phone.trim())}</div>`);
 
           const btns = [];
           btns.push(`<button type="button" data-act="edit">Edit</button>`);
+          btns.push(`<button type="button" data-act="details">Details</button>`);
+          btns.push(`<button type="button" data-act="documents">Documents</button>`);
           btns.push(`<button type="button" class="warn" data-act="move_back">Move Back</button>`);
 
           const canCall = ["req_est","est_visit_booked","est_accepted","works_booked"];
@@ -1004,15 +1235,18 @@ const firebaseConfig = {
             btns.push(`<button type="button" class="ok" data-act="to_invoice_paid">Invoice Paid</button>`);
           }
 
+          const docsCount = Array.isArray(job.docs) ? job.docs.length : 0;
+
           el.innerHTML = `
             <div class="jobTop">
               <div>
                 <div class="jobTitle">
                   ${escapeHtml(title)}${estNo ? ` <span style="color:var(--muted);font-weight:800">• Est: ${escapeHtml(estNo)}</span>` : ""}
+                  ${docsCount ? ` <span style="color:var(--muted);font-weight:800">• Docs: ${docsCount}</span>` : ""}
                 </div>
-                <div class="meta">Agent: ${escapeHtml(agent)} • Ref: ${escapeHtml(ref)}</div>
+                <div class="meta">Letting Agent: ${escapeHtml(agent)} • Assigned Agent: ${escapeHtml(ref)}</div>
                 ${job.notes ? `<div class="meta" style="margin-top:6px">${escapeHtml(job.notes).slice(0,160)}${job.notes.length>160?'…':''}</div>` : ""}
-                ${chips.length ? `<div class="chip">${escapeHtml(chips.join(" • "))}</div>` : ""}
+                ${chipsHtml.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${chipsHtml.join("")}</div>` : ""}
               </div>
               <div class="jobBtns">${btns.join("")}</div>
             </div>
@@ -1048,8 +1282,8 @@ const firebaseConfig = {
     }
     function exportCsv(){
       const header = [
-        "id","status","status_label","letting_agent","job_ref","address","estimate_no",
-        "estimate_visit_dt","works_booked_dt","invoice_ref","phone","notes","created_at","updated_at"
+        "id","status","status_label","letting_agent","assigned_agent","address","estimate_no",
+        "estimate_visit_dt","works_booked_dt","invoice_ref","phone","notes","documents_count","created_at","updated_at"
       ];
       const rows = jobs.map(j=>[
         j.id, j.status, statusLabel(j.status),
@@ -1057,6 +1291,7 @@ const firebaseConfig = {
         j.estVisitDT || "", j.worksDT || "",
         j.invRef || "", j.phone || "",
         (j.notes || "").replace(/\n/g," "),
+        Array.isArray(j.docs) ? j.docs.length : 0,
         j.createdAt || "", j.updatedAt || ""
       ]);
       const csv = [header, ...rows].map(r=>r.map(csvEscape).join(",")).join("\n");
