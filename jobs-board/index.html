@@ -481,9 +481,29 @@
         <div style="grid-column:1/-1">
           <label id="bookLabel">Choose date & time</label>
           <input id="bookDT" type="datetime-local" />
+
+          <!-- ✅ weekday preview -->
+          <div class="small" id="bookPretty" style="margin-top:8px;font-weight:950;color:var(--text)"></div>
+
           <div class="small" id="bookHint" style="margin-top:8px">
             This will save into the job (so your calendar app picks it up).
           </div>
+        </div>
+
+        <!-- ✅ works duration (only shows for Estimate Accepted) -->
+        <div id="bookDurWrap" style="grid-column:1/-1; display:none">
+          <label>How many days?</label>
+          <select id="bookDays">
+            <option value="0.5">0.5 days</option>
+            <option value="1">1 day</option>
+            <option value="1.5">1.5 days</option>
+            <option value="2">2 days</option>
+            <option value="2.5">2.5 days</option>
+            <option value="3">3 days</option>
+            <option value="4">4 days</option>
+            <option value="5">5 days</option>
+          </select>
+          <div class="small" id="bookEndPretty" style="margin-top:8px"></div>
         </div>
       </div>
 
@@ -557,6 +577,39 @@
       if(!m) return "";
       return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
     }
+
+    // ✅ NEW: weekday + nice UK date
+    function prettyDT(dtLocal){
+      if(!dtLocal) return "";
+      const d = new Date(dtLocal);
+      if(!Number.isFinite(d.getTime())) return "";
+      return d.toLocaleString("en-GB", {
+        weekday:"short",
+        day:"2-digit",
+        month:"short",
+        year:"numeric",
+        hour:"2-digit",
+        minute:"2-digit"
+      }).replace(",", "");
+    }
+
+    // ✅ NEW: add fractional days -> datetime-local
+    function toDTLocal(d){
+      const yyyy = d.getFullYear();
+      const mm = pad2(d.getMonth()+1);
+      const dd = pad2(d.getDate());
+      const hh = pad2(d.getHours());
+      const mi = pad2(d.getMinutes());
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+    function addDays(dtLocal, days){
+      const d = new Date(dtLocal);
+      if(!Number.isFinite(d.getTime())) return "";
+      const ms = Number(days) * 24 * 60 * 60 * 1000;
+      d.setTime(d.getTime() + ms);
+      return toDTLocal(d);
+    }
+
     function toMillis(dtLocal){
       if(!dtLocal) return null;
       const d = new Date(dtLocal);
@@ -632,6 +685,12 @@
     const bookLabel = document.getElementById('bookLabel');
     const bookDT    = document.getElementById('bookDT');
     const bookHint  = document.getElementById('bookHint');
+
+    // ✅ new booking UI refs
+    const bookPretty    = document.getElementById('bookPretty');
+    const bookDurWrap   = document.getElementById('bookDurWrap');
+    const bookDays      = document.getElementById('bookDays');
+    const bookEndPretty = document.getElementById('bookEndPretty');
 
     STATUSES.forEach(s=>{
       const o = document.createElement('option');
@@ -715,6 +774,13 @@
       j.docs = Array.isArray(j.docs) ? j.docs : [];
       j.createdAt = j.createdAt || new Date().toISOString();
       j.updatedAt = j.updatedAt || new Date().toISOString();
+
+      // ✅ new fields (safe defaults)
+      if(j.worksDays === undefined || j.worksDays === null || j.worksDays === "") j.worksDays = 1;
+      const wd = Number(j.worksDays);
+      j.worksDays = (Number.isFinite(wd) && wd>0) ? wd : 1;
+      j.worksEndDT = j.worksEndDT || (j.worksDT ? addDays(j.worksDT, j.worksDays) : "");
+
       if(!j.status || !STAGE_ORDER.includes(j.status)) j.status = "req_est";
       return j;
     }
@@ -865,7 +931,7 @@
     function matches(job, q){
       if(!q) return true;
       q = norm(q);
-      return [job.agent, job.ref, job.address, job.notes, job.estNo, job.invRef, job.phone, job.estVisitDT, job.worksDT]
+      return [job.agent, job.ref, job.address, job.notes, job.estNo, job.invRef, job.phone, job.estVisitDT, job.worksDT, job.worksEndDT]
         .some(x => norm(x).includes(q));
     }
 
@@ -1029,13 +1095,14 @@
       detailsJobId = jobId;
 
       const title = job.address?.trim() ? job.address.trim() : "(No address)";
-      detailsTitle.textContent = "Job Details";
-
       const docsCount = Array.isArray(job.docs) ? job.docs.length : 0;
       const tel = telSan(job.phone||"");
       const mapUrl = job.address?.trim()
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`
         : "";
+
+      const worksDays = Number(job.worksDays || 1);
+      const worksDaysText = (job.worksDT ? ` • ${worksDays} days` : "");
 
       detailsBody.innerHTML = `
         <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:14px;padding:10px">
@@ -1046,7 +1113,7 @@
           ${job.estNo ? `<div>Estimate No: <b>${escapeHtml(job.estNo)}</b></div>` : ""}
           ${job.invRef ? `<div>Invoice Ref: <b>${escapeHtml(job.invRef)}</b></div>` : ""}
           ${job.estVisitDT ? `<div style="margin-top:10px"><span class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))}</span></div>` : ""}
-          ${job.worksDT ? `<div style="margin-top:10px"><span class="chip bookingWorks">Works: ${escapeHtml(ukDT(job.worksDT))}</span></div>` : ""}
+          ${job.worksDT ? `<div style="margin-top:10px"><span class="chip bookingWorks">Works: ${escapeHtml(prettyDT(job.worksDT))}${escapeHtml(worksDaysText)}${job.worksEndDT ? ` • ends ${escapeHtml(prettyDT(job.worksEndDT))}` : ""}</span></div>` : ""}
           ${job.notes ? `<div style="margin-top:12px;white-space:pre-wrap">${escapeHtml(job.notes)}</div>` : `<div style="margin-top:12px;color:var(--muted)">No notes.</div>`}
           <div style="margin-top:12px">Documents: <b>${docsCount}</b></div>
           <div class="row" style="margin-top:12px">
@@ -1070,6 +1137,9 @@
       const logo = localStorage.getItem("fps_logo_v1") || "";
       const title = job.address?.trim() ? job.address.trim() : "(No address)";
       const docsCount = Array.isArray(job.docs) ? job.docs.length : 0;
+
+      const worksDays = Number(job.worksDays || 1);
+      const worksDaysText = job.worksDT ? ` (${worksDays} days)` : "";
 
       const html = `
 <!doctype html>
@@ -1120,7 +1190,7 @@
 
     <div class="chips">
       ${job.estVisitDT ? `<div class="chip">Estimate Visit: ${escapeHtml(ukDT(job.estVisitDT))}</div>` : ""}
-      ${job.worksDT ? `<div class="chip">Works Booking: ${escapeHtml(ukDT(job.worksDT))}</div>` : ""}
+      ${job.worksDT ? `<div class="chip">Works Booking: ${escapeHtml(prettyDT(job.worksDT))}${escapeHtml(worksDaysText)}${job.worksEndDT ? ` • Ends: ${escapeHtml(prettyDT(job.worksEndDT))}` : ""}</div>` : ""}
       <div class="chip">Documents: ${escapeHtml(String(docsCount))}</div>
     </div>
 
@@ -1152,6 +1222,23 @@
     let bookJobId = null;
     let bookMode = null; // "estimate" | "works"
 
+    function updateBookPreview(){
+      const dt = bookDT.value || "";
+      bookPretty.textContent = dt ? prettyDT(dt) : "";
+
+      if(bookMode === "works"){
+        const days = Number(bookDays.value || 1);
+        if(dt && Number.isFinite(days) && days > 0){
+          const end = addDays(dt, days);
+          bookEndPretty.textContent = end ? `Ends: ${prettyDT(end)} • ${days} days` : "";
+        }else{
+          bookEndPretty.textContent = "";
+        }
+      }else{
+        bookEndPretty.textContent = "";
+      }
+    }
+
     function openBookNow(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
@@ -1164,18 +1251,24 @@
         bookLabel.textContent = "Estimate visit date + time";
         bookDT.value = job.estVisitDT || "";
         bookHint.textContent = "This will save into Estimate Visit Booked In (so your calendar app picks it up).";
+
+        bookDurWrap.style.display = "none";
       } else if(job.status === "est_accepted"){
         bookMode = "works";
         bookTitle.textContent = "Book Works";
         bookLabel.textContent = "Works booking date + time";
         bookDT.value = job.worksDT || "";
         bookHint.textContent = "This will save into Works Booked In (so your calendar app picks it up).";
+
+        bookDurWrap.style.display = "block";
+        const wd = Number(job.worksDays || 1);
+        bookDays.value = String(Number.isFinite(wd) && wd>0 ? wd : 1);
       } else {
-        // safety: only intended for those 2 statuses
         bookMode = null;
         return;
       }
 
+      updateBookPreview();
       bookBack.style.display = "flex";
       setTimeout(()=> bookDT.focus(), 60);
     }
@@ -1185,10 +1278,17 @@
       bookJobId = null;
       bookMode = null;
       bookDT.value = "";
+      bookPretty.textContent = "";
+      bookDurWrap.style.display = "none";
+      bookDays.value = "1";
+      bookEndPretty.textContent = "";
     }
 
     bookClose.addEventListener("click", closeBookNow);
     bookBack.addEventListener("click", (e)=>{ if(e.target===bookBack) closeBookNow(); });
+
+    bookDT.addEventListener("input", updateBookPreview);
+    bookDays.addEventListener("change", updateBookPreview);
 
     bookSave.addEventListener("click", ()=>{
       if(!bookJobId || !bookMode) return;
@@ -1201,14 +1301,20 @@
         return;
       }
 
-      // ✅ Set the SAME fields you already use (your calendar app will see it)
       if(bookMode === "estimate"){
         job.estVisitDT = dt;
-        // move forward in workflow automatically
         job.status = "est_visit_booked";
       }
+
       if(bookMode === "works"){
+        const days = Number(bookDays.value || 1);
+        if(!Number.isFinite(days) || days <= 0){
+          alert("Please choose how many days.");
+          return;
+        }
         job.worksDT = dt;
+        job.worksDays = days;
+        job.worksEndDT = addDays(dt, days);
         job.status = "works_booked";
       }
 
@@ -1420,7 +1526,7 @@
         el.className = "bookingItem";
         el.innerHTML = `
           <div>
-            <b>${escapeHtml(it.kind)} • ${escapeHtml(ukDT(it.dt))}</b>
+            <b>${escapeHtml(it.kind)} • ${escapeHtml(it.kind==="Works Booking" ? prettyDT(it.dt) : ukDT(it.dt))}</b>
             <div class="small">${escapeHtml(title)}${estNo ? " • Est: " + escapeHtml(estNo) : ""}</div>
             <div class="small">Letting Agent: ${escapeHtml(agent)} • Assigned Agent: ${escapeHtml(ref)}</div>
           </div>
@@ -1473,7 +1579,10 @@
 
           const chipsHtml = [];
           if(job.estVisitDT) chipsHtml.push(`<div class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))}</div>`);
-          if(job.worksDT) chipsHtml.push(`<div class="chip bookingWorks">Works: ${escapeHtml(ukDT(job.worksDT))}</div>`);
+          if(job.worksDT){
+            const days = Number(job.worksDays || 1);
+            chipsHtml.push(`<div class="chip bookingWorks">Works: ${escapeHtml(prettyDT(job.worksDT))} • ${escapeHtml(String(days))}d</div>`);
+          }
           if(estNo) chipsHtml.push(`<div class="chip">Estimate No: ${escapeHtml(estNo)}</div>`);
           if(job.invRef) chipsHtml.push(`<div class="chip">Invoice: ${escapeHtml(job.invRef)}</div>`);
           if((job.phone || "").trim()) chipsHtml.push(`<div class="chip">Phone: ${escapeHtml(job.phone.trim())}</div>`);
@@ -1483,7 +1592,6 @@
           btns.push(`<button type="button" data-act="details">Details</button>`);
           btns.push(`<button type="button" data-act="documents">Documents</button>`);
 
-          // ✅ Book Now button only for the two statuses you asked for
           if(job.status === "req_est" || job.status === "est_accepted"){
             btns.push(`<button type="button" class="purple" data-act="book">Book Now</button>`);
           }
@@ -1547,12 +1655,15 @@
     function exportCsv(){
       const header = [
         "id","status","status_label","letting_agent","assigned_agent","address","estimate_no",
-        "estimate_visit_dt","works_booked_dt","invoice_ref","phone","notes","documents_count","created_at","updated_at"
+        "estimate_visit_dt","works_booked_dt","works_days","works_end_dt",
+        "invoice_ref","phone","notes","documents_count","created_at","updated_at"
       ];
       const rows = jobs.map(j=>[
         j.id, j.status, statusLabel(j.status),
         j.agent || "", j.ref || "", j.address || "", j.estNo || "",
         j.estVisitDT || "", j.worksDT || "",
+        j.worksDays ?? "",
+        j.worksEndDT || "",
         j.invRef || "", j.phone || "",
         (j.notes || "").replace(/\n/g," "),
         Array.isArray(j.docs) ? j.docs.length : 0,
@@ -1578,7 +1689,6 @@
     exportBtn.addEventListener('click', exportCsv);
     searchEl.addEventListener('input', renderAll);
 
-    // Add Photo/PDF works in Add Job modal too (auto-saves draft if needed)
     mDocsOpen.addEventListener('click', ()=>{
       const id = ensureJobSavedForDocs();
       if(!id) return;
