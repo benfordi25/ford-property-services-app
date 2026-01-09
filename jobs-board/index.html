@@ -482,7 +482,6 @@
           <label id="bookLabel">Choose date & time</label>
           <input id="bookDT" type="datetime-local" />
 
-          <!-- ✅ weekday preview -->
           <div class="small" id="bookPretty" style="margin-top:8px;font-weight:950;color:var(--text)"></div>
 
           <div class="small" id="bookHint" style="margin-top:8px">
@@ -490,11 +489,11 @@
           </div>
         </div>
 
-        <!-- ✅ works duration (only shows for Estimate Accepted) -->
+        <!-- ✅ Works duration ONLY (Estimate bookings will NEVER show this) -->
         <div id="bookDurWrap" style="grid-column:1/-1; display:none">
           <label>How many days?</label>
           <select id="bookDays">
-            <option value="0.5">0.5 days</option>
+            <option value="0.5">0.5 day</option>
             <option value="1">1 day</option>
             <option value="1.5">1.5 days</option>
             <option value="2">2 days</option>
@@ -577,8 +576,6 @@
       if(!m) return "";
       return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
     }
-
-    // ✅ NEW: weekday + nice UK date
     function prettyDT(dtLocal){
       if(!dtLocal) return "";
       const d = new Date(dtLocal);
@@ -592,8 +589,6 @@
         minute:"2-digit"
       }).replace(",", "");
     }
-
-    // ✅ NEW: add fractional days -> datetime-local
     function toDTLocal(d){
       const yyyy = d.getFullYear();
       const mm = pad2(d.getMonth()+1);
@@ -686,7 +681,7 @@
     const bookDT    = document.getElementById('bookDT');
     const bookHint  = document.getElementById('bookHint');
 
-    // ✅ new booking UI refs
+    // ✅ booking UI refs
     const bookPretty    = document.getElementById('bookPretty');
     const bookDurWrap   = document.getElementById('bookDurWrap');
     const bookDays      = document.getElementById('bookDays');
@@ -775,7 +770,7 @@
       j.createdAt = j.createdAt || new Date().toISOString();
       j.updatedAt = j.updatedAt || new Date().toISOString();
 
-      // ✅ new fields (safe defaults)
+      // Works-only fields (estimates have NO days)
       if(j.worksDays === undefined || j.worksDays === null || j.worksDays === "") j.worksDays = 1;
       const wd = Number(j.worksDays);
       j.worksDays = (Number.isFinite(wd) && wd>0) ? wd : 1;
@@ -1230,7 +1225,7 @@
         const days = Number(bookDays.value || 1);
         if(dt && Number.isFinite(days) && days > 0){
           const end = addDays(dt, days);
-          bookEndPretty.textContent = end ? `Ends: ${prettyDT(end)} • ${days} days` : "";
+          bookEndPretty.textContent = end ? `Ends: ${prettyDT(end)} • ${days} day${days===1?"":"s"}` : "";
         }else{
           bookEndPretty.textContent = "";
         }
@@ -1245,15 +1240,19 @@
 
       bookJobId = jobId;
 
+      // ✅ Estimates: date/time ONLY, NO days
       if(job.status === "req_est"){
         bookMode = "estimate";
         bookTitle.textContent = "Book Estimate Visit";
         bookLabel.textContent = "Estimate visit date + time";
         bookDT.value = job.estVisitDT || "";
-        bookHint.textContent = "This will save into Estimate Visit Booked In (so your calendar app picks it up).";
+        bookHint.textContent = "This saves the estimate visit date/time (no days).";
 
-        bookDurWrap.style.display = "none";
-      } else if(job.status === "est_accepted"){
+        bookDurWrap.style.display = "none";     // ✅ never show days for estimates
+        bookDays.value = "1";
+      }
+      // ✅ Works: date/time + days
+      else if(job.status === "est_accepted"){
         bookMode = "works";
         bookTitle.textContent = "Book Works";
         bookLabel.textContent = "Works booking date + time";
@@ -1301,11 +1300,13 @@
         return;
       }
 
+      // ✅ Estimate booking = just the time booked in for (no days stored / shown)
       if(bookMode === "estimate"){
         job.estVisitDT = dt;
         job.status = "est_visit_booked";
       }
 
+      // ✅ Works booking = date/time + days + endDT
       if(bookMode === "works"){
         const days = Number(bookDays.value || 1);
         if(!Number.isFinite(days) || days <= 0){
