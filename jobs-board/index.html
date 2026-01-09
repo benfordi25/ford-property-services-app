@@ -299,15 +299,6 @@
       border-top: 1px solid rgba(255,255,255,.14);
       backdrop-filter: blur(10px);
     }
-
-    /* ✅ DETAILS BODY SCROLL */
-    #detailsBody{
-      flex:1;
-      overflow:auto;
-      padding-right:6px;
-      -webkit-overflow-scrolling: touch;
-      max-height: 60vh;
-    }
   </style>
 </head>
 
@@ -469,11 +460,8 @@
         <h2 id="detailsTitle">Job Details</h2>
         <button type="button" id="detailsClose">Close</button>
       </div>
-
       <div id="detailsBody" class="small"></div>
-
       <div class="modalActions">
-        <button id="detailsShare" class="primary" type="button">Share</button>
         <button id="detailsPrint" class="purple" type="button">Print PDF</button>
         <button id="detailsDocs" type="button">Documents</button>
         <button id="detailsEdit" class="primary" type="button">Edit</button>
@@ -494,6 +482,7 @@
           <label id="bookLabel">Choose date & time</label>
           <input id="bookDT" type="datetime-local" />
 
+          <!-- ✅ weekday preview -->
           <div class="small" id="bookPretty" style="margin-top:8px;font-weight:950;color:var(--text)"></div>
 
           <div class="small" id="bookHint" style="margin-top:8px">
@@ -501,14 +490,7 @@
           </div>
         </div>
 
-        <!-- ✅ ESTIMATE HOURS (estimates only) -->
-        <div id="bookEstHoursWrap" style="grid-column:1/-1; display:none">
-          <label>How many hours?</label>
-          <select id="bookEstHours"></select>
-          <div class="small" id="bookEstHoursPretty" style="margin-top:8px"></div>
-        </div>
-
-        <!-- ✅ works duration (only shows for works booking) -->
+        <!-- ✅ works duration (only shows for Estimate Accepted) -->
         <div id="bookDurWrap" style="grid-column:1/-1; display:none">
           <label>How many days?</label>
           <select id="bookDays">
@@ -596,6 +578,7 @@
       return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
     }
 
+    // ✅ weekday + nice UK date
     function prettyDT(dtLocal){
       if(!dtLocal) return "";
       const d = new Date(dtLocal);
@@ -610,6 +593,7 @@
       }).replace(",", "");
     }
 
+    // ✅ add fractional days -> datetime-local
     function toDTLocal(d){
       const yyyy = d.getFullYear();
       const mm = pad2(d.getMonth()+1);
@@ -692,7 +676,6 @@
     const detailsDocs  = document.getElementById('detailsDocs');
     const detailsEdit  = document.getElementById('detailsEdit');
     const detailsPrint = document.getElementById('detailsPrint');
-    const detailsShare = document.getElementById('detailsShare');
 
     // ✅ Book Now modal refs
     const bookBack  = document.getElementById('bookBack');
@@ -703,29 +686,11 @@
     const bookDT    = document.getElementById('bookDT');
     const bookHint  = document.getElementById('bookHint');
 
+    // ✅ new booking UI refs
     const bookPretty    = document.getElementById('bookPretty');
     const bookDurWrap   = document.getElementById('bookDurWrap');
     const bookDays      = document.getElementById('bookDays');
     const bookEndPretty = document.getElementById('bookEndPretty');
-
-    // ✅ estimate hours
-    const bookEstHoursWrap   = document.getElementById('bookEstHoursWrap');
-    const bookEstHours       = document.getElementById('bookEstHours');
-    const bookEstHoursPretty = document.getElementById('bookEstHoursPretty');
-
-    // build estimate-hours options (0.5 -> 5.0, step 0.5)
-    (function buildEstHours(){
-      const vals = [];
-      for(let v=0.5; v<=5.0001; v+=0.5) vals.push(Number(v.toFixed(1)));
-      bookEstHours.innerHTML = "";
-      vals.forEach(v=>{
-        const o=document.createElement("option");
-        o.value=String(v);
-        o.textContent = `${v} hour${v===1?"":"s"}`;
-        bookEstHours.appendChild(o);
-      });
-      bookEstHours.value="1";
-    })();
 
     STATUSES.forEach(s=>{
       const o = document.createElement('option');
@@ -810,12 +775,6 @@
       j.createdAt = j.createdAt || new Date().toISOString();
       j.updatedAt = j.updatedAt || new Date().toISOString();
 
-      // ✅ estimate hours (default 1 hour if not set)
-      if(j.estHours === undefined || j.estHours === null || j.estHours === "") j.estHours = 1;
-      const eh = Number(j.estHours);
-      j.estHours = (Number.isFinite(eh) && eh>0) ? eh : 1;
-
-      // ✅ works days
       if(j.worksDays === undefined || j.worksDays === null || j.worksDays === "") j.worksDays = 1;
       const wd = Number(j.worksDays);
       j.worksDays = (Number.isFinite(wd) && wd>0) ? wd : 1;
@@ -975,27 +934,6 @@
         .some(x => norm(x).includes(q));
     }
 
-    // ✅ quick status move + delete by id
-    function moveStatus(jobId, nextStatus){
-      const job = jobs.find(j=>j.id===jobId);
-      if(!job) return;
-      job.status = nextStatus;
-      job.updatedAt = new Date().toISOString();
-      save();
-      renderAll();
-    }
-    function deleteJobById(jobId){
-      const job = jobs.find(j=>j.id===jobId);
-      if(!job) return;
-      const title = job.address?.trim() ? job.address.trim() : "this job";
-      if(!confirm(`Delete ${title}? This cannot be undone.`)) return;
-      jobs = jobs.filter(j=>j.id!==jobId);
-      save();
-      renderAll();
-      // close details if it was open for this job
-      if(detailsJobId === jobId) closeDetails();
-    }
-
     // ===== Modal =====
     function openModal(){ modalBack.style.display = 'flex'; }
     function closeModalFn(){ modalBack.style.display = 'none'; }
@@ -1149,39 +1087,6 @@
 
     let detailsJobId = null;
 
-    function shareJob(jobId){
-      const job = jobs.find(j=>j.id===jobId);
-      if(!job) return;
-
-      const title = job.address?.trim() ? job.address.trim() : "(No address)";
-      const estLine = job.estVisitDT ? `Estimate visit: ${ukDT(job.estVisitDT)}${job.estHours ? ` (${job.estHours}h)` : ""}` : "";
-      const worksLine = job.worksDT ? `Works: ${prettyDT(job.worksDT)} (${Number(job.worksDays||1)} days)` : "";
-      const agent = job.agent?.trim() ? job.agent.trim() : "-";
-      const ref = job.ref?.trim() ? job.ref.trim() : "-";
-
-      const text = [
-        "Ford Property Services — Job",
-        title,
-        `Status: ${statusLabel(job.status)}`,
-        `Letting Agent: ${agent}`,
-        `Assigned Agent: ${ref}`,
-        estLine,
-        worksLine,
-        job.invRef ? `Invoice Ref: ${job.invRef}` : "",
-        job.phone ? `Phone: ${job.phone}` : "",
-        job.notes ? `Notes: ${job.notes}` : ""
-      ].filter(Boolean).join("\n");
-
-      if(navigator.share){
-        navigator.share({ title: "FPS Job", text }).catch(()=>{});
-        return;
-      }
-
-      // fallback: email
-      const mail = `mailto:?subject=${encodeURIComponent("FPS Job")}&body=${encodeURIComponent(text)}`;
-      location.href = mail;
-    }
-
     function openDetailsModal(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
@@ -1198,9 +1103,6 @@
       const worksDays = Number(job.worksDays || 1);
       const worksDaysText = (job.worksDT ? ` • ${worksDays} days` : "");
 
-      const estHours = Number(job.estHours || 1);
-      const estHoursText = job.estVisitDT ? ` • ${estHours}h` : "";
-
       detailsBody.innerHTML = `
         <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:14px;padding:10px">
           <div style="font-weight:950;margin-bottom:6px">${escapeHtml(title)}</div>
@@ -1209,7 +1111,7 @@
           <div>Status: <b>${escapeHtml(statusLabel(job.status))}</b></div>
           ${job.estNo ? `<div>Estimate No: <b>${escapeHtml(job.estNo)}</b></div>` : ""}
           ${job.invRef ? `<div>Invoice Ref: <b>${escapeHtml(job.invRef)}</b></div>` : ""}
-          ${job.estVisitDT ? `<div style="margin-top:10px"><span class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))}${escapeHtml(estHoursText)}</span></div>` : ""}
+          ${job.estVisitDT ? `<div style="margin-top:10px"><span class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))}</span></div>` : ""}
           ${job.worksDT ? `<div style="margin-top:10px"><span class="chip bookingWorks">Works: ${escapeHtml(prettyDT(job.worksDT))}${escapeHtml(worksDaysText)}${job.worksEndDT ? ` • ends ${escapeHtml(prettyDT(job.worksEndDT))}` : ""}</span></div>` : ""}
           ${job.notes ? `<div style="margin-top:12px;white-space:pre-wrap">${escapeHtml(job.notes)}</div>` : `<div style="margin-top:12px;color:var(--muted)">No notes.</div>`}
           <div style="margin-top:12px">Documents: <b>${docsCount}</b></div>
@@ -1223,7 +1125,6 @@
       detailsDocs.onclick = ()=> openDocs(jobId);
       detailsEdit.onclick = ()=> { closeDetails(); openEdit(jobId); };
       detailsPrint.onclick = ()=> printJobPdf(jobId);
-      detailsShare.onclick = ()=> shareJob(jobId);
 
       detailsBack.style.display = "flex";
     }
@@ -1238,9 +1139,6 @@
 
       const worksDays = Number(job.worksDays || 1);
       const worksDaysText = job.worksDT ? ` (${worksDays} days)` : "";
-
-      const estHours = Number(job.estHours || 1);
-      const estHoursText = job.estVisitDT ? ` (${estHours}h)` : "";
 
       const html = `
 <!doctype html>
@@ -1290,7 +1188,7 @@
     </div>
 
     <div class="chips">
-      ${job.estVisitDT ? `<div class="chip">Estimate Visit: ${escapeHtml(ukDT(job.estVisitDT))}${escapeHtml(estHoursText)}</div>` : ""}
+      ${job.estVisitDT ? `<div class="chip">Estimate Visit: ${escapeHtml(ukDT(job.estVisitDT))}</div>` : ""}
       ${job.worksDT ? `<div class="chip">Works Booking: ${escapeHtml(prettyDT(job.worksDT))}${escapeHtml(worksDaysText)}${job.worksEndDT ? ` • Ends: ${escapeHtml(prettyDT(job.worksEndDT))}` : ""}</div>` : ""}
       <div class="chip">Documents: ${escapeHtml(String(docsCount))}</div>
     </div>
@@ -1338,13 +1236,6 @@
       }else{
         bookEndPretty.textContent = "";
       }
-
-      if(bookMode === "estimate"){
-        const hrs = Number(bookEstHours.value || 1);
-        bookEstHoursPretty.textContent = (Number.isFinite(hrs) && hrs>0) ? `Duration: ${hrs} hour${hrs===1?"":"s"}` : "";
-      }else{
-        bookEstHoursPretty.textContent = "";
-      }
     }
 
     function openBookNow(jobId){
@@ -1361,21 +1252,12 @@
         bookHint.textContent = "This will save into Estimate Visit Booked In (so your calendar app picks it up).";
 
         bookDurWrap.style.display = "none";
-
-        // ✅ show estimate hours
-        bookEstHoursWrap.style.display = "block";
-        const eh = Number(job.estHours || 1);
-        bookEstHours.value = String(Number.isFinite(eh) && eh>0 ? eh : 1);
-
       } else if(job.status === "est_accepted"){
         bookMode = "works";
         bookTitle.textContent = "Book Works";
         bookLabel.textContent = "Works booking date + time";
         bookDT.value = job.worksDT || "";
         bookHint.textContent = "This will save into Works Booked In (so your calendar app picks it up).";
-
-        // hide estimate hours
-        bookEstHoursWrap.style.display = "none";
 
         bookDurWrap.style.display = "block";
         const wd = Number(job.worksDays || 1);
@@ -1399,10 +1281,6 @@
       bookDurWrap.style.display = "none";
       bookDays.value = "1";
       bookEndPretty.textContent = "";
-
-      bookEstHoursWrap.style.display = "none";
-      bookEstHours.value = "1";
-      bookEstHoursPretty.textContent = "";
     }
 
     bookClose.addEventListener("click", closeBookNow);
@@ -1410,7 +1288,6 @@
 
     bookDT.addEventListener("input", updateBookPreview);
     bookDays.addEventListener("change", updateBookPreview);
-    bookEstHours.addEventListener("change", updateBookPreview);
 
     bookSave.addEventListener("click", ()=>{
       if(!bookJobId || !bookMode) return;
@@ -1424,13 +1301,7 @@
       }
 
       if(bookMode === "estimate"){
-        const hrs = Number(bookEstHours.value || 1);
-        if(!Number.isFinite(hrs) || hrs<=0){
-          alert("Please choose how many hours.");
-          return;
-        }
         job.estVisitDT = dt;
-        job.estHours = hrs; // ✅ saved
         job.status = "est_visit_booked";
       }
 
@@ -1650,15 +1521,11 @@
         const ref = it.job.ref?.trim() ? it.job.ref.trim() : "-";
         const estNo = it.job.estNo?.trim() ? it.job.estNo.trim() : "";
 
-        const extra = (it.kind==="Estimate Visit")
-          ? (it.job.estHours ? ` • ${Number(it.job.estHours)}h` : "")
-          : (it.kind==="Works Booking" ? (it.job.worksDays ? ` • ${Number(it.job.worksDays)} days` : "") : "");
-
         const el = document.createElement("div");
         el.className = "bookingItem";
         el.innerHTML = `
           <div>
-            <b>${escapeHtml(it.kind)} • ${escapeHtml(it.kind==="Works Booking" ? prettyDT(it.dt) : ukDT(it.dt))}${escapeHtml(extra)}</b>
+            <b>${escapeHtml(it.kind)} • ${escapeHtml(it.kind==="Works Booking" ? prettyDT(it.dt) : ukDT(it.dt))}</b>
             <div class="small">${escapeHtml(title)}${estNo ? " • Est: " + escapeHtml(estNo) : ""}</div>
             <div class="small">Letting Agent: ${escapeHtml(agent)} • Assigned Agent: ${escapeHtml(ref)}</div>
           </div>
@@ -1710,10 +1577,7 @@
           const estNo = job.estNo?.trim() ? job.estNo.trim() : "";
 
           const chipsHtml = [];
-          if(job.estVisitDT){
-            const eh = Number(job.estHours || 1);
-            chipsHtml.push(`<div class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))}${eh ? ` • ${escapeHtml(String(eh))}h` : ""}</div>`);
-          }
+          if(job.estVisitDT) chipsHtml.push(`<div class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))}</div>`);
           if(job.worksDT){
             const days = Number(job.worksDays || 1);
             chipsHtml.push(`<div class="chip bookingWorks">Works: ${escapeHtml(prettyDT(job.worksDT))} • ${escapeHtml(String(days))}d</div>`);
@@ -1727,32 +1591,17 @@
           btns.push(`<button type="button" data-act="details">Details</button>`);
           btns.push(`<button type="button" data-act="documents">Documents</button>`);
 
-          // ✅ Book Now only where you want it
+          /* ✅ ADDED: Estimate Complete -> Accepted / Rejected */
+          if(job.status === "est_complete"){
+            btns.push(`<button type="button" class="ok" data-act="accept">Accepted</button>`);
+            btns.push(`<button type="button" class="danger" data-act="reject">Rejected</button>`);
+          }
+
           if(job.status === "req_est" || job.status === "est_accepted"){
             btns.push(`<button type="button" class="purple" data-act="book">Book Now</button>`);
           }
 
-          // ✅ Workflow buttons from your photo notes
-          if(job.status === "est_visit_booked"){
-            btns.push(`<button type="button" class="ok" data-act="attended">Attended</button>`);
-          }
-          if(job.status === "attended_est_required"){
-            btns.push(`<button type="button" class="ok" data-act="estComplete">Complete</button>`);
-          }
-          if(job.status === "works_booked"){
-            btns.push(`<button type="button" class="ok" data-act="worksComplete">Complete</button>`);
-          }
-          if(job.status === "works_done_invoice_required"){
-            btns.push(`<button type="button" class="ok" data-act="invoiced">Invoiced</button>`);
-          }
-          if(job.status === "invoice_sent_complete"){
-            btns.push(`<button type="button" class="ok" data-act="paid">Paid</button>`);
-          }
-          if(job.status === "invoice_paid"){
-            btns.push(`<button type="button" class="danger" data-act="deletePaid">Delete Job</button>`);
-          }
-
-          const canCall = ["req_est","est_visit_booked","attended_est_required","est_complete","est_accepted","works_booked","works_done_invoice_required","invoice_sent_complete"];
+          const canCall = ["req_est","est_visit_booked","est_accepted","works_booked"];
           if(canCall.includes(job.status) && (job.phone || "").trim()){
             const tel = telSan(job.phone);
             if(tel) btns.push(`<a class="callBtn" href="tel:${escapeHtml(tel)}">📞 Call</a>`);
@@ -1782,26 +1631,28 @@
           el.querySelector('[data-act="details"]').addEventListener('click', ()=> openDetailsModal(job.id));
           el.querySelector('[data-act="documents"]').addEventListener('click', ()=> openDocs(job.id));
 
+          /* ✅ ADDED: handlers for accept / reject */
+          const acceptBtn = el.querySelector('[data-act="accept"]');
+          if(acceptBtn){
+            acceptBtn.addEventListener('click', ()=>{
+              job.status = "est_accepted";
+              job.updatedAt = new Date().toISOString();
+              save();
+              renderAll();
+            });
+          }
+          const rejectBtn = el.querySelector('[data-act="reject"]');
+          if(rejectBtn){
+            rejectBtn.addEventListener('click', ()=>{
+              job.status = "est_not_accepted";
+              job.updatedAt = new Date().toISOString();
+              save();
+              renderAll();
+            });
+          }
+
           const bookBtn = el.querySelector('[data-act="book"]');
           if(bookBtn) bookBtn.addEventListener('click', ()=> openBookNow(job.id));
-
-          const attendedBtn = el.querySelector('[data-act="attended"]');
-          if(attendedBtn) attendedBtn.addEventListener('click', ()=> moveStatus(job.id, "attended_est_required"));
-
-          const estCompBtn = el.querySelector('[data-act="estComplete"]');
-          if(estCompBtn) estCompBtn.addEventListener('click', ()=> moveStatus(job.id, "est_complete"));
-
-          const worksCompBtn = el.querySelector('[data-act="worksComplete"]');
-          if(worksCompBtn) worksCompBtn.addEventListener('click', ()=> moveStatus(job.id, "works_done_invoice_required"));
-
-          const invoicedBtn = el.querySelector('[data-act="invoiced"]');
-          if(invoicedBtn) invoicedBtn.addEventListener('click', ()=> moveStatus(job.id, "invoice_sent_complete"));
-
-          const paidBtn = el.querySelector('[data-act="paid"]');
-          if(paidBtn) paidBtn.addEventListener('click', ()=> moveStatus(job.id, "invoice_paid"));
-
-          const delPaidBtn = el.querySelector('[data-act="deletePaid"]');
-          if(delPaidBtn) delPaidBtn.addEventListener('click', ()=> deleteJobById(job.id));
 
           body.appendChild(el);
         });
@@ -1829,15 +1680,13 @@
     function exportCsv(){
       const header = [
         "id","status","status_label","letting_agent","assigned_agent","address","estimate_no",
-        "estimate_visit_dt","estimate_hours",
-        "works_booked_dt","works_days","works_end_dt",
+        "estimate_visit_dt","works_booked_dt","works_days","works_end_dt",
         "invoice_ref","phone","notes","documents_count","created_at","updated_at"
       ];
       const rows = jobs.map(j=>[
         j.id, j.status, statusLabel(j.status),
         j.agent || "", j.ref || "", j.address || "", j.estNo || "",
-        j.estVisitDT || "", j.estHours ?? "",
-        j.worksDT || "",
+        j.estVisitDT || "", j.worksDT || "",
         j.worksDays ?? "",
         j.worksEndDT || "",
         j.invRef || "", j.phone || "",
