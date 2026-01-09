@@ -86,7 +86,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .day.today{border-color:var(--blue);background:rgba(74,163,255,.10)}
 .dayNum{font-weight:950;margin-bottom:4px}
 
-/* Base event chip (month + day list + week) */
+/* Base event chip */
 .event{
   margin-top:6px;
   padding:6px 8px;
@@ -105,16 +105,15 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .event.works{border-left:4px solid var(--green)}  /* 🟢 Works booked (incl. Estimate Accepted) */
 .event.manual{border-left:4px solid var(--purple)}
 
-/* ✅ Carry-on placeholder (day 2/3 of multi-day works) */
+/* Carry-on placeholder */
 .event.carry{
   border-left:4px solid rgba(255,255,255,.18);
   background:rgba(255,255,255,.03);
   border:1px dashed rgba(255,255,255,.16);
   color:rgba(231,238,252,.70);
-  cursor:pointer;
 }
 
-/* ✅ Week view: 2-line chip with centered duration under address */
+/* Week view: 2-line chip + centered duration */
 .weekEvent{
   white-space:normal !important;
   overflow:visible !important;
@@ -136,15 +135,9 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 }
 .weekEventDur.carryDur{ opacity:.75; }
 
-/* ✅ Month view: keep single-line chips */
-.monthEvent{}
-
-/* ✅ Day list: show single line (you tap for details anyway) */
-.dayListEvent{}
-
 .muted{color:var(--muted);font-size:12px}
 
-/* ✅ Full-month Week view (42 days), horizontal scroll on mobile */
+/* Full-month Week view (42 days) with horizontal scroll on mobile */
 .weekWrap{
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
@@ -497,22 +490,31 @@ function getWorksDays(job){
   if(!Number.isFinite(daysRaw) || daysRaw <= 0) return 1;
   return daysRaw;
 }
+function dayLabel(n){
+  const pretty = Number.isInteger(n) ? String(n) : String(n);
+  const plural = (n === 1) ? "" : "s";
+  return `${pretty} day${plural}`;
+}
 function worksDaysLabel(job){
-  const d = getWorksDays(job);
-  // ✅ if half-day requested: show "0.5 day" or "1.5 days" etc
-  const pretty = Number.isInteger(d) ? String(d) : String(d);
-  return `${pretty} day${d===1 ? "" : "s"}`;
+  return dayLabel(getWorksDays(job));
 }
 function worksSpanDays(job){
-  // how many calendar days should it occupy visually?
-  // 0.5 -> 1 day (no carry)
-  // 1   -> 1 day
-  // 1.5 -> 2 days (carry to next day)
-  // 2   -> 2 days
-  // 2.5 -> 3 days etc
   const d = getWorksDays(job);
-  if(d <= 1) return 1;
-  return Math.ceil(d);
+  if(d <= 1) return 1;      // 0.5 or 1 => only booked day
+  return Math.ceil(d);      // 1.5 => 2, 2.5 => 3, etc
+}
+function remainingForCarryDay(totalDays, dayIndex){
+  // dayIndex: 0=start day, 1=second day, 2=third day...
+  if(dayIndex <= 0) return totalDays;
+
+  const span = (totalDays <= 1) ? 1 : Math.ceil(totalDays);
+  const remainder = totalDays - Math.floor(totalDays); // 0 or 0.5 etc
+  const lastIndex = span - 1;
+
+  if(dayIndex === lastIndex && remainder > 0){
+    return remainder; // e.g. 0.5
+  }
+  return 1; // full day for non-last carry days
 }
 function isEstimateAccepted(job){
   const s = String(job?.status || job?.stage || "").toLowerCase().trim();
@@ -543,35 +545,38 @@ function eventsFor(dateISO){
       });
     }
 
-    // 🟢 Works booked (including Estimate Accepted if worksDT exists)
+    // 🟢 Works booked
     if(j.worksDT){
       const { dateISO:startISO, time:startTime } = splitDT(j.worksDT);
       if(!startISO) continue;
 
-      const span = worksSpanDays(j); // number of calendar days it visually spans
+      const span = worksSpanDays(j);
       const keys = [];
       for(let i=0;i<span;i++) keys.push(addDaysISO(startISO, i));
 
       if(keys.includes(dateISO)){
         const isStartDay = (dateISO === startISO);
+
         if(isStartDay){
           out.push({
             t: startTime,
             sortKey: minutesFromHHMM(startTime),
             a: firstLine(j.address),
-            dur: worksDaysLabel(j),
+            dur: worksDaysLabel(j), // total, e.g. 1.5 days
             id: j.id,
             type:"works",
             src:"job",
             carry:false
           });
         }else{
-          // ✅ Carry-on placeholder in grey on day 2/3...
+          const total = getWorksDays(j);
+          const dayIdx = keys.indexOf(dateISO); // 1,2,3...
+          const left = remainingForCarryDay(total, dayIdx); // ✅ 0.5 on last carry day
           out.push({
             t: "Carry on",
             sortKey: 9000,
             a: firstLine(j.address),
-            dur: worksDaysLabel(j),
+            dur: dayLabel(left), // ✅ shows remaining for this day
             id: j.id,
             type:"carry",
             src:"job",
@@ -669,10 +674,8 @@ function render(){
 
       eventsFor(dISO).forEach(e=>{
         const ev=document.createElement("div");
-        ev.className=`event monthEvent ${e.type}${e.carry?" carry":""}`;
-
-        // Month view: single line to keep tidy
-        const suffix = (e.dur && !e.carry) ? ` • ${e.dur}` : (e.dur && e.carry ? ` • ${e.dur}` : "");
+        ev.className=`event ${e.type}${e.carry?" carry":""}`;
+        const suffix = e.dur ? ` • ${e.dur}` : "";
         ev.textContent = `${e.t || "—"} • ${e.a || "(No address)"}${suffix}`;
 
         ev.onclick=(evt)=>{
@@ -737,15 +740,13 @@ function render(){
 
           const top = document.createElement("span");
           top.className = "weekEventTop";
-          // line 1: time + address
           top.textContent = `${e.t || "—"} • ${e.a || "(No address)"}`;
           ev.appendChild(top);
 
-          // line 2: duration centered under address
           if(e.dur){
             const dur = document.createElement("span");
             dur.className = "weekEventDur" + (e.carry ? " carryDur" : "");
-            dur.textContent = e.dur; // ✅ includes 0.5 day / 1.5 days
+            dur.textContent = e.dur;
             ev.appendChild(dur);
           }
 
