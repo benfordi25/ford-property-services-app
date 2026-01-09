@@ -85,9 +85,11 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 }
 .day.today{border-color:var(--blue);background:rgba(74,163,255,.10)}
 .dayNum{font-weight:950;margin-bottom:4px}
+
+/* Event card */
 .event{
   margin-top:6px;
-  padding:6px 8px;
+  padding:7px 8px;
   border-radius:12px;
   font-size:12px;
   cursor:pointer;
@@ -95,16 +97,22 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   border:1px solid rgba(255,255,255,.14);
   max-width:100%;
   min-width:0;
+
+  /* allow multi-line so you can read it */
+  white-space:normal;
   overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
 }
-.event.est{border-left:4px solid var(--blue)}    /* 🔵 Estimate booked */
-.event.works{border-left:4px solid var(--green)} /* 🟢 Works booked (incl. Estimate Accepted) */
+.event.est{border-left:4px solid var(--blue)}     /* 🔵 Estimate booked */
+.event.works{border-left:4px solid var(--green)}  /* 🟢 Works booked (incl. Estimate Accepted) */
 .event.manual{border-left:4px solid var(--purple)}
+
+.evTop{display:block; font-weight:950; line-height:1.15;}
+.evMid{display:block; color:var(--text); opacity:.95; line-height:1.15; margin-top:2px;}
+.evDur{display:block; color:var(--muted); font-size:11px; line-height:1.15; margin-top:2px;}
+
 .muted{color:var(--muted);font-size:12px}
 
-/* Week view: mobile stacks vertically */
+/* 4-week board view (week mode) */
 .week{
   display:grid;
   grid-template-columns:1fr;
@@ -146,14 +154,18 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   cursor:pointer;
   min-width:0;
 }
+.liTop{display:block;font-weight:950}
+.liMid{display:block;margin-top:3px}
+.liDur{display:block;margin-top:3px;color:var(--muted);font-size:12px}
 
 @media(max-width:520px){
   .wrap{padding:12px 12px}
   main{padding:12px}
   .card{padding:12px}
   .grid{gap:6px}
-  .day{min-height:72px;padding:6px;border-radius:14px}
-  .event{font-size:11px;padding:5px 6px;border-radius:11px}
+  .day{min-height:78px;padding:6px;border-radius:14px}
+  .event{font-size:11px;padding:6px 7px;border-radius:11px}
+  .evDur{font-size:10.5px}
   .btn{padding:8px 10px}
 }
 
@@ -359,7 +371,6 @@ onSnapshot(sharedRef, (snap)=>{
   jobs = Array.isArray(data.jobs) ? data.jobs : [];
 
   const cloudManual = normaliseManual(data.calendarManual || {});
-  // First time we see cloud: migrate cache -> cloud if cloud empty and cache has content
   if(!manualLoadedFromCloud){
     manualLoadedFromCloud = true;
 
@@ -367,17 +378,14 @@ onSnapshot(sharedRef, (snap)=>{
     const cloudIsEmpty = Object.keys(cloudManual).length === 0;
     const cacheHas = Object.keys(cache).length > 0;
 
-    // Prefer cloud if it has anything
     manualCloud = cloudIsEmpty ? cache : cloudManual;
 
-    // If cloud empty but cache has items, seed cloud once
     if(cloudIsEmpty && cacheHas){
       queueManualCloudSave("Seeding cloud from this device…");
     } else {
       setCloudStatus("Cloud sync ready.");
     }
   } else {
-    // After initial load: accept cloud updates
     manualCloud = cloudManual;
     saveManualCache(manualCloud);
     setCloudStatus("Synced.");
@@ -437,6 +445,7 @@ const firstLine = a => (a||"").split(",")[0].trim();
 /* =========================
    ✅ WORKS: SHOW ONLY BOOKED DAY + ALWAYS SHOW DURATION
    ✅ Estimate Accepted treated as Works (GREEN)
+   ✅ Duration shown clearly on its own line beneath address
    ========================= */
 
 // "YYYY-MM-DDTHH:MM" -> {dateISO, timeHHMM}
@@ -460,32 +469,28 @@ function worksDateKeys(job){
   return [startISO];
 }
 
-// Always show duration (1 / 1.5 / 2 etc)
+// Duration label (always show, including 1 day)
 function getWorksDays(job){
   const daysRaw = Number(job.worksDays || job.worksDurationDays || job.days || 0);
   if(!Number.isFinite(daysRaw) || daysRaw <= 0) return 1;
   return daysRaw;
 }
-function worksDaysSuffix(job){
+function worksDaysLabel(job){
   const d = getWorksDays(job);
   const pretty = Number.isInteger(d) ? String(d) : String(d);
-  return ` (${pretty} day${d===1 ? "" : "s"})`;
+  return `${pretty} day${d===1 ? "" : "s"}`;
 }
 
-// Helper: treat Estimate Accepted as Works
+// Treat Estimate Accepted as Works
 function isEstimateAccepted(job){
   const s = String(job?.status || job?.stage || "").toLowerCase().trim();
   return s === "estimate accepted" || s === "accepted";
 }
 
-/* Build all events for a date:
-   - jobs events have id + open Jobs Board with ?job=ID
-   - manual events have id but open manual editor
-*/
+/* Build all events for a date */
 function eventsFor(dateISO){
   const out = [];
 
-  // Jobs board feed
   for(const j of jobs){
 
     // 🔵 Estimate visit booked (ONLY if not accepted and not works booked)
@@ -499,13 +504,14 @@ function eventsFor(dateISO){
         t,
         sortKey: minutesFromHHMM(t),
         a: firstLine(j.address),
+        dur: "",                  // no duration line for estimate visit
         id: j.id,
         type:"est",
         src:"job"
       });
     }
 
-    // 🟢 Works booked (includes Estimate Accepted if you set worksDT when accepted)
+    // 🟢 Works booked (preferred)
     if(j.worksDT){
       const { dateISO:startISO, time:startTime } = splitDT(j.worksDT);
       const keys = worksDateKeys(j);
@@ -514,20 +520,21 @@ function eventsFor(dateISO){
         out.push({
           t: startTime,
           sortKey: minutesFromHHMM(startTime),
-          a: firstLine(j.address) + worksDaysSuffix(j),
+          a: firstLine(j.address),
+          dur: worksDaysLabel(j), // ✅ clear duration line
           id: j.id,
           type:"works",
           src:"job"
         });
       }
     } else if(isEstimateAccepted(j) && j.estVisitDT?.startsWith(dateISO)) {
-      // Fallback: if status is accepted but worksDT hasn't been set yet,
-      // show it as WORKS on the estimate date (green), until worksDT exists.
+      // Fallback: accepted but worksDT not set yet -> show as works (green) on estimate date
       const t = j.estVisitDT.slice(11,16);
       out.push({
         t,
         sortKey: minutesFromHHMM(t),
-        a: firstLine(j.address) + worksDaysSuffix(j),
+        a: firstLine(j.address),
+        dur: worksDaysLabel(j),
         id: j.id,
         type:"works",
         src:"job"
@@ -543,6 +550,7 @@ function eventsFor(dateISO){
       t,
       sortKey: minutesFromHHMM(t),
       a:(e.address || "").trim(),
+      dur: "",
       id:e.id,
       type:"manual",
       src:"manual"
@@ -558,12 +566,12 @@ function setSelected(d){
 }
 
 function openJobDetails(jobId){
-  // Calendar opens Jobs Board with a deep-link.
   location.href = `../jobs-board/?job=${encodeURIComponent(jobId)}`;
 }
 
 function render(){
-  const titleDate = (mode==="month") ? view : selected;
+  // Title follows current month (based on view for month/week, selected for day)
+  const titleDate = (mode==="day") ? selected : view;
   title.textContent = titleDate.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
 
   monthGrid.innerHTML="";
@@ -601,15 +609,16 @@ function render(){
       eventsFor(dISO).forEach(e=>{
         const ev=document.createElement("div");
         ev.className=`event ${e.type}`;
-        ev.textContent=`${e.t} • ${e.a || "(No address)"}`;
+        ev.innerHTML = `
+          <span class="evTop">${e.t || "—"}</span>
+          <span class="evMid">${(e.a || "(No address)")}</span>
+          ${e.dur ? `<span class="evDur">${e.dur}</span>` : ``}
+        `;
 
         ev.onclick=(evt)=>{
           evt.stopPropagation();
-          if(e.src === "job"){
-            openJobDetails(e.id);
-          }else{
-            openManualDialog(dISO, e.id);
-          }
+          if(e.src === "job") openJobDetails(e.id);
+          else openManualDialog(dISO, e.id);
         };
         box.appendChild(ev);
       });
@@ -625,22 +634,31 @@ function render(){
   }
 
   if(mode==="week"){
-    const base=new Date(selected);
-    const start=new Date(base);
-    start.setDate(base.getDate()-((base.getDay()+6)%7)); // Monday start
+    // ✅ 4-week board (28 days) starting Monday on/before 1st of the visible month
+    const monthBase = new Date(view.getFullYear(), view.getMonth(), 1);
+    const start = new Date(monthBase);
+    start.setDate(monthBase.getDate() - ((monthBase.getDay()+6)%7)); // Monday on/before 1st
+
     weekView.className="week";
 
-    for(let i=0;i<7;i++){
-      const d=new Date(start); d.setDate(start.getDate()+i);
+    const monthKey = `${view.getFullYear()}-${pad2(view.getMonth()+1)}`;
+
+    for(let i=0;i<28;i++){
+      const d = new Date(start);
+      d.setDate(start.getDate()+i);
       const dISO = iso(d);
       const evs=eventsFor(dISO);
 
       const col=document.createElement("div");
       col.className="weekCol"+(dISO===todayISO?" today":"");
 
+      const inMonth = (`${d.getFullYear()}-${pad2(d.getMonth()+1)}` === monthKey);
+
       col.innerHTML = `
         <div class="weekHead">
-          <div>${d.toLocaleDateString("en-GB",{weekday:"long",day:"2-digit",month:"short"})}</div>
+          <div style="${inMonth ? "" : "opacity:.55"}">
+            ${d.toLocaleDateString("en-GB",{weekday:"short",day:"2-digit",month:"short"})}
+          </div>
           <span class="badge">${evs.length} booking${evs.length===1?"":"s"}</span>
         </div>
       `;
@@ -654,14 +672,15 @@ function render(){
         evs.forEach(e=>{
           const ev=document.createElement("div");
           ev.className=`event ${e.type}`;
-          ev.textContent=`${e.t} • ${e.a || "(No address)"}`;
+          ev.innerHTML = `
+            <span class="evTop">${e.t || "—"}</span>
+            <span class="evMid">${(e.a || "(No address)")}</span>
+            ${e.dur ? `<span class="evDur">${e.dur}</span>` : ``}
+          `;
           ev.onclick=(evt)=>{
             evt.stopPropagation();
-            if(e.src === "job"){
-              openJobDetails(e.id);
-            }else{
-              openManualDialog(dISO, e.id);
-            }
+            if(e.src === "job") openJobDetails(e.id);
+            else openManualDialog(dISO, e.id);
           };
           col.appendChild(ev);
         });
@@ -701,13 +720,14 @@ function render(){
       evs.forEach(e=>{
         const li=document.createElement("div");
         li.className="listItem";
-        li.textContent=`${e.t} • ${e.a || "(No address)"}`;
+        li.innerHTML = `
+          <span class="liTop">${e.t || "—"}</span>
+          <span class="liMid">${(e.a || "(No address)")}</span>
+          ${e.dur ? `<span class="liDur">${e.dur}</span>` : ``}
+        `;
         li.onclick=()=>{
-          if(e.src === "job"){
-            openJobDetails(e.id);
-          }else{
-            openManualDialog(dISO, e.id);
-          }
+          if(e.src === "job") openJobDetails(e.id);
+          else openManualDialog(dISO, e.id);
         };
         list.appendChild(li);
       });
@@ -718,20 +738,16 @@ function render(){
 
 /* ===== Prev/Next + Today ===== */
 document.getElementById("prev").onclick=()=>{
-  if(mode==="month"){
+  if(mode==="month" || mode==="week"){
     view.setMonth(view.getMonth()-1);
-  }else if(mode==="week"){
-    const d=new Date(selected); d.setDate(d.getDate()-7); setSelected(d);
   }else{
     const d=new Date(selected); d.setDate(d.getDate()-1); setSelected(d);
   }
   render();
 };
 document.getElementById("next").onclick=()=>{
-  if(mode==="month"){
+  if(mode==="month" || mode==="week"){
     view.setMonth(view.getMonth()+1);
-  }else if(mode==="week"){
-    const d=new Date(selected); d.setDate(d.getDate()+7); setSelected(d);
   }else{
     const d=new Date(selected); d.setDate(d.getDate()+1); setSelected(d);
   }
@@ -739,6 +755,7 @@ document.getElementById("next").onclick=()=>{
 };
 document.getElementById("todayBtn").onclick=()=>{
   setSelected(new Date());
+  view = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   render();
 };
 document.getElementById("monthBtn").onclick=()=>{ mode="month"; render(); };
@@ -792,13 +809,11 @@ manSave.onclick = ()=>{
   const address = (manAddr.value || "").trim();
   const notes = (manNotes.value || "").trim();
 
-  // Require at least something meaningful
   if(!time && !address && !notes){
     manualDlg.close();
     return;
   }
 
-  // Update in-memory cloud object
   const arr = Array.isArray(manualCloud[dateISO]) ? manualCloud[dateISO].slice() : [];
 
   if(editingManualId){
@@ -813,12 +828,10 @@ manSave.onclick = ()=>{
   }
 
   manualCloud[dateISO] = arr;
-  // Drop empty days
   manualCloud = normaliseManual(manualCloud);
 
   queueManualCloudSave("Saving to cloud…");
 
-  // Keep UI on that date
   setSelected(new Date(dateISO));
   manualDlg.close();
   render();
