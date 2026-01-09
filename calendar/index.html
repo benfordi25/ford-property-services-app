@@ -102,7 +102,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   white-space:nowrap;
 }
 .event.est{border-left:4px solid var(--blue)}     /* 🔵 Estimate booked */
-.event.works{border-left:4px solid var(--green)}  /* 🟢 Works booked */
+.event.works{border-left:4px solid var(--green)}  /* 🟢 Works booked (incl. Estimate Accepted) */
 .event.manual{border-left:4px solid var(--purple)}
 
 /* Carry-on placeholder */
@@ -504,27 +504,21 @@ function worksSpanDays(job){
   return Math.ceil(d);      // 1.5 => 2, 2.5 => 3, etc
 }
 function remainingForCarryDay(totalDays, dayIndex){
+  // dayIndex: 0=start day, 1=second day, 2=third day...
   if(dayIndex <= 0) return totalDays;
 
   const span = (totalDays <= 1) ? 1 : Math.ceil(totalDays);
-  const remainder = totalDays - Math.floor(totalDays);
+  const remainder = totalDays - Math.floor(totalDays); // 0 or 0.5 etc
   const lastIndex = span - 1;
 
   if(dayIndex === lastIndex && remainder > 0){
-    return remainder;
+    return remainder; // e.g. 0.5
   }
-  return 1;
+  return 1; // full day for non-last carry days
 }
-
-/* ✅ NEW: status helpers (so Calendar follows Jobs Board workflow properly) */
-function statusKey(job){
-  return String(job?.status || "").trim();
-}
-function isEstVisitBooked(job){
-  return statusKey(job) === "est_visit_booked";
-}
-function isWorksBooked(job){
-  return statusKey(job) === "works_booked";
+function isEstimateAccepted(job){
+  const s = String(job?.status || job?.stage || "").toLowerCase().trim();
+  return s === "estimate accepted" || s === "accepted";
 }
 
 /* Build all events for a date */
@@ -532,9 +526,12 @@ function eventsFor(dateISO){
   const out = [];
 
   for(const j of jobs){
-
-    /* ✅ Estimate visit ONLY when status is est_visit_booked */
-    if(isEstVisitBooked(j) && j.estVisitDT?.startsWith(dateISO)){
+    // 🔵 Estimate visit booked
+    if(
+      j.estVisitDT?.startsWith(dateISO) &&
+      !j.worksDT &&
+      !isEstimateAccepted(j)
+    ){
       const t = j.estVisitDT.slice(11,16);
       out.push({
         t,
@@ -548,8 +545,8 @@ function eventsFor(dateISO){
       });
     }
 
-    /* ✅ Works booking ONLY when status is works_booked */
-    if(isWorksBooked(j) && j.worksDT){
+    // 🟢 Works booked
+    if(j.worksDT){
       const { dateISO:startISO, time:startTime } = splitDT(j.worksDT);
       if(!startISO) continue;
 
@@ -565,7 +562,7 @@ function eventsFor(dateISO){
             t: startTime,
             sortKey: minutesFromHHMM(startTime),
             a: firstLine(j.address),
-            dur: worksDaysLabel(j),
+            dur: worksDaysLabel(j), // total, e.g. 1.5 days
             id: j.id,
             type:"works",
             src:"job",
@@ -573,13 +570,13 @@ function eventsFor(dateISO){
           });
         }else{
           const total = getWorksDays(j);
-          const dayIdx = keys.indexOf(dateISO);
-          const left = remainingForCarryDay(total, dayIdx);
+          const dayIdx = keys.indexOf(dateISO); // 1,2,3...
+          const left = remainingForCarryDay(total, dayIdx); // ✅ 0.5 on last carry day
           out.push({
             t: "Carry on",
             sortKey: 9000,
             a: firstLine(j.address),
-            dur: dayLabel(left),
+            dur: dayLabel(left), // ✅ shows remaining for this day
             id: j.id,
             type:"carry",
             src:"job",
@@ -587,6 +584,19 @@ function eventsFor(dateISO){
           });
         }
       }
+    } else if(isEstimateAccepted(j) && j.estVisitDT?.startsWith(dateISO)) {
+      // accepted but worksDT not set yet -> show as works on estimate date
+      const t = j.estVisitDT.slice(11,16);
+      out.push({
+        t,
+        sortKey: minutesFromHHMM(t),
+        a: firstLine(j.address),
+        dur: worksDaysLabel(j),
+        id: j.id,
+        type:"works",
+        src:"job",
+        carry:false
+      });
     }
   }
 
@@ -622,13 +632,13 @@ function openJobDetails(jobId){
 function getMonthRange42(y, m){
   const first = new Date(y,m,1);
   const start = new Date(first);
-  start.setDate(first.getDate() - ((first.getDay()+6)%7));
+  start.setDate(first.getDate() - ((first.getDay()+6)%7)); // Monday on/before 1st
   return { start };
 }
 
 function render(){
   const titleDate = (mode==="day") ? selected : view;
-  title.textContent = titleDate.to  LocaleDateString("en-GB",{month:"long",year:"numeric"});
+  title.textContent = titleDate.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
 
   monthGrid.innerHTML="";
   weekView.innerHTML="";
