@@ -1135,7 +1135,6 @@
       job.updatedAt = new Date().toISOString();
       save();
       renderAll();
-      // keep details in sync if open
       if(detailsBack.style.display==="flex" && detailsJobId===jobId){
         openDetailsModal(jobId);
       }
@@ -1641,11 +1640,16 @@
       const items = [];
 
       for(const j of filteredJobs){
-        const t2 = toMillis(j.estVisitDT);
-        if(t2 && t2 >= now) items.push({ when: t2, kind: "Estimate Visit", dt: j.estVisitDT, job: j });
+        // ✅ FIX: only include bookings when job is actually in the relevant "booked" status
+        if(j.status === "est_visit_booked"){
+          const t2 = toMillis(j.estVisitDT);
+          if(t2 && t2 >= now) items.push({ when: t2, kind: "Estimate Visit", dt: j.estVisitDT, job: j });
+        }
 
-        const t3 = toMillis(j.worksDT);
-        if(t3 && t3 >= now) items.push({ when: t3, kind: "Works Booking", dt: j.worksDT, job: j });
+        if(j.status === "works_booked"){
+          const t3 = toMillis(j.worksDT);
+          if(t3 && t3 >= now) items.push({ when: t3, kind: "Works Booking", dt: j.worksDT, job: j });
+        }
       }
 
       items.sort((a,b)=>a.when-b.when);
