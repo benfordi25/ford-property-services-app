@@ -1,4 +1,4 @@
-const CACHE = "fps-dashboard-v1";
+const CACHE_NAME = 'dashboard-cache-v2';
 const ASSETS = [
   "./",
   "./index.html",
