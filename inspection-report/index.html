@@ -86,6 +86,30 @@
       border-color: rgba(239,68,68,.45);
     }
 
+    .toast{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:18px;
+      z-index:99999;
+      background: rgba(15,27,51,.95);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow: var(--shadow);
+      padding:10px 12px;
+      border-radius:999px;
+      color:var(--text);
+      font-weight:900;
+      font-size:12px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s ease;
+      white-space:nowrap;
+      max-width: calc(100vw - 24px);
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .toast.show{opacity:1}
+
     main{max-width:980px;margin:0 auto;padding:16px}
     .card{
       background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
@@ -205,10 +229,16 @@
     }
     .photoTop .title{font-weight:950;letter-spacing:.2px}
     .btnRow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    /* Thumbs grid gets denser to handle up to 20 nicely */
     .thumbs{
-      display:grid; grid-template-columns: repeat(3, 1fr);
+      display:grid; grid-template-columns: repeat(4, 1fr);
       gap:8px; margin-top:10px;
     }
+    @media(min-width:720px){
+      .thumbs{ grid-template-columns: repeat(5, 1fr); }
+    }
+
     .thumb{
       border-radius:12px;
       overflow:hidden;
@@ -250,6 +280,10 @@
       <div class="actions">
         <span class="pill"><strong>Report ID:</strong> <span id="reportIdText"></span></span>
         <span class="pill"><strong>Finalised:</strong> <span id="finalisedText">—</span></span>
+
+        <!-- NEW: Save Draft -->
+        <button id="saveDraftBtn" type="button">Save Draft</button>
+
         <button id="newBtn" class="danger" type="button">New Report</button>
         <button id="pdfBtn" class="primary" type="button">Generate PDF</button>
       </div>
@@ -354,8 +388,8 @@
     <div class="photoCols">
       <div class="photoBox">
         <div class="photoTop">
-          <div class="title">BEFORE PHOTOS (UP TO 6)</div>
-          <div class="pill"><strong>Count:</strong> <span id="beforeCount">0</span>/6</div>
+          <div class="title">BEFORE PHOTOS (UP TO 20)</div>
+          <div class="pill"><strong>Count:</strong> <span id="beforeCount">0</span>/20</div>
         </div>
         <div class="btnRow">
           <button type="button" id="beforeGalleryBtn">Add from Gallery</button>
@@ -369,8 +403,8 @@
 
       <div class="photoBox">
         <div class="photoTop">
-          <div class="title">AFTER PHOTOS (UP TO 6)</div>
-          <div class="pill"><strong>Count:</strong> <span id="afterCount">0</span>/6</div>
+          <div class="title">AFTER PHOTOS (UP TO 20)</div>
+          <div class="pill"><strong>Count:</strong> <span id="afterCount">0</span>/20</div>
         </div>
         <div class="btnRow">
           <button type="button" id="afterGalleryBtn">Add from Gallery</button>
@@ -396,11 +430,17 @@
 
 <footer>Ford Property Services • Inspection Report</footer>
 
+<div id="toast" class="toast">Saved</div>
+
 <script>
   // PWA Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
   }
+
+  // ===== CONFIG =====
+  const MAX_PHOTOS = 20;
+  const DRAFT_KEY = 'fps_inspection_draft_v1';
 
   // Helpers
   function pad2(n){ return String(n).padStart(2,'0'); }
@@ -456,7 +496,13 @@
   }
 
   // State
-  const state = { reportId: makeReportId(), finalised: null, beforePhotos: [], afterPhotos: [], logoDataUrl: null };
+  const state = {
+    reportId: makeReportId(),
+    finalised: null,
+    beforePhotos: [],
+    afterPhotos: [],
+    logoDataUrl: null
+  };
 
   // Elements
   const reportIdText = document.getElementById('reportIdText');
@@ -506,6 +552,16 @@
 
   const newBtn = document.getElementById('newBtn');
   const pdfBtn = document.getElementById('pdfBtn');
+  const saveDraftBtn = document.getElementById('saveDraftBtn');
+
+  const toast = document.getElementById('toast');
+  let toastTimer = null;
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> toast.classList.remove('show'), 1200);
+  }
 
   // Defaults
   dateCompletedISO.value = todayISO();
@@ -562,6 +618,93 @@
     }
   }
 
+  // ===== DRAFT SAVE / LOAD =====
+  let saveTimer = null;
+  function scheduleAutoSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=> saveDraft(false), 450);
+  }
+
+  function buildDraftObject(){
+    return {
+      v: 1,
+      savedAt: Date.now(),
+      reportId: state.reportId,
+      finalised: state.finalised ? state.finalised.toISOString() : null,
+      logoDataUrl: state.logoDataUrl || null,
+
+      lettingAgent: lettingAgent.value || "",
+      propertyAddress: propertyAddress.value || "",
+      dateCompletedISO: dateCompletedISO.value || "",
+
+      invoiceRequired: !!invoiceRequired.checked,
+      invoiceNumber: invoiceNumber.value || "",
+      estimateRequired: !!estimateRequired.checked,
+      estimateNumber: estimateNumber.value || "",
+
+      beforeTick: !!beforeTick.checked,
+      afterTick: !!afterTick.checked,
+
+      worksNotes: worksNotes.value || "",
+      extraAttachments: !!extraAttachments.checked,
+
+      beforePhotos: (state.beforePhotos || []).map(p=> ({dataUrl: p.dataUrl})),
+      afterPhotos: (state.afterPhotos || []).map(p=> ({dataUrl: p.dataUrl}))
+    };
+  }
+
+  function saveDraft(showMsg=true){
+    try{
+      const draft = buildDraftObject();
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      if(showMsg) showToast('Draft saved');
+    }catch(e){
+      if(showMsg) alert('Draft could not be saved (storage full). Try fewer photos or clear space.');
+    }
+  }
+
+  function loadDraft(){
+    try{
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if(!raw) return false;
+      const d = JSON.parse(raw);
+
+      if(d.reportId) state.reportId = d.reportId;
+      state.finalised = d.finalised ? new Date(d.finalised) : null;
+
+      if(d.logoDataUrl){
+        setLogo(d.logoDataUrl);
+      }
+
+      lettingAgent.value = d.lettingAgent || "";
+      propertyAddress.value = d.propertyAddress || "";
+      dateCompletedISO.value = d.dateCompletedISO || todayISO();
+
+      invoiceRequired.checked = !!d.invoiceRequired;
+      invoiceNumber.value = d.invoiceNumber || "";
+      estimateRequired.checked = !!d.estimateRequired;
+      estimateNumber.value = d.estimateNumber || "";
+
+      beforeTick.checked = !!d.beforeTick;
+      afterTick.checked  = !!d.afterTick;
+
+      worksNotes.value = d.worksNotes || "";
+      extraAttachments.checked = !!d.extraAttachments;
+
+      state.beforePhotos = Array.isArray(d.beforePhotos) ? d.beforePhotos.slice(0, MAX_PHOTOS).map(p=>({dataUrl:p.dataUrl})) : [];
+      state.afterPhotos  = Array.isArray(d.afterPhotos)  ? d.afterPhotos.slice(0, MAX_PHOTOS).map(p=>({dataUrl:p.dataUrl})) : [];
+
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function clearDraft(){
+    try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+  }
+
+  // ===== INIT (logo + draft) =====
   (async ()=>{
     const savedLogo = localStorage.getItem('fps_logo_v1');
     if(savedLogo){
@@ -570,12 +713,40 @@
       const ok = await loadLockedLogoFallback();
       if(!ok) setLogo(null);
     }
+
+    // Load draft after logo (draft may contain logoDataUrl anyway)
+    const hadDraft = loadDraft();
+    setReportIdUI(); setFinalisedUI(); setDateCompletedUI(); updateEvidenceMarks(); updatePhotoCounts();
+
+    // Render thumbs (after draft load)
+    renderThumbs(state.beforePhotos, beforeThumbs, (i)=> removeBefore(i));
+    renderThumbs(state.afterPhotos, afterThumbs, (i)=> removeAfter(i));
+
+    // If no draft existed, do a first autosave so reportId persists
+    if(!hadDraft){
+      saveDraft(false);
+    }else{
+      showToast('Draft loaded');
+    }
   })();
 
   setReportIdUI(); setFinalisedUI(); setDateCompletedUI(); updateEvidenceMarks(); updatePhotoCounts();
-  dateCompletedISO.addEventListener('input', setDateCompletedUI);
-  beforeTick.addEventListener('change', updateEvidenceMarks);
-  afterTick.addEventListener('change', updateEvidenceMarks);
+  dateCompletedISO.addEventListener('input', ()=>{ setDateCompletedUI(); scheduleAutoSave(); });
+
+  beforeTick.addEventListener('change', ()=>{ updateEvidenceMarks(); scheduleAutoSave(); });
+  afterTick.addEventListener('change', ()=>{ updateEvidenceMarks(); scheduleAutoSave(); });
+
+  invoiceRequired.addEventListener('change', scheduleAutoSave);
+  estimateRequired.addEventListener('change', scheduleAutoSave);
+  extraAttachments.addEventListener('change', scheduleAutoSave);
+
+  lettingAgent.addEventListener('input', scheduleAutoSave);
+  propertyAddress.addEventListener('input', scheduleAutoSave);
+  invoiceNumber.addEventListener('input', scheduleAutoSave);
+  estimateNumber.addEventListener('input', scheduleAutoSave);
+  worksNotes.addEventListener('input', scheduleAutoSave);
+
+  saveDraftBtn.addEventListener('click', ()=> saveDraft(true));
 
   // Logo upload
   logoBox.addEventListener('click', ()=> logoInput.click());
@@ -585,6 +756,8 @@
     const dataUrl = await fileToDataURL(file, 900, 0.90);
     setLogo(dataUrl);
     localStorage.setItem('fps_logo_v1', dataUrl);
+    saveDraft(false);
+    showToast('Logo saved');
   });
 
   // Photos
@@ -604,37 +777,60 @@
       container.appendChild(t);
     });
   }
+
+  function updateAllPhotoUI(){
+    updatePhotoCounts();
+    updateEvidenceMarks();
+    renderThumbs(state.beforePhotos, beforeThumbs, (i)=> removeBefore(i));
+    renderThumbs(state.afterPhotos, afterThumbs, (i)=> removeAfter(i));
+  }
+
   function autoTickFromPhotos(){
     beforeTick.checked = state.beforePhotos.length > 0;
     afterTick.checked  = state.afterPhotos.length > 0;
     updateEvidenceMarks();
   }
-  async function addPhotos(files, targetList, targetThumbs){
+
+  function removeBefore(i){
+    state.beforePhotos.splice(i,1);
+    autoTickFromPhotos();
+    updateAllPhotoUI();
+    scheduleAutoSave();
+  }
+
+  function removeAfter(i){
+    state.afterPhotos.splice(i,1);
+    autoTickFromPhotos();
+    updateAllPhotoUI();
+    scheduleAutoSave();
+  }
+
+  async function addPhotos(files, targetList){
     const arr = Array.from(files || []);
     for(const f of arr){
-      if(targetList.length >= 6) break;
+      if(targetList.length >= MAX_PHOTOS) break;
       const dataUrl = await fileToDataURL(f, 1400, 0.82);
       targetList.push({dataUrl});
     }
-    renderThumbs(targetList, targetThumbs, (i)=>{
-      targetList.splice(i,1);
-      renderThumbs(targetList, targetThumbs, arguments.callee);
-      autoTickFromPhotos();
-      updatePhotoCounts();
-    });
     autoTickFromPhotos();
-    updatePhotoCounts();
+    updateAllPhotoUI();
+    scheduleAutoSave();
   }
+
+  const beforeGalleryBtn = document.getElementById('beforeGalleryBtn');
+  const beforeCameraBtn  = document.getElementById('beforeCameraBtn');
+  const afterGalleryBtn  = document.getElementById('afterGalleryBtn');
+  const afterCameraBtn   = document.getElementById('afterCameraBtn');
 
   beforeGalleryBtn.addEventListener('click', ()=> beforeGalleryInput.click());
   beforeCameraBtn.addEventListener('click', ()=> beforeCameraInput.click());
   afterGalleryBtn.addEventListener('click', ()=> afterGalleryInput.click());
   afterCameraBtn.addEventListener('click', ()=> afterCameraInput.click());
 
-  beforeGalleryInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files, state.beforePhotos, beforeThumbs); beforeGalleryInput.value=''; });
-  beforeCameraInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files, state.beforePhotos, beforeThumbs); beforeCameraInput.value=''; });
-  afterGalleryInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files, state.afterPhotos, afterThumbs); afterGalleryInput.value=''; });
-  afterCameraInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files, state.afterPhotos, afterThumbs); afterCameraInput.value=''; });
+  beforeGalleryInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files, state.beforePhotos); beforeGalleryInput.value=''; });
+  beforeCameraInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files, state.beforePhotos); beforeCameraInput.value=''; });
+  afterGalleryInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files, state.afterPhotos); afterGalleryInput.value=''; });
+  afterCameraInput.addEventListener('change', async (e)=>{ await addPhotos(e.target.files, state.afterPhotos); afterCameraInput.value=''; });
 
   // New report reset
   newBtn.addEventListener('click', async ()=>{
@@ -660,13 +856,17 @@
     extraAttachments.checked = false;
 
     setReportIdUI(); setFinalisedUI(); setDateCompletedUI();
-    updateEvidenceMarks(); updatePhotoCounts();
-    renderThumbs(state.beforePhotos, beforeThumbs, ()=>{});
-    renderThumbs(state.afterPhotos, afterThumbs, ()=>{});
+    updateAllPhotoUI();
 
+    // keep logo; ensure fallback if none
     if(!state.logoDataUrl){
       await loadLockedLogoFallback();
     }
+
+    // clear & save draft so new report doesn't re-load old fields
+    clearDraft();
+    saveDraft(false);
+    showToast('New report started');
   });
 
   // PDF helpers
@@ -955,43 +1155,49 @@
     const eaLines = doc.splitTextToSize(eaText, usableW - 8);
     doc.text(eaLines, margin + 4, y + 8);
 
-    // ===== PHOTOS: only create pages if ticked AND photos exist =====
-    function drawPhotoSectionNewPage(title, photos){
-      doc.addPage();
-      let py = 14;
-
-      py = sectionBar(title, py);
+    // ===== PHOTOS: 2 columns, auto-add extra pages as required =====
+    function drawPhotoSectionPaged(title, photos){
+      if(!photos || !photos.length) return;
 
       const gap = 4;
       const boxH = 78;
-
-      // IMPORTANT FIX:
-      // Use INNER container width (usableW minus padding) to size the 2 columns,
-      // otherwise column 2 spills past the outer border and overlaps it.
       const containerPad = 4;
+
       const innerW = usableW - (containerPad * 2);
       const boxW = (innerW - gap) / 2;
 
-      const rows = Math.ceil(photos.length / 2);
-      const innerH = rows * boxH + (rows - 1) * gap;
-      const containerH = innerH + containerPad*2;
+      const rowsPerPage = 2;          // 2 rows => 4 photos per page
+      const perPage = rowsPerPage * 2;
 
-      box(margin, py, usableW, containerH, 2);
+      for(let offset=0; offset<photos.length; offset += perPage){
+        doc.addPage();
+        let py = 14;
 
-      for(let i=0;i<photos.length;i++){
-        const col = i % 2;
-        const row = Math.floor(i / 2);
+        py = sectionBar(title + (photos.length > perPage ? ` (${Math.floor(offset/perPage)+1})` : ''), py);
 
-        const x = margin + containerPad + col*(boxW + gap);
-        const y0 = py + containerPad + row*(boxH + gap);
+        const chunk = photos.slice(offset, offset + perPage);
+        const rows = Math.ceil(chunk.length / 2);
 
-        box(x, y0, boxW, boxH, 2);
-        try{
-          doc.addImage(photos[i].dataUrl, 'JPEG', x+2, y0+2, boxW-4, boxH-4, undefined, 'FAST');
-        }catch(e){
-          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(90);
-          doc.text('Image error', x+5, y0+10);
-          doc.setTextColor(35);
+        const innerH = rows * boxH + (rows - 1) * gap;
+        const containerH = innerH + containerPad*2;
+
+        box(margin, py, usableW, containerH, 2);
+
+        for(let i=0;i<chunk.length;i++){
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+
+          const x = margin + containerPad + col*(boxW + gap);
+          const y0 = py + containerPad + row*(boxH + gap);
+
+          box(x, y0, boxW, boxH, 2);
+          try{
+            doc.addImage(chunk[i].dataUrl, 'JPEG', x+2, y0+2, boxW-4, boxH-4, undefined, 'FAST');
+          }catch(e){
+            doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(90);
+            doc.text('Image error', x+5, y0+10);
+            doc.setTextColor(35);
+          }
         }
       }
     }
@@ -999,8 +1205,8 @@
     const canBefore = beforeTick.checked && state.beforePhotos.length > 0;
     const canAfter  = afterTick.checked  && state.afterPhotos.length > 0;
 
-    if(canBefore) drawPhotoSectionNewPage('Before Photos', state.beforePhotos);
-    if(canAfter)  drawPhotoSectionNewPage('After Photos', state.afterPhotos);
+    if(canBefore) drawPhotoSectionPaged('Before Photos', state.beforePhotos);
+    if(canAfter)  drawPhotoSectionPaged('After Photos', state.afterPhotos);
 
     // Footer on every page
     const total = doc.getNumberOfPages();
@@ -1015,6 +1221,9 @@
 
     const safeName = `${data.reportId}.pdf`.replace(/[^\w\-\.]/g,'_');
     doc.save(safeName);
+
+    // Save draft after generating PDF (so finalised date persists if you reopen)
+    saveDraft(false);
   });
 </script>
 </body>
