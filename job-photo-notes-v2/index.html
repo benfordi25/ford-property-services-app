@@ -531,48 +531,59 @@
         setStatus("Notes cleared for that photo.");
       };
 
-      // HOLD-TO-DELETE (2 seconds)
-      const delBtn = item.querySelector(`[data-del="${p.id}"]`);
-      const fill = item.querySelector(`[data-fill="${p.id}"]`);
-      let holdTimer = null;
-      let startTs = 0;
+      // ✅ HOLD-TO-DELETE (2 seconds) — Android SAFE
+const delBtn = item.querySelector(`[data-del="${p.id}"]`);
+const fill = item.querySelector(`[data-fill="${p.id}"]`);
 
-      const cancelHold = () => {
-        if (holdTimer) { clearInterval(holdTimer); holdTimer = null; }
-        fill.style.width = "0%";
-        delBtn.style.opacity = "1";
-      };
+let holdTimer = null;
+let holdStart = 0;
 
-      const startHold = () => {
-        if (holdTimer) return;
-        startTs = performance.now();
-        delBtn.style.opacity = "0.95";
+function resetHold(){
+  if (holdTimer) {
+    clearInterval(holdTimer);
+    holdTimer = null;
+  }
+  fill.style.width = "0%";
+  delBtn.style.opacity = "1";
+}
 
-        holdTimer = setInterval(() => {
-          const elapsed = performance.now() - startTs;
-          const pct = Math.min(100, (elapsed / 2000) * 100);
-          fill.style.width = pct.toFixed(1) + "%";
+function beginHold(){
+  if (holdTimer) return;
 
-          if (elapsed >= 2000) {
-            clearInterval(holdTimer);
-            holdTimer = null;
-            fill.style.width = "100%";
+  holdStart = Date.now();
+  delBtn.style.opacity = "0.85";
 
-            state.photos = state.photos.filter(x => x.id !== p.id);
-            save();
-            pdfBlob = pdfFile = null;
-            $("btnShare").disabled = true;
-            setStatus("Photo deleted.");
-            render();
-          }
-        }, 30);
-      };
+  holdTimer = setInterval(() => {
+    const elapsed = Date.now() - holdStart;
+    const pct = Math.min(100, (elapsed / 2000) * 100);
+    fill.style.width = pct + "%";
 
-      delBtn.addEventListener("pointerdown", (ev) => { ev.preventDefault(); startHold(); });
-      delBtn.addEventListener("pointerup", cancelHold);
-      delBtn.addEventListener("pointerleave", cancelHold);
-      delBtn.addEventListener("pointercancel", cancelHold);
+    if (elapsed >= 2000) {
+      resetHold();
 
+      state.photos = state.photos.filter(x => x.id !== p.id);
+      save();
+      pdfBlob = pdfFile = null;
+      $("btnShare").disabled = true;
+      setStatus("Photo deleted.");
+      render();
+    }
+  }, 25);
+}
+
+/* TOUCH EVENTS (primary – Android) */
+delBtn.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  beginHold();
+}, { passive:false });
+
+delBtn.addEventListener("touchend", resetHold);
+delBtn.addEventListener("touchcancel", resetHold);
+
+/* MOUSE FALLBACK (desktop testing) */
+delBtn.addEventListener("mousedown", beginHold);
+delBtn.addEventListener("mouseup", resetHold);
+delBtn.addEventListener("mouseleave", resetHold);
       // Dictation (bullet-per-session)
       const btnDict = item.querySelector(`[data-dict="${p.id}"]`);
       const btnStop = item.querySelector(`[data-stop="${p.id}"]`);
