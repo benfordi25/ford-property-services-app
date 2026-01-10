@@ -1,186 +1,511 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Ford Property Services • Photo Notes</title>
-<meta name="theme-color" content="#0b1220">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Ford Property Services • Photo Notes</title>
+  <meta name="theme-color" content="#0b1220" />
 
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <!-- Strong cache discouragement (helps, but SW is the real culprit) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 
-<style>
-:root{
-  --bg:#0b1220; --text:#e7eefc; --muted:#a9b7d3;
-  --line:rgba(255,255,255,.14); --good:#22c55e; --bad:#ef4444; --info:#7dd3fc;
-}
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);background:var(--bg)}
-header{position:sticky;top:0;z-index:10;background:#0b1220;border-bottom:1px solid var(--line)}
-.wrap{max-width:1100px;margin:auto;padding:14px}
-main{max-width:1100px;margin:auto;padding:16px}
-.card{background:#111a33;border:1px solid var(--line);border-radius:18px;padding:14px}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-button{
-  border:1px solid var(--line);background:rgba(255,255,255,.06);
-  color:var(--text);padding:10px 14px;border-radius:14px;font-weight:900
-}
-button.good{border-color:rgba(34,197,94,.6)}
-button.bad{border-color:rgba(239,68,68,.6)}
-button:disabled{opacity:.6}
-input,textarea{
-  width:100%;background:rgba(0,0,0,.25);
-  border:1px solid var(--line);color:var(--text);
-  border-radius:14px;padding:10px
-}
-textarea{min-height:90px;white-space:pre-wrap}
-.grid{display:grid;gap:12px;margin-top:12px}
-@media(min-width:800px){.grid{grid-template-columns:1fr 1fr}}
-.photo{border:1px solid var(--line);border-radius:16px;padding:10px}
-.thumb{background:#000;border-radius:14px;overflow:hidden;aspect-ratio:4/3}
-.thumb img{width:100%;height:100%;object-fit:contain}
-.live{font-size:12px;color:var(--info);min-height:16px}
-.back{color:#9ecbff;text-decoration:none;font-weight:900}
-#speechStatus{font-size:12px;color:#93c5fd;margin-top:6px}
-</style>
+  <!-- jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b1220; --card:#101a33; --text:#e7eefc; --muted:#a9b7d3;
+      --line:rgba(255,255,255,.14); --shadow:0 10px 30px rgba(0,0,0,.35);
+      --blue:#4aa3ff; --good:#22c55e; --bad:#ef4444;
+      --r:18px; --r2:14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
+        radial-gradient(900px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
+        var(--bg);
+    }
+    header{
+      position:sticky; top:0; z-index:20;
+      background:rgba(11,18,32,.88);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .top{justify-content:space-between}
+    .title{font-weight:900}
+    .back{color:#9ecbff;text-decoration:none;font-weight:900}
+    main{max-width:1100px;margin:0 auto;padding:16px}
+    .card{
+      border:1px solid var(--line);
+      border-radius: var(--r);
+      background: linear-gradient(180deg, rgba(16,26,51,.92), rgba(12,23,48,.92));
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+    input,textarea{
+      width:100%;
+      background: rgba(0,0,0,.25);
+      border:1px solid var(--line);
+      color:var(--text);
+      border-radius:14px;
+      padding:10px 12px;
+      outline:none;
+      font-size:15px;
+    }
+    textarea{min-height:92px;white-space:pre-wrap;resize:vertical}
+    .grid{display:grid;gap:12px;margin-top:12px}
+    @media(min-width:860px){.grid{grid-template-columns: 1.05fr .95fr}}
+    .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 14px;
+      border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    button.primary{border-color: rgba(74,163,255,.45); background: rgba(74,163,255,.14)}
+    button.good{border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.12)}
+    button.bad{border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.10)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.35}
+    .pill{
+      font-size:12px;color:var(--muted);
+      border:1px solid rgba(255,255,255,.12);
+      padding:6px 10px;border-radius:999px;
+      background: rgba(255,255,255,.04);
+      white-space:nowrap;
+    }
+
+    /* Photo list */
+    .list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+    .item{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      border-radius: var(--r2);
+      overflow:hidden;
+    }
+    .itemTop{display:flex;gap:10px;padding:12px;align-items:flex-start}
+    .thumb{
+      width:92px;height:92px;border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      object-fit:cover;
+      flex:0 0 auto;
+    }
+    .meta{flex:1;min-width:0}
+    .meta .t{margin:0;font-weight:900;font-size:14px}
+    .meta .s{margin:4px 0 8px;font-size:12px;color:var(--muted)}
+    .itemBtns{display:flex;gap:8px;flex-wrap:wrap;padding:0 12px 12px}
+    .small{padding:9px 12px;border-radius:12px;font-size:13px}
+  </style>
 </head>
 
 <body>
-
 <header>
-  <div class="wrap row" style="justify-content:space-between">
-    <strong>Ford Property Services • Photo Notes</strong>
+  <div class="wrap row top">
+    <div class="row" style="gap:12px">
+      <div class="title">Ford Property Services • Photo Notes</div>
+      <span class="pill" id="speechPill">Dictation: checking…</span>
+    </div>
     <a class="back" href="../dashboard/">← Dashboard</a>
   </div>
 </header>
 
 <main>
-<div class="card">
+  <div class="grid">
+    <section class="card">
+      <label>Property Address</label>
+      <input id="address" placeholder="e.g., 12 High Street, London" />
 
-<div class="row">
-  <input id="address" placeholder="Property address">
-  <input id="date" type="date" style="max-width:220px">
-</div>
+      <div class="row" style="gap:12px">
+        <div style="flex:1;min-width:220px">
+          <label>Date</label>
+          <input id="date" type="date" />
+        </div>
+        <div style="flex:1;min-width:220px">
+          <label>Operative (optional)</label>
+          <input id="operative" placeholder="e.g., Ben Ford" />
+        </div>
+      </div>
 
-<div class="row" style="margin-top:8px">
-  <button id="openCamera" class="good">📷 Camera</button>
-  <button id="openGallery">🖼️ Gallery</button>
-  <button id="createPdf" class="good">🧾 Create PDF</button>
-  <button id="sharePdf" disabled>📤 Share PDF</button>
-</div>
+      <div class="btnrow">
+        <button id="btnAdd" class="primary">📷 Take / Add Photos</button>
+        <button id="btnPdf" class="good">🧾 Generate PDF</button>
+        <button id="btnShare" class="primary" disabled>📤 Share PDF (WhatsApp)</button>
+        <button id="btnClear" class="bad">🗑️ Clear</button>
+      </div>
 
-<div id="speechStatus"></div>
-<div id="photos" class="grid"></div>
+      <div class="hint" id="status">
+        Add photos, dictate notes per photo, then generate and share a PDF.
+      </div>
 
-</div>
+      <input id="fileInput" type="file" accept="image/*" capture="environment" multiple hidden>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between">
+        <strong>Photos & Notes</strong>
+        <span class="pill" id="countPill">0 photos</span>
+      </div>
+      <div class="list" id="list"></div>
+    </section>
+  </div>
 </main>
 
-<input id="galleryInput" type="file" accept="image/*" multiple hidden>
-
 <script>
-const $=id=>document.getElementById(id);
-const STORE="fps_photo_notes_v12_share";
+(() => {
+  const $ = (id) => document.getElementById(id);
 
-let state={address:"",date:"",photos:[]};
-let lastPdfBlob=null;
-let lastPdfName="";
-
-function todayISO(){return new Date().toISOString().slice(0,10)}
-function save(){localStorage.setItem(STORE,JSON.stringify(state))}
-function load(){
-  const raw=localStorage.getItem(STORE);
-  if(raw) state=JSON.parse(raw);
-  $("address").value=state.address||"";
-  $("date").value=state.date||todayISO();
-  state.date=$("date").value;
-}
-$("address").oninput=e=>{state.address=e.target.value;save()}
-$("date").onchange=e=>{state.date=e.target.value;save()}
-
-function render(){
-  const box=$("photos");box.innerHTML="";
-  state.photos.forEach((p,i)=>{
-    const d=document.createElement("div");
-    d.className="photo";
-    d.innerHTML=`
-      <div class="thumb"><img src="${p.img}"></div>
-      <textarea>${p.note||""}</textarea>
-      <div class="row" style="margin-top:6px">
-        <button class="bad">🗑️ Delete</button>
-      </div>`;
-    const ta=d.querySelector("textarea");
-    ta.oninput=e=>{p.note=e.target.value;save()};
-    d.querySelector("button").onclick=()=>{
-      state.photos.splice(i,1);save();render()
-    };
-    box.appendChild(d)
-  })
-}
-
-$("openCamera").onclick=async()=>{
-  const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
-  const v=document.createElement("video");v.srcObject=s;await v.play();
-  setTimeout(()=>{
-    const c=document.createElement("canvas");
-    c.width=v.videoWidth;c.height=v.videoHeight;
-    c.getContext("2d").drawImage(v,0,0);
-    s.getTracks().forEach(t=>t.stop());
-    state.photos.push({img:c.toDataURL("image/jpeg",0.95),note:""});
-    save();render()
-  },700)
-};
-
-$("openGallery").onclick=()=>$("galleryInput").click();
-$("galleryInput").onchange=async e=>{
-  for(const f of e.target.files){
-    const img=new Image();img.src=URL.createObjectURL(f);await img.decode();
-    const c=document.createElement("canvas");
-    c.width=img.width;c.height=img.height;
-    c.getContext("2d").drawImage(img,0,0);
-    state.photos.push({img:c.toDataURL("image/jpeg",0.95),note:""})
+  // IMPORTANT: stop stale PWA behaviour in THIS folder
+  // This does NOT wipe localStorage/IndexedDB; it only removes SW + HTTP caches.
+  async function killServiceWorkersAndCachesOnce(){
+    try{
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) {
+          // Only unregister SWs that could affect this app scope
+          // (Unregistering is safe; it doesn't clear your saved form data)
+          await r.unregister().catch(()=>{});
+        }
+      }
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k).catch(()=>{})));
+      }
+    }catch(e){}
   }
-  save();render()
-};
 
-$("createPdf").onclick=()=>{
-  if(!state.address||!state.photos.length){alert("Add address and photos first");return}
+  const STORE = "fps_photo_notes_v2_store";
+  const VERSION_STAMP = "v2.0.0"; // change when you update
 
-  const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF();let y=15;
-  pdf.text("Ford Property Services",10,y);y+=8;
-  pdf.text("Address: "+state.address,10,y);y+=6;
-  pdf.text("Date: "+state.date.split("-").reverse().join("/"),10,y);y+=10;
+  function setStatus(msg){ $("status").textContent = msg; }
 
-  state.photos.forEach((p,i)=>{
-    if(y>230){pdf.addPage();y=15}
-    pdf.text("Photo "+(i+1),10,y);y+=8;
-    pdf.addImage(p.img,"JPEG",10,y,90,60);y+=66;
-    const lines=pdf.splitTextToSize(p.note||"—",180);
-    pdf.text(lines,10,y);y+=lines.length*6+10
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function ukDate(d){
+    return new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"});
+  }
+  function ukTime(d){
+    return new Date(d).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  }
+
+  let state = { address:"", date: todayISO(), operative:"", photos: [] };
+  let pdfBlob = null;
+  let pdfFile = null;
+  let pdfName = "";
+
+  function save(){ localStorage.setItem(STORE, JSON.stringify(state)); }
+  function load(){
+    const raw = localStorage.getItem(STORE);
+    if (raw) {
+      try { state = JSON.parse(raw); } catch {}
+    }
+    $("address").value = state.address || "";
+    $("date").value = state.date || todayISO();
+    $("operative").value = state.operative || "";
+    state.date = $("date").value;
+  }
+
+  $("address").addEventListener("input", e => { state.address = e.target.value; save(); });
+  $("date").addEventListener("change", e => { state.date = e.target.value; save(); });
+  $("operative").addEventListener("input", e => { state.operative = e.target.value; save(); });
+
+  // Dictation
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const dictationSupported = !!SpeechRecognition;
+  $("speechPill").textContent = dictationSupported ? "Dictation: supported" : "Dictation: not supported";
+
+  function render(){
+    $("countPill").textContent = `${state.photos.length} photo${state.photos.length===1?"":"s"}`;
+    const list = $("list");
+    list.innerHTML = "";
+
+    if (!state.photos.length) {
+      const div = document.createElement("div");
+      div.className = "hint";
+      div.textContent = "No photos yet. Tap “Take / Add Photos”.";
+      list.appendChild(div);
+      return;
+    }
+
+    state.photos.forEach((p, idx) => {
+      const item = document.createElement("div");
+      item.className = "item";
+      item.innerHTML = `
+        <div class="itemTop">
+          <img class="thumb" src="${p.img}" alt="Photo ${idx+1}">
+          <div class="meta">
+            <p class="t">Photo ${idx+1}</p>
+            <p class="s">${ukDate(p.ts)} ${ukTime(p.ts)}</p>
+            <textarea placeholder="Notes…">${p.note || ""}</textarea>
+          </div>
+        </div>
+        <div class="itemBtns">
+          <button class="small primary" ${dictationSupported ? "" : "disabled"} data-dict="${p.id}">🎙️ Dictate</button>
+          <button class="small" disabled data-stop="${p.id}">⏹️ Stop</button>
+          <button class="small bad" data-del="${p.id}">🗑️ Delete</button>
+        </div>
+      `;
+
+      const ta = item.querySelector("textarea");
+      ta.addEventListener("input", () => {
+        p.note = ta.value;
+        save();
+        pdfBlob = pdfFile = null;
+        $("btnShare").disabled = true;
+      });
+
+      item.querySelector(`[data-del="${p.id}"]`).onclick = () => {
+        state.photos = state.photos.filter(x => x.id !== p.id);
+        save();
+        pdfBlob = pdfFile = null;
+        $("btnShare").disabled = true;
+        render();
+      };
+
+      const btnDict = item.querySelector(`[data-dict="${p.id}"]`);
+      const btnStop = item.querySelector(`[data-stop="${p.id}"]`);
+
+      if (dictationSupported) {
+        btnDict.onclick = () => {
+          const rec = new SpeechRecognition();
+          rec.lang = "en-GB";
+          rec.interimResults = true;
+          rec.continuous = false;
+
+          btnDict.disabled = true;
+          btnStop.disabled = false;
+          setStatus("Listening… speak your note.");
+
+          const existing = (ta.value || "").trim();
+          let finalText = "";
+
+          btnStop.onclick = () => { try{ rec.stop(); }catch{} };
+
+          rec.onresult = (e) => {
+            let interim = "";
+            for (let i = e.resultIndex; i < e.results.length; i++){
+              const t = e.results[i][0].transcript;
+              if (e.results[i].isFinal) finalText += t;
+              else interim += t;
+            }
+            const combined = (existing ? existing + " " : "") + (finalText + interim).trim();
+            ta.value = combined.trim();
+            p.note = ta.value;
+            save();
+          };
+
+          rec.onerror = () => {
+            setStatus("Dictation error. Try again.");
+            btnDict.disabled = false;
+            btnStop.disabled = true;
+          };
+
+          rec.onend = () => {
+            setStatus("Ready.");
+            btnDict.disabled = false;
+            btnStop.disabled = true;
+          };
+
+          try { rec.start(); } catch {
+            setStatus("Couldn’t start dictation. Try again.");
+            btnDict.disabled = false;
+            btnStop.disabled = true;
+          }
+        };
+      }
+
+      list.appendChild(item);
+    });
+  }
+
+  async function fileToDataURL(file){
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  $("btnAdd").onclick = () => $("fileInput").click();
+  $("fileInput").addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    setStatus(`Adding ${files.length} photo(s)…`);
+    for (const f of files) {
+      if (!f.type.startsWith("image/")) continue;
+      const dataURL = await fileToDataURL(f);
+      state.photos.push({
+        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+        img: dataURL,
+        note: "",
+        ts: new Date().toISOString()
+      });
+    }
+    save();
+    pdfBlob = pdfFile = null;
+    $("btnShare").disabled = true;
+    setStatus("Photos added.");
+    render();
+    e.target.value = "";
   });
 
-  lastPdfBlob = pdf.output("blob");
-  lastPdfName = `Photo Notes ${state.address} ${state.date}.pdf`
-    .replace(/[\/\\:*?"<>|]/g,"-");
+  $("btnPdf").onclick = async () => {
+    if (!state.address.trim()) { alert("Add the property address first."); return; }
+    if (!state.photos.length) { alert("Add at least one photo first."); return; }
 
-  $("sharePdf").disabled=false;
-  alert("PDF created. Tap Share PDF.");
-};
+    setStatus("Generating PDF…");
 
-$("sharePdf").onclick=async()=>{
-  if(!lastPdfBlob){alert("Create PDF first");return}
-  const file=new File([lastPdfBlob],lastPdfName,{type:"application/pdf"});
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:"p", unit:"mm", format:"a4" });
 
-  if(navigator.canShare && navigator.canShare({files:[file]})){
-    await navigator.share({files:[file],title:lastPdfName});
-  }else{
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(lastPdfBlob);
-    a.download=lastPdfName;
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 12;
+    const contentW = pageW - margin*2;
+
+    doc.setFont("helvetica","bold"); doc.setFontSize(14);
+    doc.text("PHOTO NOTES REPORT", margin, 16);
+
+    doc.setFont("helvetica","normal"); doc.setFontSize(10);
+    doc.text(`Date: ${ukDate(state.date)}   App: ${VERSION_STAMP}`, margin, 22);
+
+    doc.setFont("helvetica","bold"); doc.text("Property Address:", margin, 30);
+    doc.setFont("helvetica","normal"); doc.text(state.address, margin, 36, { maxWidth: contentW });
+
+    if (state.operative.trim()) {
+      doc.setFont("helvetica","bold"); doc.text("Operative:", margin, 46);
+      doc.setFont("helvetica","normal"); doc.text(state.operative, margin + 22, 46);
+    }
+
+    doc.setDrawColor(200); doc.setLineWidth(0.2);
+    doc.line(margin, 52, pageW - margin, 52);
+
+    let y = 60;
+
+    // helper to convert dataURL to Image dims quickly
+    async function dataURLToImage(dataURL){
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = dataURL;
+      });
+    }
+
+    for (let i=0; i<state.photos.length; i++){
+      const p = state.photos[i];
+
+      if (y > pageH - 30) { doc.addPage(); y = 18; }
+
+      doc.setFont("helvetica","bold"); doc.setFontSize(11);
+      doc.text(`Photo ${i+1}`, margin, y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(9);
+      doc.text(`${ukDate(p.ts)} ${ukTime(p.ts)}`, pageW - margin, y, { align:"right" });
+      y += 5;
+
+      const img = await dataURLToImage(p.img);
+      const imgWpx = img.naturalWidth || img.width;
+      const imgHpx = img.naturalHeight || img.height;
+
+      const maxImgH = 95;
+      let drawW = contentW;
+      let drawH = (imgHpx / imgWpx) * drawW;
+      if (drawH > maxImgH) {
+        drawH = maxImgH;
+        drawW = (imgWpx / imgHpx) * drawH;
+      }
+      const xImg = margin + (contentW - drawW)/2;
+
+      doc.setDrawColor(180);
+      doc.roundedRect(margin, y, contentW, drawH + 2, 2, 2);
+      doc.addImage(p.img, "JPEG", xImg, y+1, drawW, drawH);
+      y += drawH + 10;
+
+      const note = (p.note || "").trim() || "—";
+      doc.setFont("helvetica","bold"); doc.setFontSize(10);
+      doc.text("Notes:", margin, y);
+      y += 6;
+      doc.setFont("helvetica","normal"); doc.setFontSize(10);
+
+      const lines = doc.splitTextToSize(note, contentW);
+      const boxH = Math.max(14, lines.length * 5 + 6);
+
+      if (y + boxH > pageH - 12) { doc.addPage(); y = 18; }
+      doc.setDrawColor(180);
+      doc.roundedRect(margin, y-4, contentW, boxH, 2, 2);
+      doc.text(lines, margin+3, y+2);
+      y += boxH + 10;
+    }
+
+    pdfBlob = doc.output("blob");
+    const safeAddr = state.address.replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"-").slice(0,40);
+    pdfName = `Photo-Notes-${safeAddr}-${state.date}.pdf`;
+
+    pdfFile = new File([pdfBlob], pdfName, { type:"application/pdf" });
+
+    $("btnShare").disabled = false;
+    setStatus("PDF generated. Tap Share PDF and choose WhatsApp.");
+  };
+
+  $("btnShare").onclick = async () => {
+    if (!pdfFile) { alert("Generate the PDF first."); return; }
+
+    if (navigator.canShare && navigator.canShare({ files:[pdfFile] })) {
+      try{
+        await navigator.share({ title: "Photo Notes", text: "Photo notes report attached.", files:[pdfFile] });
+        setStatus("Shared.");
+        return;
+      }catch(e){}
+    }
+
+    // fallback download
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = pdfName || "photo-notes.pdf";
+    document.body.appendChild(a);
     a.click();
-  }
-};
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    alert("Your browser can’t share files directly. The PDF was downloaded—attach it in WhatsApp.");
+    setStatus("PDF downloaded.");
+  };
 
-load();render();
+  $("btnClear").onclick = () => {
+    if (!confirm("Clear all photos and notes for this report?")) return;
+    state.photos = [];
+    save();
+    pdfBlob = pdfFile = null;
+    $("btnShare").disabled = true;
+    setStatus("Cleared.");
+    render();
+  };
+
+  // INIT
+  (async () => {
+    // This is the key part that stops stale “installed app” behaviour in this folder
+    await killServiceWorkersAndCachesOnce();
+
+    load();
+    if (!$("date").value) $("date").value = todayISO();
+    render();
+    setStatus("Ready.");
+  })();
+
+})();
 </script>
 </body>
 </html>
