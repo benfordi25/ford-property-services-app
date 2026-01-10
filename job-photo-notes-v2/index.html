@@ -6,12 +6,10 @@
   <title>Ford Property Services • Photo Notes</title>
   <meta name="theme-color" content="#0b1220" />
 
-  <!-- Strong cache discouragement (helps, but SW is the real culprit) -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <!-- jsPDF -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
   <style>
@@ -28,7 +26,7 @@
       color:var(--text);
       background:
         radial-gradient(1200px 700px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
-        radial-gradient(900px 650px at 100% 0%, rgba(34,163,94,.12), transparent 55%),
+        radial-gradient(900px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
         var(--bg);
     }
     header{
@@ -86,13 +84,10 @@
       background: rgba(255,255,255,.04);
       white-space:nowrap;
     }
-
-    /* GPS Address row */
     .addrRow{display:flex;gap:10px;align-items:center}
     .addrRow input{flex:1;min-width:220px}
     .smallBtn{padding:10px 12px;border-radius:14px;white-space:nowrap}
 
-    /* Photo list */
     .list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
     .item{
       border:1px solid rgba(255,255,255,.12);
@@ -136,7 +131,6 @@
         <button id="btnGps" class="primary smallBtn" type="button">📍 Use GPS</button>
       </div>
 
-      <!-- Full address picker -->
       <div id="houseWrap" style="display:none; margin-top:8px;">
         <label style="margin:0 0 6px;">Select Address (if needed)</label>
         <select id="houseSelect"></select>
@@ -157,20 +151,17 @@
       </div>
 
       <div class="btnrow">
-        <!-- ✅ Camera + Gallery -->
-        <button id="btnCamera" class="primary">📷 Camera</button>
-        <button id="btnGallery" class="primary">🖼️ Gallery</button>
-
-        <button id="btnPdf" class="good">🧾 Generate PDF</button>
-        <button id="btnShare" class="primary" disabled>📤 Share PDF (WhatsApp)</button>
-        <button id="btnClear" class="bad">🗑️ Clear</button>
+        <button id="btnCamera" class="primary" type="button">📷 Camera</button>
+        <button id="btnGallery" class="primary" type="button">🖼️ Gallery</button>
+        <button id="btnPdf" class="good" type="button">🧾 Generate PDF</button>
+        <button id="btnShare" class="primary" type="button" disabled>📤 Share PDF (WhatsApp)</button>
+        <button id="btnClear" class="bad" type="button">🗑️ Clear</button>
       </div>
 
       <div class="hint" id="status">
         Add photos, dictate notes per photo, then generate and share a PDF.
       </div>
 
-      <!-- ✅ Separate inputs -->
       <input id="cameraInput" type="file" accept="image/*" capture="environment" multiple hidden>
       <input id="galleryInput" type="file" accept="image/*" multiple hidden>
     </section>
@@ -189,15 +180,11 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
-  // IMPORTANT: stop stale PWA behaviour in THIS folder
-  // This does NOT wipe localStorage/IndexedDB; it only removes SW + HTTP caches.
   async function killServiceWorkersAndCachesOnce(){
     try{
       if ('serviceWorker' in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
-        for (const r of regs) {
-          await r.unregister().catch(()=>{});
-        }
+        for (const r of regs) await r.unregister().catch(()=>{});
       }
       if (window.caches) {
         const keys = await caches.keys();
@@ -215,18 +202,14 @@
   }
   function setGpsHint(msg){ const el = $("gpsHint"); if(el) el.textContent = msg || ""; }
   function setHouseHint(msg){ const el = $("houseHint"); if(el) el.textContent = msg || ""; }
-
-  function pickTown(a){
-    return a.town || a.city || a.village || a.suburb || a.county || "";
-  }
+  function pickTown(a){ return a.town || a.city || a.village || a.suburb || a.county || ""; }
   function buildAddress(houseNumber, road, town, postcode){
     const line1 = [houseNumber, road].filter(Boolean).join(" ").trim();
     return [line1, town, postcode].filter(Boolean).join(", ").trim();
   }
 
   async function fetchNearbyFullAddresses({road, town, postcode, lat, lon}){
-    // small viewbox around the location to keep it on the correct road
-    const d = 0.01; // ~1km-ish
+    const d = 0.01;
     const left = lon - d, right = lon + d, top = lat + d, bottom = lat - d;
 
     const params = new URLSearchParams({
@@ -265,16 +248,9 @@
       if(seen.has(key)) continue;
       seen.add(key);
 
-      list.push({
-        label: full,
-        house: hn,
-        road: rRoad || road,
-        town: t,
-        postcode: pc
-      });
+      list.push({ label: full, house: hn, road: rRoad || road, town: t, postcode: pc });
     }
 
-    // Sort by numeric house then alpha
     list.sort((A,B)=>{
       const na = parseInt(A.house,10), nb = parseInt(B.house,10);
       if(!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
@@ -290,7 +266,6 @@
     if(!wrap || !sel) return;
 
     sel.innerHTML = "";
-
     const opt0 = document.createElement("option");
     opt0.value = "";
     opt0.textContent = "Select the correct address…";
@@ -304,7 +279,6 @@
     });
 
     wrap.style.display = addresses.length ? "block" : "none";
-
     if(preselectLabel){
       const found = addresses.find(x => x.label.toLowerCase() === preselectLabel.toLowerCase());
       if(found) sel.value = found.label;
@@ -313,17 +287,12 @@
   // -------- end GPS helpers --------
 
   const STORE = "fps_photo_notes_v2_store";
-  const VERSION_STAMP = "v2.0.3-gps-fulladdr-camgal"; // bump when you update
-
+  const VERSION_STAMP = "v2.0.4-fix-multi-delete";
   function setStatus(msg){ $("status").textContent = msg; }
 
   function todayISO(){ return new Date().toISOString().slice(0,10); }
-  function ukDate(d){
-    return new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"});
-  }
-  function ukTime(d){
-    return new Date(d).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-  }
+  function ukDate(d){ return new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"}); }
+  function ukTime(d){ return new Date(d).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}); }
 
   let state = { address:"", date: todayISO(), operative:"", photos: [], gps:null };
   let pdfBlob = null;
@@ -333,9 +302,7 @@
   function save(){ localStorage.setItem(STORE, JSON.stringify(state)); }
   function load(){
     const raw = localStorage.getItem(STORE);
-    if (raw) {
-      try { state = JSON.parse(raw); } catch {}
-    }
+    if (raw) { try { state = JSON.parse(raw); } catch {} }
     $("address").value = state.address || "";
     $("date").value = state.date || todayISO();
     $("operative").value = state.operative || "";
@@ -346,13 +313,8 @@
   $("date").addEventListener("change", e => { state.date = e.target.value; save(); });
   $("operative").addEventListener("input", e => { state.operative = e.target.value; save(); });
 
-  // GPS button
   $("btnGps").onclick = () => {
-    if(!navigator.geolocation){
-      alert("GPS not supported on this device/browser.");
-      return;
-    }
-
+    if(!navigator.geolocation){ alert("GPS not supported on this device/browser."); return; }
     setGpsHint("Getting your location…");
     setHouseHint("");
     $("houseWrap").style.display = "none";
@@ -372,7 +334,6 @@
         const town = pickTown(a);
         const postcode = (a.postcode || "").trim();
 
-        // Fill what we can immediately
         const base = buildAddress(hn, road, town, postcode) || (data.display_name || "");
         if(base){
           $("address").value = base;
@@ -381,10 +342,7 @@
           save();
         }
 
-        if(!road){
-          setGpsHint("GPS found, but no road name returned. You can type the address manually.");
-          return;
-        }
+        if(!road){ setGpsHint("GPS found, but no road name returned. You can type the address manually."); return; }
 
         setGpsHint("Looking for nearby full addresses…");
         const addresses = await fetchNearbyFullAddresses({ road, town, postcode, lat, lon });
@@ -417,9 +375,7 @@
             setHouseHint("Selected address applied.");
           };
         } else {
-          setGpsHint(hn
-            ? "GPS found an address."
-            : "Couldn’t find nearby addresses for this road. Type the number manually if needed.");
+          setGpsHint(hn ? "GPS found an address." : "Couldn’t find nearby addresses for this road. Type the number manually if needed.");
         }
 
       }catch(err){
@@ -429,19 +385,13 @@
       }finally{
         $("btnGps").disabled = false;
       }
-    }, (err) => {
-      console.warn(err);
+    }, () => {
       $("btnGps").disabled = false;
       setGpsHint("GPS permission denied or unavailable.");
       alert("GPS not available. Please allow location permission and try again.");
-    }, {
-      enableHighAccuracy: true,
-      timeout: 12000,
-      maximumAge: 60000
-    });
+    }, { enableHighAccuracy:true, timeout:12000, maximumAge:60000 });
   };
 
-  // Dictation
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const dictationSupported = !!SpeechRecognition;
   $("speechPill").textContent = dictationSupported ? "Dictation: supported" : "Dictation: not supported";
@@ -472,9 +422,9 @@
           </div>
         </div>
         <div class="itemBtns">
-          <button class="small primary" ${dictationSupported ? "" : "disabled"} data-dict="${p.id}">🎙️ Dictate</button>
-          <button class="small" disabled data-stop="${p.id}">⏹️ Stop</button>
-          <button class="small bad" data-del="${p.id}">🗑️ Delete</button>
+          <button class="small primary" type="button" ${dictationSupported ? "" : "disabled"} data-dict="${p.id}">🎙️ Dictate</button>
+          <button class="small" type="button" disabled data-stop="${p.id}">⏹️ Stop</button>
+          <button class="small bad" type="button" data-del="${p.id}">🗑️ Delete</button>
         </div>
       `;
 
@@ -563,27 +513,57 @@
   $("btnCamera").onclick = () => $("cameraInput").click();
   $("btnGallery").onclick = () => $("galleryInput").click();
 
+  function looksLikeImage(file){
+    const name = (file?.name || "").toLowerCase();
+    const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
+    const typeOk = (file?.type || "").startsWith("image/");
+    // Some Android pickers give empty type — allow by extension
+    return typeOk || extOk;
+  }
+
   async function handleFiles(e){
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
     setStatus(`Adding ${files.length} photo(s)…`);
-    for (const f of files) {
-      if (!f.type.startsWith("image/")) continue;
-      const dataURL = await fileToDataURL(f);
-      state.photos.push({
-        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
-        img: dataURL,
-        note: "",
-        ts: new Date().toISOString()
-      });
+    let added = 0;
+    let skipped = 0;
+
+    try{
+      for (const f of files) {
+        if (!f) continue;
+
+        if (!looksLikeImage(f)) { skipped++; continue; }
+
+        try{
+          const dataURL = await fileToDataURL(f);
+          // If the data URL isn't image/*, skip it (prevents crashes)
+          if (typeof dataURL !== "string" || !dataURL.startsWith("data:image/")) { skipped++; continue; }
+
+          state.photos.push({
+            id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+            img: dataURL,
+            note: "",
+            ts: new Date().toISOString()
+          });
+          added++;
+        }catch(err){
+          console.warn("Photo read failed:", err);
+          skipped++;
+        }
+      }
+    }finally{
+      save();
+      pdfBlob = pdfFile = null;
+      $("btnShare").disabled = true;
+      render();
+
+      if (added > 0) setStatus(`Photos added: ${added}${skipped ? ` (skipped ${skipped})` : ""}.`);
+      else setStatus("No supported images were added. (If your phone uses HEIC, switch camera format to JPEG.)");
+
+      // IMPORTANT: reset input so selecting same photo again still triggers change
+      e.target.value = "";
     }
-    save();
-    pdfBlob = pdfFile = null;
-    $("btnShare").disabled = true;
-    setStatus("Photos added.");
-    render();
-    e.target.value = "";
   }
 
   $("cameraInput").addEventListener("change", handleFiles);
@@ -654,10 +634,7 @@
       const maxImgH = 95;
       let drawW = contentW;
       let drawH = (imgHpx / imgWpx) * drawW;
-      if (drawH > maxImgH) {
-        drawH = maxImgH;
-        drawW = (imgWpx / imgHpx) * drawH;
-      }
+      if (drawH > maxImgH) { drawH = maxImgH; drawW = (imgWpx / imgHpx) * drawH; }
       const xImg = margin + (contentW - drawW)/2;
 
       doc.setDrawColor(180);
@@ -684,7 +661,6 @@
     pdfBlob = doc.output("blob");
     const safeAddr = state.address.replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"-").slice(0,40);
     pdfName = `Photo-Notes-${safeAddr}-${state.date}.pdf`;
-
     pdfFile = new File([pdfBlob], pdfName, { type:"application/pdf" });
 
     $("btnShare").disabled = false;
@@ -693,7 +669,6 @@
 
   $("btnShare").onclick = async () => {
     if (!pdfFile) { alert("Generate the PDF first."); return; }
-
     if (navigator.canShare && navigator.canShare({ files:[pdfFile] })) {
       try{
         await navigator.share({ title: "Photo Notes", text: "Photo notes report attached.", files:[pdfFile] });
@@ -701,7 +676,6 @@
         return;
       }catch(e){}
     }
-
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
     a.href = url;
@@ -724,7 +698,6 @@
     render();
   };
 
-  // INIT
   (async () => {
     await killServiceWorkersAndCachesOnce();
     load();
