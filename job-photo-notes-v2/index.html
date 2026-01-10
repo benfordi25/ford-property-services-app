@@ -119,6 +119,8 @@
     .metaLeft{min-width:0}
     .meta .t{margin:0;font-weight:900;font-size:14px}
     .meta .s{margin:4px 0 0;font-size:12px;color:var(--muted)}
+
+    /* Delete button is now tap-to-open confirm (no hold here) */
     .dangerTop{
       padding:8px 10px;
       border-radius:12px;
@@ -130,22 +132,74 @@
       gap:8px;
       align-items:center;
     }
-    .holdBar{
-      width:56px;height:8px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      overflow:hidden;
-    }
-    .holdFill{
-      height:100%;
-      width:0%;
-      background: rgba(239,68,68,.75);
-      border-radius:999px;
-    }
 
     .itemBtns{display:flex;gap:8px;flex-wrap:wrap;padding:0 12px 12px}
     .small{padding:9px 12px;border-radius:12px;font-size:13px}
     .ghost{border-color: rgba(255,255,255,.12);background: rgba(255,255,255,.04)}
+
+    /* ----- Full screen delete confirm ----- */
+    .modal{
+      position:fixed; inset:0; z-index:9999;
+      background: rgba(0,0,0,.58);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      padding:16px;
+    }
+    .modal.show{display:flex}
+    .sheet{
+      width:min(720px, 100%);
+      border:1px solid rgba(255,255,255,.14);
+      background: linear-gradient(180deg, rgba(16,26,51,.96), rgba(10,16,34,.96));
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .sheetTop{
+      display:flex; gap:12px; align-items:center;
+      padding:14px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .sheetTop img{
+      width:64px;height:64px;border-radius:14px; object-fit:cover;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      flex:0 0 auto;
+    }
+    .sheetTop .h{margin:0;font-weight:900}
+    .sheetTop .p{margin:6px 0 0; color:var(--muted); font-size:12px}
+    .sheetBody{padding:14px}
+    .holdArea{
+      border:1px solid rgba(239,68,68,.55);
+      background: rgba(239,68,68,.10);
+      border-radius: 16px;
+      padding:14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-touch-callout:none;
+      touch-action:none;
+    }
+    .holdTitle{font-weight:900}
+    .holdBarBig{
+      width:100%; height:14px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      overflow:hidden;
+    }
+    .holdFillBig{
+      width:0%; height:100%;
+      background: rgba(239,68,68,.78);
+      border-radius:999px;
+    }
+    .sheetBtns{
+      display:flex; gap:10px; flex-wrap:wrap;
+      padding:14px;
+      border-top:1px solid rgba(255,255,255,.10);
+      justify-content:flex-end;
+    }
   </style>
 </head>
 
@@ -213,10 +267,39 @@
   </div>
 </main>
 
+<!-- ✅ Delete confirm modal -->
+<div class="modal" id="delModal" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="sheetTop">
+      <img id="delThumb" alt="Photo preview">
+      <div style="min-width:0">
+        <p class="h" id="delTitle" style="margin:0">Delete photo?</p>
+        <p class="p" id="delSub" style="margin:6px 0 0"></p>
+      </div>
+    </div>
+
+    <div class="sheetBody">
+      <div class="holdArea" id="holdArea">
+        <div class="holdTitle">🗑️ HOLD 2 SECONDS TO DELETE</div>
+        <div class="hint" style="margin:0;color:#ffd1d1">Keep holding until the bar fills.</div>
+        <div class="holdBarBig"><div class="holdFillBig" id="holdFillBig"></div></div>
+      </div>
+      <div class="hint" style="margin-top:10px">
+        Tip: This big hold button works even when the small hold button fails in installed app mode.
+      </div>
+    </div>
+
+    <div class="sheetBtns">
+      <button type="button" class="primary" id="delCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
 
+  // ---- Cache/SW cleanup once ----
   async function killServiceWorkersAndCachesOnce(){
     try{
       if ('serviceWorker' in navigator) {
@@ -230,7 +313,7 @@
     }catch(e){}
   }
 
-  // -------- GPS helpers (full address dropdown) --------
+  // -------- GPS helpers (unchanged) --------
   async function reverseGeocodeOSM(lat, lon){
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
     const res = await fetch(url, { headers: { "Accept":"application/json", "Accept-Language":"en-GB" } });
@@ -310,14 +393,11 @@
       if(found) sel.value = found.label;
     }
   }
-  // -------- end GPS helpers --------
 
   const STORE = "fps_photo_notes_v2_store";
-  const VERSION_STAMP = "v2.0.8-bullet-dictation";
-
+  const VERSION_STAMP = "v2.1.0-modal-hold-delete";
   function setStatus(msg){ $("status").textContent = msg; }
   function setDebug(msg){ $("debug").textContent = msg || ""; }
-
   function todayISO(){ return new Date().toISOString().slice(0,10); }
   function ukDate(d){ return new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"}); }
   function ukTime(d){ return new Date(d).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}); }
@@ -425,7 +505,7 @@
   const dictationSupported = !!SpeechRecognition;
   $("speechPill").textContent = dictationSupported ? "Dictation: supported" : "Dictation: not supported";
 
-  // --- Bullet helpers ---
+  // Bullet dictation
   const BULLET = "• ";
   function ensureEndsWithNewline(text){
     if(!text) return "";
@@ -435,28 +515,162 @@
     const t = (currentText || "");
     const trimmed = t.trimEnd();
     if(!trimmed) return BULLET;
-
-    // If last non-space line is already just a bullet prefix, don't add another
     const lines = trimmed.split("\n");
     const last = lines[lines.length - 1].trim();
-    if(last === "•" || last === "•") return ""; // safe guard (rare)
-    if(last === BULLET.trim()) return "";
-
+    if(last === "•" || last === BULLET.trim()) return "";
     return ensureEndsWithNewline(t) + BULLET;
   }
-  function appendDictationAsBullet(textAreaValue, dictatedText){
-    const base = prepareBulletPrefix(textAreaValue);
-    // if base already includes existing content, base is full text; if just BULLET, it's just prefix
-    if(base.startsWith(BULLET) && !(textAreaValue||"").trim()) {
-      return BULLET + (dictatedText || "").trim();
-    }
-    if(base === "") {
-      // already had bullet ready
-      return (textAreaValue || "").replace(/\s*$/, "") + " " + (dictatedText||"").trim();
-    }
-    return base + (dictatedText || "").trim();
+
+  // ✅ Modal hold-to-delete (reliable everywhere)
+  let deleteTargetId = null;
+  let holdRAF = null;
+  let holdStart = 0;
+
+  function openDeleteModal(photo){
+    deleteTargetId = photo.id;
+    $("delThumb").src = photo.img;
+    const subj = (photo.subject || "").trim();
+    $("delSub").textContent = `Photo subject: ${subj ? subj : "—"} • ${ukDate(photo.ts)} ${ukTime(photo.ts)}`;
+    $("delModal").classList.add("show");
+    $("holdFillBig").style.width = "0%";
+    $("delModal").setAttribute("aria-hidden", "false");
   }
-  // --- end bullet helpers ---
+  function closeDeleteModal(){
+    cancelHold();
+    deleteTargetId = null;
+    $("delModal").classList.remove("show");
+    $("delModal").setAttribute("aria-hidden", "true");
+    $("holdFillBig").style.width = "0%";
+  }
+  function cancelHold(){
+    if(holdRAF){ cancelAnimationFrame(holdRAF); holdRAF = null; }
+    $("holdFillBig").style.width = "0%";
+  }
+  function startHold(){
+    if(!deleteTargetId) return;
+    cancelHold();
+    holdStart = Date.now();
+    if(navigator.vibrate) navigator.vibrate(25);
+
+    const tick = () => {
+      const elapsed = Date.now() - holdStart;
+      const pct = Math.min(100, (elapsed/2000)*100);
+      $("holdFillBig").style.width = pct.toFixed(1) + "%";
+      if(elapsed >= 2000){
+        // delete now
+        const id = deleteTargetId;
+        closeDeleteModal();
+        state.photos = state.photos.filter(p => p.id !== id);
+        save();
+        pdfBlob = pdfFile = null;
+        $("btnShare").disabled = true;
+        setStatus("Photo deleted.");
+        if(navigator.vibrate) navigator.vibrate(90);
+        render();
+        return;
+      }
+      holdRAF = requestAnimationFrame(tick);
+    };
+    holdRAF = requestAnimationFrame(tick);
+  }
+
+  // Modal listeners
+  $("delCancel").onclick = closeDeleteModal;
+  $("delModal").addEventListener("click", (e) => {
+    if(e.target === $("delModal")) closeDeleteModal();
+  });
+
+  const holdArea = $("holdArea");
+  // touch first
+  holdArea.addEventListener("touchstart", (e)=>{ e.preventDefault(); startHold(); }, {passive:false});
+  holdArea.addEventListener("touchend", (e)=>{ e.preventDefault(); cancelHold(); }, {passive:false});
+  holdArea.addEventListener("touchcancel", cancelHold);
+  // mouse fallback
+  holdArea.addEventListener("mousedown", (e)=>{ e.preventDefault(); startHold(); });
+  window.addEventListener("mouseup", cancelHold);
+  window.addEventListener("blur", cancelHold);
+
+  // Images import helpers
+  function looksLikeImage(file){
+    const name = (file?.name || "").toLowerCase();
+    const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
+    const typeOk = (file?.type || "").startsWith("image/");
+    return typeOk || extOk;
+  }
+  function loadImageFromObjectURL(file){
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image load failed")); };
+      img.src = url;
+    });
+  }
+  function compressToJpegDataURL(img, maxW=1600, maxH=1600, quality=0.85){
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const scale = Math.min(1, maxW / w, maxH / h);
+    const cw = Math.max(1, Math.round(w * scale));
+    const ch = Math.max(1, Math.round(h * scale));
+    const c = document.createElement("canvas");
+    c.width = cw; c.height = ch;
+    const ctx = c.getContext("2d", { alpha:false });
+    ctx.drawImage(img, 0, 0, cw, ch);
+    return c.toDataURL("image/jpeg", quality);
+  }
+
+  $("btnCamera").onclick = () => $("cameraInput").click();
+  $("btnGallery").onclick = () => $("galleryInput").click();
+
+  async function handleFiles(e){
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    setStatus(`Adding ${files.length} photo(s)…`);
+    setDebug(`Picker returned ${files.length} file(s).`);
+
+    let added = 0, skipped = 0;
+
+    for (const f of files) {
+      try{
+        if (!f || !looksLikeImage(f)) { skipped++; continue; }
+        const img = await loadImageFromObjectURL(f);
+        const dataURL = compressToJpegDataURL(img, 1600, 1600, 0.85);
+        if (!dataURL.startsWith("data:image/")) { skipped++; continue; }
+
+        state.photos.push({
+          id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+          img: dataURL,
+          subject: "",
+          note: "",
+          ts: new Date().toISOString()
+        });
+        added++;
+      }catch(err){
+        console.warn("Import fail:", err);
+        skipped++;
+      }
+    }
+
+    save();
+    pdfBlob = pdfFile = null;
+    $("btnShare").disabled = true;
+    render();
+
+    if (added) setStatus(`Photos added: ${added}${skipped ? ` (skipped ${skipped})` : ""}.`);
+    else setStatus("No photos added. (Some phones save HEIC; switch Camera settings to JPEG if needed.)");
+    e.target.value = "";
+  }
+
+  $("cameraInput").addEventListener("change", handleFiles);
+  $("galleryInput").addEventListener("change", handleFiles);
+
+  function escapeHtml(str){
+    return String(str||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function escapeAttr(str){
+    return escapeHtml(str).replace(/"/g, "&quot;");
+  }
 
   function render(){
     $("countPill").textContent = `${state.photos.length} photo${state.photos.length===1?"":"s"}`;
@@ -484,10 +698,8 @@
                 <p class="s">${ukDate(p.ts)} ${ukTime(p.ts)}</p>
               </div>
 
-              <button class="dangerTop" type="button" data-del="${p.id}">
-                🗑️ Hold 2s
-                <span class="holdBar" aria-hidden="true"><span class="holdFill" data-fill="${p.id}"></span></span>
-              </button>
+              <!-- ✅ tap opens modal -->
+              <button class="dangerTop" type="button" data-delopen="${p.id}">🗑️ Delete</button>
             </div>
 
             <input data-subject="${p.id}" placeholder="Subject (e.g., Kitchen door, Bathroom basin)" value="${escapeAttr(p.subject || "")}">
@@ -503,14 +715,16 @@
         </div>
       `;
 
+      // Open delete modal
+      item.querySelector(`[data-delopen="${p.id}"]`).onclick = () => openDeleteModal(p);
+
       const subj = item.querySelector(`[data-subject="${p.id}"]`);
       subj.addEventListener("input", () => {
         p.subject = subj.value;
         save();
         pdfBlob = pdfFile = null;
         $("btnShare").disabled = true;
-        const titleEl = item.querySelector(".t");
-        titleEl.textContent = `Photo ${idx+1}${p.subject ? " • " + p.subject : ""}`;
+        item.querySelector(".t").textContent = `Photo ${idx+1}${p.subject ? " • " + p.subject : ""}`;
       });
 
       const ta = item.querySelector("textarea");
@@ -531,63 +745,9 @@
         setStatus("Notes cleared for that photo.");
       };
 
-      // ✅ HOLD-TO-DELETE (2 seconds) — Android SAFE
-const delBtn = item.querySelector(`[data-del="${p.id}"]`);
-const fill = item.querySelector(`[data-fill="${p.id}"]`);
-
-let holdTimer = null;
-let holdStart = 0;
-
-function resetHold(){
-  if (holdTimer) {
-    clearInterval(holdTimer);
-    holdTimer = null;
-  }
-  fill.style.width = "0%";
-  delBtn.style.opacity = "1";
-}
-
-function beginHold(){
-  if (holdTimer) return;
-
-  holdStart = Date.now();
-  delBtn.style.opacity = "0.85";
-
-  holdTimer = setInterval(() => {
-    const elapsed = Date.now() - holdStart;
-    const pct = Math.min(100, (elapsed / 2000) * 100);
-    fill.style.width = pct + "%";
-
-    if (elapsed >= 2000) {
-      resetHold();
-
-      state.photos = state.photos.filter(x => x.id !== p.id);
-      save();
-      pdfBlob = pdfFile = null;
-      $("btnShare").disabled = true;
-      setStatus("Photo deleted.");
-      render();
-    }
-  }, 25);
-}
-
-/* TOUCH EVENTS (primary – Android) */
-delBtn.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  beginHold();
-}, { passive:false });
-
-delBtn.addEventListener("touchend", resetHold);
-delBtn.addEventListener("touchcancel", resetHold);
-
-/* MOUSE FALLBACK (desktop testing) */
-delBtn.addEventListener("mousedown", beginHold);
-delBtn.addEventListener("mouseup", resetHold);
-delBtn.addEventListener("mouseleave", resetHold);
-      // Dictation (bullet-per-session)
+      // Bullet dictation per session
       const btnDict = item.querySelector(`[data-dict="${p.id}"]`);
       const btnStop = item.querySelector(`[data-stop="${p.id}"]`);
-
       if (dictationSupported) {
         btnDict.onclick = () => {
           const rec = new SpeechRecognition();
@@ -598,10 +758,9 @@ delBtn.addEventListener("mouseleave", resetHold);
           btnDict.disabled = true;
           btnStop.disabled = false;
 
-          // Start a new bullet immediately (so user sees it)
-          const base = prepareBulletPrefix(ta.value);
-          if(base){
-            ta.value = base;
+          const prefix = prepareBulletPrefix(ta.value);
+          if(prefix){
+            ta.value = prefix;
             p.note = ta.value;
             save();
           }
@@ -620,16 +779,13 @@ delBtn.addEventListener("mouseleave", resetHold);
             const spoken = (finalText + interim).trim();
             if(!spoken) return;
 
-            // Put spoken words after the current bullet prefix (and keep updating live)
             const current = ta.value || "";
-            // If current ends with just "• " (or has bullet at end), append spoken
-            // otherwise, replace everything after last bullet prefix for live update
             const lastBulletIdx = current.lastIndexOf(BULLET);
             if(lastBulletIdx !== -1){
               const before = current.slice(0, lastBulletIdx + BULLET.length);
               ta.value = before + spoken;
             }else{
-              ta.value = appendDictationAsBullet(current, spoken);
+              ta.value = (current.trim() ? (current.trimEnd() + "\n") : "") + BULLET + spoken;
             }
             p.note = ta.value;
             save();
@@ -645,8 +801,6 @@ delBtn.addEventListener("mouseleave", resetHold);
             setStatus("Ready.");
             btnDict.disabled = false;
             btnStop.disabled = true;
-
-            // When dictation ends, ensure the bullet line is clean (no trailing spaces)
             ta.value = (ta.value || "").replace(/[ \t]+$/g, "");
             p.note = ta.value;
             save();
@@ -664,93 +818,8 @@ delBtn.addEventListener("mouseleave", resetHold);
     });
   }
 
-  function escapeHtml(str){
-    return String(str||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-  function escapeAttr(str){
-    return escapeHtml(str).replace(/"/g, "&quot;");
-  }
-
-  function looksLikeImage(file){
-    const name = (file?.name || "").toLowerCase();
-    const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
-    const typeOk = (file?.type || "").startsWith("image/");
-    return typeOk || extOk;
-  }
-
-  function loadImageFromObjectURL(file){
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image load failed")); };
-      img.src = url;
-    });
-  }
-
-  function compressToJpegDataURL(img, maxW=1600, maxH=1600, quality=0.85){
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
-    const scale = Math.min(1, maxW / w, maxH / h);
-    const cw = Math.max(1, Math.round(w * scale));
-    const ch = Math.max(1, Math.round(h * scale));
-
-    const c = document.createElement("canvas");
-    c.width = cw; c.height = ch;
-    const ctx = c.getContext("2d", { alpha:false });
-    ctx.drawImage(img, 0, 0, cw, ch);
-    return c.toDataURL("image/jpeg", quality);
-  }
-
-  $("btnCamera").onclick = () => $("cameraInput").click();
-  $("btnGallery").onclick = () => $("galleryInput").click();
-
-  async function handleFiles(e){
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    setStatus(`Adding ${files.length} photo(s)…`);
-    setDebug(`Picker returned ${files.length} file(s).`);
-
-    let added = 0, skipped = 0;
-
-    for (const f of files) {
-      try{
-        if (!f || !looksLikeImage(f)) { skipped++; continue; }
-
-        const img = await loadImageFromObjectURL(f);
-        const dataURL = compressToJpegDataURL(img, 1600, 1600, 0.85);
-
-        if (!dataURL.startsWith("data:image/")) { skipped++; continue; }
-
-        state.photos.push({
-          id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
-          img: dataURL,
-          subject: "",
-          note: "",
-          ts: new Date().toISOString()
-        });
-        added++;
-      }catch(err){
-        console.warn("Import fail:", err);
-        skipped++;
-      }
-    }
-
-    save();
-    pdfBlob = pdfFile = null;
-    $("btnShare").disabled = true;
-
-    render();
-
-    if (added) setStatus(`Photos added: ${added}${skipped ? ` (skipped ${skipped})` : ""}.`);
-    else setStatus("No photos added. (Some phones save HEIC; switch Camera settings to JPEG if needed.)");
-
-    e.target.value = "";
-  }
-
-  $("cameraInput").addEventListener("change", handleFiles);
-  $("galleryInput").addEventListener("change", handleFiles);
+  // PDF/share/clear — leaving exactly as you had (not repeating here would break copy/paste),
+  // so we keep your existing functions below unchanged.
 
   $("btnPdf").onclick = async () => {
     if (!state.address.trim()) { alert("Add the property address first."); return; }
@@ -881,6 +950,7 @@ delBtn.addEventListener("mouseleave", resetHold);
     render();
   };
 
+  // Boot
   (async () => {
     await killServiceWorkersAndCachesOnce();
     load();
