@@ -1,970 +1,736 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Ford Property Services • Photo Notes</title>
-<meta name="theme-color" content="#0b1220">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Photo Notes • Job PDF</title>
 
-<!-- jsPDF -->
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <meta name="theme-color" content="#0b1220" />
 
-<style>
-:root{
-  --bg:#0b1220; --text:#e7eefc; --muted:#a9b7d3;
-  --line:rgba(255,255,255,.14); --shadow:0 10px 30px rgba(0,0,0,.35);
-  --good:#22c55e; --bad:#ef4444; --info:#7dd3fc;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  color:var(--text);
-  background:
-    radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.18), transparent 60%),
-    radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.10), transparent 55%),
-    var(--bg);
-}
-header{
-  position:sticky;top:0;z-index:10;
-  background: rgba(11,18,32,.86);
-  backdrop-filter: blur(10px);
-  border-bottom:1px solid var(--line);
-}
-.wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
-.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.brand{display:flex;gap:12px;align-items:center}
-.logo{
-  width:54px;height:54px;border-radius:14px;background:#fff;color:#0b1220;
-  display:grid;place-items:center;font-weight:950;letter-spacing:.4px;
-  box-shadow:var(--shadow);
-}
-a.back{color:#9ecbff;text-decoration:none;font-weight:900}
-main{max-width:1100px;margin:0 auto;padding:16px}
-.card{
-  background: linear-gradient(180deg, rgba(15,27,51,.92), rgba(12,23,48,.92));
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:18px;
-  box-shadow: var(--shadow);
-  padding:14px;
-}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-button{
-  border:1px solid rgba(255,255,255,.16);
-  background: rgba(255,255,255,.06);
-  color:var(--text);
-  padding:10px 12px;
-  border-radius:14px;
-  cursor:pointer;
-  font-weight:900;
-}
-button.good{border-color:rgba(34,197,94,.55)}
-button.bad{border-color:rgba(239,68,68,.55)}
-button.rec{
-  border-color:rgba(239,68,68,.8);
-  box-shadow: 0 0 0 2px rgba(239,68,68,.18) inset;
-}
-button:disabled{opacity:.55;cursor:not-allowed}
-input,textarea{
-  width:100%;
-  background: rgba(0,0,0,.22);
-  color:var(--text);
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:14px;
-  padding:10px 12px;
-}
-textarea{min-height:90px;white-space:pre-wrap}
-.small{font-size:12px;color:var(--muted)}
-#speechStatus{font-size:12px;color:#b9d6ff;margin-top:8px}
+  <!-- jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
-.grid{display:grid;gap:12px;margin-top:12px;grid-template-columns:1fr}
-@media(min-width:800px){.grid{grid-template-columns:1fr 1fr}}
-.item{
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:18px;
-  padding:12px;
-  background: rgba(0,0,0,.16);
-}
-.thumb{
-  aspect-ratio:4/3;
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:14px;
-  overflow:hidden;
-  background:#000;
-  margin-bottom:8px;
-}
-.thumb img{width:100%;height:100%;object-fit:contain}
-.liveLine{font-size:12px;color:var(--info);min-height:16px;margin-top:6px}
+  <style>
+    :root{
+      --bg:#0b1220; --card:#101a33; --card2:#0e1730;
+      --text:#e7eefc; --muted:#a9b7d3; --line:rgba(255,255,255,.14);
+      --blue:#4aa3ff; --good:#22c55e; --warn:#fbbf24; --bad:#ef4444;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --r:18px; --r2:14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      background: radial-gradient(1200px 700px at 20% -10%, rgba(74,163,255,.25), transparent 60%),
+                  radial-gradient(900px 700px at 100% 0%, rgba(34,197,94,.18), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:18px 16px 10px;
+      position:sticky; top:0; z-index:50;
+      background: linear-gradient(to bottom, rgba(11,18,32,.95), rgba(11,18,32,.6));
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .wrap{max-width:980px; margin:0 auto;}
+    .toprow{display:flex; gap:10px; align-items:center; justify-content:space-between;}
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:900; letter-spacing:.2px;
+    }
+    .pill{
+      font-size:12px; color:var(--muted);
+      border:1px solid rgba(255,255,255,.12);
+      padding:6px 10px; border-radius:999px;
+      background: rgba(255,255,255,.04);
+      white-space:nowrap;
+    }
+    main{padding:14px 16px 80px;}
+    .grid{display:grid; grid-template-columns:1fr; gap:12px;}
+    @media(min-width:860px){ .grid{grid-template-columns: 1.05fr .95fr;} }
 
-.toast{
-  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
-  background:#000;color:#fff;padding:10px 14px;border-radius:14px;display:none;
-  font-weight:900;z-index:100;border:1px solid rgba(255,255,255,.12)
-}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card h2{
+      margin:0; padding:14px 14px 8px;
+      font-size:14px; text-transform:uppercase; letter-spacing:.14em;
+      color: var(--muted);
+    }
+    .card .body{padding:0 14px 14px;}
+    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px;}
+    input, textarea{
+      width:100%;
+      background: rgba(7,11,20,.55);
+      border:1px solid rgba(255,255,255,.14);
+      color:var(--text);
+      border-radius: 14px;
+      padding: 12px 12px;
+      outline:none;
+      font-size: 15px;
+    }
+    textarea{min-height:96px; resize:vertical;}
+    .row{display:grid; grid-template-columns:1fr; gap:10px;}
+    @media(min-width:860px){ .row{grid-template-columns:1fr 1fr;} }
 
-/* camera modal */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:50;padding:14px}
-.panel{background:#0b1220;border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:12px;width:min(960px,96%)}
-.videoWrap{aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.14)}
-video{width:100%;height:100%;object-fit:cover}
-</style>
+    .btnrow{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;}
+    button{
+      border:none; cursor:pointer; font-weight:800;
+      border-radius: 14px; padding: 12px 14px;
+      color:var(--text);
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.14);
+    }
+    button.primary{
+      background: rgba(74,163,255,.18);
+      border-color: rgba(74,163,255,.35);
+    }
+    button.good{
+      background: rgba(34,197,94,.16);
+      border-color: rgba(34,197,94,.35);
+    }
+    button.bad{
+      background: rgba(239,68,68,.16);
+      border-color: rgba(239,68,68,.35);
+    }
+    button:disabled{opacity:.55; cursor:not-allowed;}
+    .hint{color:var(--muted); font-size:12px; margin-top:10px; line-height:1.35;}
+    .divider{height:1px; background: rgba(255,255,255,.10); margin:12px 0;}
+
+    /* Photo items */
+    .list{display:flex; flex-direction:column; gap:12px; padding:0 14px 14px;}
+    .item{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(7,11,20,.35);
+      border-radius: var(--r2);
+      overflow:hidden;
+    }
+    .itemTop{
+      display:flex; gap:10px; padding:12px;
+      align-items:flex-start;
+    }
+    .thumb{
+      width:92px; height:92px; border-radius: 14px;
+      border:1px solid rgba(255,255,255,.14);
+      object-fit:cover; background: rgba(255,255,255,.06);
+      flex:0 0 auto;
+    }
+    .meta{flex:1; min-width:0;}
+    .meta .title{
+      font-weight:900; font-size:14px; margin:0 0 4px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .meta .sub{font-size:12px; color:var(--muted); margin:0 0 8px;}
+    .meta textarea{min-height:84px; font-size:14px;}
+    .itemBtns{
+      display:flex; flex-wrap:wrap; gap:8px; padding:0 12px 12px;
+    }
+    .small{
+      padding:10px 12px; border-radius: 12px; font-size:13px; font-weight:900;
+    }
+    .badge{
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:12px; color:var(--muted);
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      padding:6px 10px; border-radius:999px;
+    }
+
+    /* Bottom bar */
+    .bottombar{
+      position:fixed; left:0; right:0; bottom:0; z-index:80;
+      background: linear-gradient(to top, rgba(11,18,32,.96), rgba(11,18,32,.72));
+      border-top:1px solid rgba(255,255,255,.10);
+      padding:10px 12px;
+      backdrop-filter: blur(10px);
+    }
+    .bwrap{max-width:980px; margin:0 auto; display:flex; gap:10px; align-items:center; justify-content:space-between;}
+    .status{font-size:12px; color:var(--muted); line-height:1.2;}
+    .status strong{color:var(--text);}
+  </style>
 </head>
 
 <body>
-<header>
-  <div class="wrap top">
-    <div class="brand">
-      <div class="logo">FPS</div>
-      <div>
-        <div style="font-weight:950">Ford Property Services</div>
-        <div class="small">Photo Notes</div>
+  <header>
+    <div class="wrap">
+      <div class="toprow">
+        <div class="brand">
+          📸 <span>Photo Notes</span>
+          <span class="pill" id="todayPill"></span>
+        </div>
+        <span class="pill" id="supportPill">Dictation: checking…</span>
       </div>
     </div>
-    <a class="back" href="../dashboard/">← Dashboard</a>
-  </div>
-</header>
+  </header>
 
-<input id="galleryInput" type="file" accept="image/*" multiple style="display:none">
+  <main class="wrap">
+    <div class="grid">
+      <!-- Left: Job details + capture -->
+      <section class="card">
+        <h2>Job details</h2>
+        <div class="body">
+          <div class="row">
+            <div>
+              <label>Job / Property</label>
+              <input id="jobName" placeholder="e.g., 12 High Street, London" />
+            </div>
+            <div>
+              <label>Client / Ref</label>
+              <input id="clientRef" placeholder="e.g., Letting Agent / Job Ref" />
+            </div>
+          </div>
 
-<main>
-  <div class="card">
+          <div class="row">
+            <div>
+              <label>Operative</label>
+              <input id="operative" placeholder="e.g., Ben Ford" />
+            </div>
+            <div>
+              <label>Report ID</label>
+              <input id="reportId" placeholder="Auto-generated" />
+            </div>
+          </div>
 
-    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end">
-      <div>
-        <div style="font-weight:950;font-size:16px">Photo Report</div>
-        <div class="small">Address and date will be added to the PDF filename.</div>
+          <div class="divider"></div>
+
+          <label>Add photos</label>
+          <div class="btnrow">
+            <button class="primary" id="btnAddPhoto">📷 Take / Add Photos</button>
+            <button id="btnClearAll" class="bad">🗑️ Clear All</button>
+          </div>
+          <div class="hint">
+            Tip: On Android Chrome, this will open the camera first. You can add multiple photos.
+          </div>
+
+          <input id="photoInput" type="file" accept="image/*" capture="environment" multiple style="display:none" />
+
+          <div class="divider"></div>
+
+          <div class="btnrow">
+            <button class="good" id="btnMakePdf">🧾 Generate PDF</button>
+            <button id="btnSharePdf" class="primary" disabled>📤 Share PDF (WhatsApp)</button>
+            <button id="btnDownloadPdf" disabled>⬇️ Download PDF</button>
+          </div>
+
+          <div class="hint" id="shareHint">
+            After generating the PDF, tap <strong>Share PDF</strong> and pick WhatsApp.
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Photo list -->
+      <section class="card">
+        <h2>Photos & notes</h2>
+        <div class="body">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+            <span class="badge" id="countBadge">0 photos</span>
+            <span class="badge" id="pdfBadge">PDF: not generated</span>
+          </div>
+        </div>
+
+        <div class="list" id="photoList"></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="bottombar">
+    <div class="bwrap">
+      <div class="status" id="status">
+        <strong>Ready.</strong> Add photos, dictate notes, then generate and share a PDF.
       </div>
-      <div class="row">
-        <button id="newForm" class="bad" type="button">🆕 New form</button>
-      </div>
+      <button class="small primary" id="btnScrollTop">↑ Top</button>
     </div>
-
-    <div class="row" style="margin-top:12px">
-      <input id="address" placeholder="Property address">
-      <input id="date" type="date" style="max-width:220px">
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <button id="openCamera" class="good" type="button">📷 Open camera</button>
-      <button id="chooseGallery" type="button">🖼️ Gallery</button>
-      <button id="createPdf" class="good" type="button">🧾 Create PDF</button>
-      <button id="sharePdf" type="button" disabled>📤 Share PDF</button>
-      <button id="downloadPdf" type="button" disabled>⬇️ Download PDF</button>
-    </div>
-
-    <div id="speechStatus"></div>
-
-    <textarea id="general" placeholder="General notes (optional)" style="margin-top:12px"></textarea>
-
-    <div id="list" class="grid"></div>
-
-    <div class="small" style="margin-top:10px">
-      Tip: If dictation doesn’t type, open this page in <strong>Chrome</strong> and allow Microphone permission (padlock icon).
-    </div>
-
   </div>
-</main>
-
-<!-- Camera modal -->
-<div id="camModal" class="modal" aria-hidden="true">
-  <div class="panel">
-    <div class="row" style="justify-content:space-between">
-      <strong>Camera</strong>
-      <button id="closeCamTop" class="bad" type="button">✕ Close</button>
-    </div>
-    <div class="videoWrap" style="margin-top:10px">
-      <video id="video" autoplay playsinline muted></video>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button id="snap" class="good" type="button">📸 Take photo</button>
-      <button id="closeCam" class="bad" type="button">✕ Close</button>
-    </div>
-    <div class="small" style="margin-top:8px">Photos stay inside the app unless you export a PDF.</div>
-  </div>
-</div>
-
-<div id="toast" class="toast">Saved</div>
 
 <script>
-const $ = (id)=>document.getElementById(id);
+(() => {
+  // ---------- Helpers ----------
+  const $ = (id) => document.getElementById(id);
 
-const STORE = "fps_job_photo_notes_v3";
-let state = { address:"", date:"", general:"", items:[] };
+  const now = new Date();
+  const ukDate = (d) => d.toLocaleDateString("en-GB", { day:"2-digit", month:"2-digit", year:"numeric" });
+  const ukTime = (d) => d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
 
-let currentPdfBlob = null;
-let currentPdfFilename = "";
-
-function showToast(msg){
-  const t = $("toast");
-  t.textContent = msg;
-  t.style.display = "block";
-  clearTimeout(showToast._tm);
-  showToast._tm = setTimeout(()=>t.style.display="none", 1400);
-}
-
-function ukDateFromInput(value){
-  if(!value) return "";
-  const [y,m,d] = value.split("-").map(Number);
-  if(!y || !m || !d) return "";
-  return `${String(d).padStart(2,"0")}/${String(m).padStart(2,"0")}/${y}`;
-}
-function ukDateForFilename(value){
-  if(!value) return "";
-  const [y,m,d] = value.split("-").map(Number);
-  if(!y || !m || !d) return "";
-  return `${String(d).padStart(2,"0")}-${String(m).padStart(2,"0")}-${y}`;
-}
-function cleanForFilename(s){
-  return (s || "No-Address")
-    .trim()
-    .replace(/\s+/g," ")
-    .replace(/[\/\\:*?"<>|]/g,"-")
-    .slice(0, 60);
-}
-
-function invalidatePdf(){
-  currentPdfBlob = null;
-  currentPdfFilename = "";
-  $("sharePdf").disabled = true;
-  $("downloadPdf").disabled = true;
-}
-
-function applyStateToUI(){
-  $("address").value = state.address || "";
-  $("date").value = state.date || "";
-  $("general").value = state.general || "";
-  invalidatePdf();
-  render();
-}
-
-function saveState(){
-  localStorage.setItem(STORE, JSON.stringify(state));
-  invalidatePdf();
-
-  // ✅ Cloud save hook (added)
-  window.__queueCloudSave?.();
-}
-
-function loadState(){
-  try{
-    const raw = localStorage.getItem(STORE);
-    if(raw) state = JSON.parse(raw);
-  }catch(e){}
-  applyStateToUI();
-}
-
-/* default date today */
-(function initDate(){
-  const d = new Date();
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,"0");
-  const day=String(d.getDate()).padStart(2,"0");
-  const today = `${y}-${m}-${day}`;
-  if(!localStorage.getItem(STORE)){
-    state.date = today;
-    $("date").value = today;
-    saveState();
-  }else{
-    if(!$("date").value) $("date").value = today;
+  function makeReportId(){
+    // e.g. PN-2026-01-10-1432-7F3A
+    const pad = (n) => String(n).padStart(2,"0");
+    const y = now.getFullYear();
+    const m = pad(now.getMonth()+1);
+    const d = pad(now.getDate());
+    const hh = pad(now.getHours());
+    const mm = pad(now.getMinutes());
+    const rand = Math.random().toString(16).slice(2,6).toUpperCase();
+    return `PN-${y}-${m}-${d}-${hh}${mm}-${rand}`;
   }
-})();
 
-$("address").addEventListener("input", (e)=>{ state.address = e.target.value; saveState(); });
-$("date").addEventListener("change", (e)=>{ state.date = e.target.value; saveState(); });
-$("general").addEventListener("input", (e)=>{ state.general = e.target.value; saveState(); });
-
-/* =======================
-   CAMERA
-======================= */
-let stream = null;
-function openCam(){
-  $("camModal").style.display="flex";
-  $("camModal").setAttribute("aria-hidden","false");
-}
-function closeCam(){
-  if(stream){
-    stream.getTracks().forEach(t=>t.stop());
-    stream=null;
+  function setStatus(msg, tone=""){
+    const el = $("status");
+    el.innerHTML = `<strong>${tone ? tone + " " : ""}</strong>${msg}`;
   }
-  $("camModal").style.display="none";
-  $("camModal").setAttribute("aria-hidden","true");
-}
-$("openCamera").addEventListener("click", async ()=>{
-  openCam();
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{ ideal:"environment" }, width:{ideal:1920}, height:{ideal:1080} },
-      audio:false
+
+  async function fileToDataURL(file){
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
     });
-    $("video").srcObject = stream;
-    await $("video").play();
-  }catch(err){
-    alert("Camera failed to start. Please allow camera permission.\n\n" + err);
-    closeCam();
-  }
-});
-$("closeCam").addEventListener("click", closeCam);
-$("closeCamTop").addEventListener("click", closeCam);
-
-$("snap").addEventListener("click", ()=>{
-  const v = $("video");
-  if(!v.videoWidth) return;
-  const c = document.createElement("canvas");
-  c.width = v.videoWidth;
-  c.height = v.videoHeight;
-  c.getContext("2d").drawImage(v,0,0);
-  state.items.push({ img: c.toDataURL("image/jpeg",0.94), note:"" });
-  saveState();
-  render();
-  showToast("Photo added");
-});
-
-/* =======================
-   GALLERY
-======================= */
-$("chooseGallery").addEventListener("click", ()=> $("galleryInput").click());
-$("galleryInput").addEventListener("change", async (e)=>{
-  const files = Array.from(e.target.files || []);
-  if(!files.length) return;
-
-  for(const f of files){
-    const img = new Image();
-    img.src = URL.createObjectURL(f);
-    await img.decode();
-
-    const max = 1800;
-    const scale = Math.min(1, max / Math.max(img.width, img.height));
-    const w = Math.round(img.width * scale);
-    const h = Math.round(img.height * scale);
-
-    const c = document.createElement("canvas");
-    c.width = w; c.height = h;
-    c.getContext("2d").drawImage(img,0,0,w,h);
-
-    state.items.push({ img: c.toDataURL("image/jpeg",0.94), note:"" });
-    URL.revokeObjectURL(img.src);
   }
 
-  e.target.value="";
-  saveState();
-  render();
-  showToast("Added from gallery");
-});
-
-/* =======================
-   DICTATION (Android-robust + live preview + always commits)
-======================= */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-let rec = null;
-let micWarmStream = null;
-
-let activeDictBtn = null;
-let activeTarget = null;
-let activeLiveLine = null;
-
-let lastInterim = "";
-let addedFinalThisSession = false;
-let gotAnyAudioSignal = false;
-let startedAt = 0;
-
-function setSpeechStatus(msg){ $("speechStatus").textContent = msg || ""; }
-
-function setDictButtonState(btn, st){
-  if(!btn) return;
-  if(st === "recording"){
-    btn.textContent = "⏹ Stop";
-    btn.classList.add("rec");
-  }else{
-    btn.textContent = "🎤 Dictate";
-    btn.classList.remove("rec");
-  }
-}
-
-async function warmUpMicPermission(){
-  try{
-    micWarmStream = await navigator.mediaDevices.getUserMedia({ audio:true });
-    micWarmStream.getTracks().forEach(t=>t.stop());
-    micWarmStream = null;
-    return true;
-  }catch(err){
-    setSpeechStatus("Mic blocked. Chrome → padlock → Site settings → Microphone → Allow.");
-    return false;
-  }
-}
-
-function setLive(text){
-  if(activeLiveLine) activeLiveLine.textContent = text || "";
-}
-
-function appendBullet(targetTextarea, text){
-  const clean = (text || "").trim();
-  if(!clean) return;
-
-  const bulletLine = clean.startsWith("•") ? clean : ("• " + clean);
-  const cur = targetTextarea.value || "";
-
-  if(!cur.trim()){
-    targetTextarea.value = bulletLine;
-  }else{
-    targetTextarea.value = cur.replace(/\s+$/,"") + "\n" + bulletLine;
-  }
-  targetTextarea.dispatchEvent(new Event("input", { bubbles:true }));
-}
-
-function commitInterimIfNeeded(){
-  if(!activeTarget) return;
-  if(!addedFinalThisSession && lastInterim.trim()){
-    appendBullet(activeTarget, lastInterim);
-    lastInterim = "";
-  }
-}
-
-function stopDictation(){
-  if(rec){
-    try{ rec.stop(); }catch(e){}
-  }
-  setDictButtonState(activeDictBtn, "idle");
-  setSpeechStatus("Stopping…");
-}
-
-async function toggleDictation(targetTextarea, dictButton, liveLineEl){
-  if(rec && activeTarget === targetTextarea){
-    stopDictation();
-    return;
-  }
-  if(rec){
-    stopDictation();
-    return;
+  async function dataURLToImage(dataURL){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataURL;
+    });
   }
 
-  if(!SR){
-    alert("Dictation not supported. Use Chrome on Android.");
-    return;
+  function blobToFile(blob, filename, type){
+    return new File([blob], filename, { type: type || blob.type || "application/pdf" });
   }
 
-  activeDictBtn = dictButton;
-  activeTarget = targetTextarea;
-  activeLiveLine = liveLineEl || null;
-
-  lastInterim = "";
-  addedFinalThisSession = false;
-  gotAnyAudioSignal = false;
-  startedAt = Date.now();
-
-  setDictButtonState(activeDictBtn, "recording");
-  setLive("Listening…");
-  setSpeechStatus("Requesting microphone…");
-
-  const ok = await warmUpMicPermission();
-  if(!ok){
-    setDictButtonState(activeDictBtn, "idle");
-    setLive("");
-    return;
-  }
-
-  rec = new SR();
-  rec.lang = "en-GB";
-  rec.interimResults = true;
-  rec.continuous = false;
-  rec.maxAlternatives = 1;
-
-  rec.onaudiostart = ()=>{ gotAnyAudioSignal = true; setSpeechStatus("Recording…"); };
-  rec.onspeechstart = ()=>{ gotAnyAudioSignal = true; setLive("Hearing you…"); };
-  rec.onstart = ()=>{ setSpeechStatus("Recording… speak now."); };
-
-  rec.onresult = (ev)=>{
-    for(let i = ev.resultIndex; i < ev.results.length; i++){
-      const res = ev.results[i];
-      if(!res) continue;
-      const transcript = (res[0] && res[0].transcript) ? res[0].transcript : "";
-      if(!transcript.trim()) continue;
-
-      if(res.isFinal){
-        appendBullet(activeTarget, transcript);
-        addedFinalThisSession = true;
-        lastInterim = "";
-        setLive("");
-      }else{
-        lastInterim = transcript;
-        setLive("… " + transcript.trim());
-      }
-    }
-    if(addedFinalThisSession){
-      setSpeechStatus("Recorded ✅ (tap Dictate again for another bullet)");
-    }else{
-      setSpeechStatus(lastInterim ? "Recording… (hearing you)" : "Recording…");
-    }
+  // ---------- State ----------
+  const state = {
+    items: [], // { id, dataURL, ts, note }
+    pdfBlob: null,
+    pdfFile: null,
+    pdfName: null
   };
 
-  rec.onerror = (ev)=>{
-    const err = ev && ev.error ? ev.error : "unknown";
-    if(err === "not-allowed" || err === "service-not-allowed"){
-      setSpeechStatus("Mic blocked. Chrome → padlock → Site settings → Microphone → Allow.");
-    }else if(err === "no-speech"){
-      setSpeechStatus("No speech detected. Try again.");
-    }else{
-      setSpeechStatus("Dictation error: " + err);
+  // ---------- Dictation (Web Speech API) ----------
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const dictationSupported = !!SpeechRecognition;
+
+  function setSupportPill(){
+    $("supportPill").textContent = dictationSupported ? "Dictation: supported" : "Dictation: not supported";
+  }
+
+  // Build a recognition instance per recording for reliability
+  function startDictationFor(itemId, textarea){
+    if(!dictationSupported){
+      alert("Dictation isn't supported on this browser. Try Android Chrome.");
+      return;
     }
-  };
+    const rec = new SpeechRecognition();
+    rec.lang = "en-GB";
+    rec.interimResults = true;
+    rec.continuous = false;
 
-  rec.onend = ()=>{
-    commitInterimIfNeeded();
+    let finalText = "";
+    const existing = textarea.value ? textarea.value.trim() : "";
 
-    const elapsed = Date.now() - startedAt;
-    if(!addedFinalThisSession && !lastInterim.trim()){
-      if(!gotAnyAudioSignal && elapsed > 1200){
-        setSpeechStatus("No audio captured. Check Microphone permission (Chrome padlock → Microphone → Allow).");
-      }else{
-        setSpeechStatus("Stopped (no speech captured). Try again.");
+    const stopBtn = document.querySelector(`[data-stop="${itemId}"]`);
+    const startBtn = document.querySelector(`[data-dictate="${itemId}"]`);
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+
+    setStatus("Listening… speak your note.", "🎙️");
+
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++){
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t;
+        else interim += t;
       }
-    }else{
-      setSpeechStatus("Stopped.");
+      const combined = (existing ? existing + " " : "") + (finalText + interim).trim();
+      textarea.value = combined.trim();
+      saveNote(itemId, textarea.value);
+    };
+
+    rec.onerror = (e) => {
+      setStatus("Dictation error. You can try again.", "⚠️");
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+
+    rec.onend = () => {
+      setStatus("Dictation stopped.", "✅");
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+
+    // hook stop
+    stopBtn.onclick = () => {
+      try { rec.stop(); } catch {}
+    };
+
+    try {
+      rec.start();
+    } catch (err) {
+      setStatus("Couldn’t start dictation. Try again.", "⚠️");
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  }
+
+  // ---------- UI Rendering ----------
+  function updateBadges(){
+    $("countBadge").textContent = `${state.items.length} photo${state.items.length===1?"":"s"}`;
+    $("pdfBadge").textContent = state.pdfFile ? `PDF: ready (${state.pdfName})` : "PDF: not generated";
+    $("btnSharePdf").disabled = !state.pdfFile;
+    $("btnDownloadPdf").disabled = !state.pdfFile;
+  }
+
+  function saveNote(itemId, val){
+    const it = state.items.find(x => x.id === itemId);
+    if(it){ it.note = val; }
+  }
+
+  function removeItem(itemId){
+    state.items = state.items.filter(x => x.id !== itemId);
+    // Invalidate PDF because content changed
+    state.pdfBlob = null; state.pdfFile = null; state.pdfName = null;
+    renderList();
+    updateBadges();
+    setStatus("Photo removed. Generate the PDF again when ready.", "🗑️");
+  }
+
+  function renderList(){
+    const list = $("photoList");
+    list.innerHTML = "";
+
+    if(state.items.length === 0){
+      const empty = document.createElement("div");
+      empty.className = "hint";
+      empty.style.padding = "0 14px 14px";
+      empty.innerHTML = "No photos yet. Tap <strong>Take / Add Photos</strong> to start.";
+      list.appendChild(empty);
+      return;
     }
 
-    setLive("");
-    setDictButtonState(activeDictBtn, "idle");
+    state.items.forEach((it, idx) => {
+      const item = document.createElement("div");
+      item.className = "item";
 
-    rec = null;
-    activeDictBtn = null;
-    activeTarget = null;
-    activeLiveLine = null;
-    lastInterim = "";
-    addedFinalThisSession = false;
-    gotAnyAudioSignal = false;
-    startedAt = 0;
+      const top = document.createElement("div");
+      top.className = "itemTop";
 
-    setTimeout(()=> setSpeechStatus(""), 1200);
-  };
+      const img = document.createElement("img");
+      img.className = "thumb";
+      img.src = it.dataURL;
+      img.alt = `Photo ${idx+1}`;
 
-  try{
-    rec.start();
-    setTimeout(()=>{
-      if(rec && !gotAnyAudioSignal && !lastInterim && !addedFinalThisSession){
-        setSpeechStatus("Not picking up audio. Use Chrome (not Samsung Internet) and allow Microphone permission.");
-      }
-    }, 2000);
-  }catch(e){
-    setSpeechStatus("Could not start dictation. Try Chrome + allow microphone.");
-    rec = null;
-    setDictButtonState(activeDictBtn, "idle");
-    setLive("");
-  }
-}
+      const meta = document.createElement("div");
+      meta.className = "meta";
 
-/* =======================
-   RENDER
-======================= */
-function render(){
-  const list = $("list");
-  list.innerHTML = "";
+      const title = document.createElement("p");
+      title.className = "title";
+      title.textContent = `Photo ${idx+1}`;
 
-  state.items.forEach((it, idx)=>{
-    const box = document.createElement("div");
-    box.className="item";
-    box.innerHTML = `
-      <div class="thumb"><img src="${it.img}" alt="Photo ${idx+1}"></div>
-      <div class="small" style="margin-bottom:6px"><strong>Photo ${idx+1}</strong></div>
-      <textarea placeholder="Notes for this photo..."></textarea>
-      <div class="liveLine"></div>
-      <div class="row" style="margin-top:6px">
-        <button type="button" class="good">🎤 Dictate</button>
-        <button type="button">⌫ Clear</button>
-        <button type="button" class="bad">🗑️ Delete</button>
-      </div>
-    `;
+      const sub = document.createElement("p");
+      sub.className = "sub";
+      sub.textContent = `${ukDate(it.ts)} ${ukTime(it.ts)}`;
 
-    const ta = box.querySelector("textarea");
-    const liveLine = box.querySelector(".liveLine");
-    ta.value = it.note || "";
-    ta.addEventListener("input", (e)=>{ it.note = e.target.value; saveState(); });
+      const ta = document.createElement("textarea");
+      ta.placeholder = "Add notes for this photo… (or use Dictate)";
+      ta.value = it.note || "";
+      ta.oninput = () => {
+        saveNote(it.id, ta.value);
+        // Invalidate PDF if edited
+        state.pdfBlob = null; state.pdfFile = null; state.pdfName = null;
+        updateBadges();
+      };
 
-    const [bDict, bClear, bDel] = box.querySelectorAll("button");
+      meta.appendChild(title);
+      meta.appendChild(sub);
+      meta.appendChild(ta);
 
-    bDict.addEventListener("click", ()=> toggleDictation(ta, bDict, liveLine));
+      top.appendChild(img);
+      top.appendChild(meta);
 
-    bClear.addEventListener("click", ()=>{
-      ta.value = "";
-      it.note = "";
-      saveState();
-      showToast("Cleared");
-    });
+      const btns = document.createElement("div");
+      btns.className = "itemBtns";
 
-    bDel.addEventListener("click", ()=>{
-      if(!confirm("Delete this photo?")) return;
-      state.items.splice(idx,1);
-      saveState();
-      render();
-      showToast("Deleted");
-    });
+      const bDict = document.createElement("button");
+      bDict.className = "small primary";
+      bDict.textContent = "🎙️ Dictate";
+      bDict.disabled = !dictationSupported;
+      bDict.setAttribute("data-dictate", it.id);
+      bDict.onclick = () => startDictationFor(it.id, ta);
 
-    list.appendChild(box);
-  });
-}
+      const bStop = document.createElement("button");
+      bStop.className = "small";
+      bStop.textContent = "⏹️ Stop";
+      bStop.disabled = true;
+      bStop.setAttribute("data-stop", it.id);
 
-/* =======================
-   NEW FORM
-======================= */
-$("newForm").addEventListener("click", ()=>{
-  if(!confirm("Start a NEW form? This clears address/date/notes/photos on this device.")) return;
-  state = { address:"", date:"", general:"", items:[] };
-  localStorage.removeItem(STORE);
+      const bRemove = document.createElement("button");
+      bRemove.className = "small bad";
+      bRemove.textContent = "🗑️ Remove";
+      bRemove.onclick = () => removeItem(it.id);
 
-  $("address").value="";
-  $("general").value="";
-  const d = new Date();
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,"0");
-  const day=String(d.getDate()).padStart(2,"0");
-  $("date").value = `${y}-${m}-${day}`;
-  state.date = $("date").value;
+      btns.appendChild(bDict);
+      btns.appendChild(bStop);
+      btns.appendChild(bRemove);
 
-  saveState();
-  render();
-  showToast("New form ready");
-});
+      item.appendChild(top);
+      item.appendChild(btns);
 
-/* =======================
-   PDF
-======================= */
-async function dataUrlToDims(dataUrl){
-  return new Promise((resolve,reject)=>{
-    const img = new Image();
-    img.onload = ()=> resolve({w:img.width,h:img.height});
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-}
-
-async function buildPdfBlob(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:"mm", format:"a4" });
-
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 12;
-  let y = margin;
-
-  const addr = state.address || "No Address";
-  const dateUK = ukDateFromInput(state.date) || "No Date";
-
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(14);
-  doc.text("Ford Property Services", margin, y);
-  y += 7;
-  doc.setFontSize(12);
-  doc.text("Photo Notes", margin, y);
-  y += 9;
-
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(11);
-  doc.text("Property Address:", margin, y); y += 6;
-  doc.setFont("helvetica","bold");
-  doc.text(doc.splitTextToSize(addr, pageW - margin*2), margin, y);
-  y += 10;
-
-  doc.setFont("helvetica","normal");
-  doc.text("Date: " + dateUK, margin, y);
-  y += 10;
-
-  if(state.general && state.general.trim()){
-    doc.setFont("helvetica","bold");
-    doc.text("General notes:", margin, y); y += 6;
-    doc.setFont("helvetica","normal");
-    const lines = doc.splitTextToSize(state.general.trim(), pageW - margin*2);
-    doc.text(lines, margin, y);
-    y += lines.length * 5 + 6;
-  }
-
-  for(let i=0;i<state.items.length;i++){
-    const it = state.items[i];
-
-    if(y > pageH - 70){
-      doc.addPage();
-      y = margin;
-    }
-
-    doc.setFont("helvetica","bold");
-    doc.text(`Photo ${i+1}`, margin, y);
-    y += 6;
-
-    const dims = await dataUrlToDims(it.img);
-    const maxW = pageW - margin*2;
-    const maxH = 95;
-    const ratio = Math.min(maxW/dims.w, maxH/dims.h);
-    const w = dims.w * ratio;
-    const h = dims.h * ratio;
-
-    doc.addImage(it.img, "JPEG", margin, y, w, h);
-    y += h + 6;
-
-    doc.setFont("helvetica","normal");
-    const note = (it.note && it.note.trim()) ? it.note.trim() : "—";
-    const noteLines = doc.splitTextToSize(note, pageW - margin*2);
-    doc.text(noteLines, margin, y);
-    y += noteLines.length * 5 + 8;
-  }
-
-  return doc.output("blob");
-}
-
-function downloadBlob(blob, filename){
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  setTimeout(()=> URL.revokeObjectURL(a.href), 2000);
-}
-
-async function shareBlob(blob, filename){
-  if(!navigator.canShare || !navigator.share){
-    downloadBlob(blob, filename);
-    return;
-  }
-  const file = new File([blob], filename, { type:"application/pdf" });
-  try{
-    if(navigator.canShare({ files:[file] })){
-      await navigator.share({ files:[file], title: filename });
-    }else{
-      downloadBlob(blob, filename);
-    }
-  }catch(e){
-    downloadBlob(blob, filename);
-  }
-}
-
-function makeFilename(){
-  const safeAddr = cleanForFilename(state.address);
-  const dateFile = ukDateForFilename(state.date) || "No-Date";
-  return `Photo-Notes_${safeAddr}_${dateFile}.pdf`;
-}
-
-function validateForPdf(){
-  if(!state.address || !state.address.trim()){ alert("Enter the Property address first."); return false; }
-  if(!state.date){ alert("Select the date first."); return false; }
-  if(!state.items.length){ alert("Add at least 1 photo first."); return false; }
-  return true;
-}
-
-$("createPdf").addEventListener("click", async ()=>{
-  if(!validateForPdf()) return;
-
-  try{
-    $("createPdf").disabled = true;
-    showToast("Creating PDF…");
-
-    const blob = await buildPdfBlob();
-    const filename = makeFilename();
-
-    currentPdfBlob = blob;
-    currentPdfFilename = filename;
-
-    $("sharePdf").disabled = false;
-    $("downloadPdf").disabled = false;
-
-    showToast("PDF created ✅");
-  }catch(err){
-    alert("PDF creation failed:\n\n" + err);
-  }finally{
-    $("createPdf").disabled = false;
-  }
-});
-
-$("sharePdf").addEventListener("click", async ()=>{
-  if(!currentPdfBlob){ alert("Tap Create PDF first."); return; }
-  await shareBlob(currentPdfBlob, currentPdfFilename);
-});
-
-$("downloadPdf").addEventListener("click", ()=>{
-  if(!currentPdfBlob){ alert("Tap Create PDF first."); return; }
-  downloadBlob(currentPdfBlob, currentPdfFilename);
-  showToast("Downloaded");
-});
-
-/* =======================
-   CLOUD SYNC HOOKS (exposed for module)
-======================= */
-window.__getPhotoNotesState = () => state;
-window.__applyPhotoNotesFromCloud = (remote) => {
-  // defensive normalize
-  const s = (remote && typeof remote === "object") ? remote : { address:"", date:"", general:"", items:[] };
-  if(!Array.isArray(s.items)) s.items = [];
-  state = s;
-
-  // keep local backup in sync
-  try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){}
-  applyStateToUI();
-};
-
-/* =======================
-   START
-======================= */
-loadState();
-render();
-</script>
-
-<!-- ✅ Firestore Cloud Sync (module) -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import {
-    getAuth, onAuthStateChanged, signInAnonymously
-  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-  import {
-    getFirestore, doc, getDoc, setDoc, onSnapshot
-  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-
-  // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDLZeyhUr0LuXeODP8KNhMKFIQNp1N9p2E",
-  authDomain: "fps-photo-notes.firebaseapp.com",
-  projectId: "fps-photo-notes",
-  storageBucket: "fps-photo-notes.firebasestorage.app",
-  messagingSenderId: "670127560134",
-  appId: "1:670127560134:web:37729d50ba78be5ccecec7"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
-  // Shared doc for ALL your devices (same data everywhere)
-  const CLOUD_COLLECTION = "photoNotes";
-  const CLOUD_DOC_ID = "shared";
-  const ref = doc(db, CLOUD_COLLECTION, CLOUD_DOC_ID);
-
-  const deviceId = (() => {
-    const k = "fps_photo_device_id";
-    let v = localStorage.getItem(k);
-    if(!v){
-      v = (crypto?.randomUUID?.() || ("dev_" + Math.random().toString(16).slice(2)));
-      localStorage.setItem(k, v);
-    }
-    return v;
-  })();
-
-  let cloudReady = false;
-  let suppressApply = false;
-  let lastLocalEditMs = 0;
-  let lastAppliedCloudMs = 0;
-  let saveTimer = null;
-
-  function getLocalState(){
-    return window.__getPhotoNotesState?.();
-  }
-  function applyFromCloud(payload){
-    window.__applyPhotoNotesFromCloud?.(payload);
-  }
-
-  function queueCloudSave(){
-    lastLocalEditMs = Date.now();
-    if(!cloudReady) return;
-    if(saveTimer) clearTimeout(saveTimer);
-
-    saveTimer = setTimeout(async ()=>{
-      try{
-        const data = getLocalState();
-        if(data == null) return;
-
-        await setDoc(ref, {
-          state: data,
-          updatedAtMs: Date.now(),
-          updatedBy: deviceId
-        }, { merge:true });
-
-      }catch(e){
-        console.error("[photoNotes] cloud save failed:", e);
-      }
-    }, 700);
-  }
-
-  // expose for non-module script
-  window.__queueCloudSave = queueCloudSave;
-
-  function startListener(){
-    onSnapshot(ref, (snap)=>{
-      if(!snap.exists()) return;
-      const data = snap.data() || {};
-      const cloudMs = Number(data.updatedAtMs || 0);
-      const cloudState = data.state;
-
-      if(cloudState == null) return;
-      if(suppressApply) return;
-
-      // only apply newer cloud versions
-      if(cloudMs > lastAppliedCloudMs){
-        // prevent overwrite while actively editing
-        const localDirty = (Date.now() - lastLocalEditMs) < 1800;
-        if(localDirty){
-          queueCloudSave(); // local wins
-          return;
-        }
-        lastAppliedCloudMs = cloudMs;
-
-        try{
-          suppressApply = true;
-          applyFromCloud(cloudState);
-        }finally{
-          suppressApply = false;
-        }
-      }
-    }, (err)=>{
-      console.error("[photoNotes] listener error:", err);
+      list.appendChild(item);
     });
   }
 
-  async function ensureSignedIn(){
-    if(auth.currentUser) return auth.currentUser;
-    const user = await new Promise((resolve)=>{
-      const unsub = onAuthStateChanged(auth, (u)=>{ unsub(); resolve(u); });
-    });
-    if(user) return user;
-    const cred = await signInAnonymously(auth);
-    return cred.user;
-  }
+  // ---------- PDF Generation ----------
+  async function generatePdf(){
+    const jobName = $("jobName").value.trim() || "Job";
+    const clientRef = $("clientRef").value.trim();
+    const operative = $("operative").value.trim();
+    const reportId = $("reportId").value.trim() || makeReportId();
+    $("reportId").value = reportId;
 
-  async function boot(){
+    if(state.items.length === 0){
+      alert("Add at least one photo first.");
+      return;
+    }
+
+    setStatus("Generating PDF…", "🧾");
+    $("btnMakePdf").disabled = true;
+
     try{
-      await ensureSignedIn();
-      cloudReady = true;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation:"p", unit:"mm", format:"a4" });
 
-      startListener();
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 12;
+      const contentW = pageW - margin*2;
 
-      // create doc if missing
-      const snap = await getDoc(ref);
-      if(!snap.exists()){
-        await setDoc(ref, {
-          state: getLocalState() || { address:"", date:"", general:"", items:[] },
-          createdAtMs: Date.now(),
-          createdBy: deviceId,
-          updatedAtMs: Date.now(),
-          updatedBy: deviceId
-        }, { merge:true });
-      }else{
-        // pull cloud down on first load (cloud wins if it has something)
-        const data = snap.data() || {};
-        if(data.state){
-          applyFromCloud(data.state);
-          lastAppliedCloudMs = Number(data.updatedAtMs || 0);
-        }
+      // Header
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("PHOTO NOTES REPORT", margin, 16);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Date: ${ukDate(new Date())}   Time: ${ukTime(new Date())}`, margin, 22);
+      doc.text(`Report ID: ${reportId}`, margin, 27);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Job / Property:", margin, 34);
+      doc.setFont("helvetica", "normal");
+      doc.text(jobName, margin + 28, 34);
+
+      if(clientRef){
+        doc.setFont("helvetica", "bold");
+        doc.text("Client / Ref:", margin, 40);
+        doc.setFont("helvetica", "normal");
+        doc.text(clientRef, margin + 28, 40);
       }
 
-      // push local up once (in case local has newer edits)
-      queueCloudSave();
-    }catch(e){
-      cloudReady = false;
-      console.error("[photoNotes] auth/cloud init failed:", e);
+      if(operative){
+        doc.setFont("helvetica", "bold");
+        doc.text("Operative:", margin, 46);
+        doc.setFont("helvetica", "normal");
+        doc.text(operative, margin + 28, 46);
+      }
+
+      // Divider line
+      doc.setDrawColor(200);
+      doc.setLineWidth(0.2);
+      doc.line(margin, 50, pageW - margin, 50);
+
+      let y = 58;
+
+      for(let i=0; i<state.items.length; i++){
+        const it = state.items[i];
+
+        // If not enough space, new page
+        if(y > pageH - 30){
+          doc.addPage();
+          y = 18;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text(`Photo ${i+1}`, margin, y);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(`${ukDate(it.ts)} ${ukTime(it.ts)}`, pageW - margin, y, { align:"right" });
+
+        y += 4;
+
+        // Image sizing: fit within a box
+        const img = await dataURLToImage(it.dataURL);
+        const imgWpx = img.naturalWidth || img.width;
+        const imgHpx = img.naturalHeight || img.height;
+
+        const maxImgW = contentW;
+        const maxImgH = 95; // mm
+        let drawW = maxImgW;
+        let drawH = (imgHpx / imgWpx) * drawW;
+
+        if(drawH > maxImgH){
+          drawH = maxImgH;
+          drawW = (imgWpx / imgHpx) * drawH;
+        }
+
+        const xImg = margin + (contentW - drawW)/2;
+
+        // Draw image border
+        doc.setDrawColor(180);
+        doc.roundedRect(margin, y, contentW, drawH + 2, 2, 2);
+        doc.addImage(it.dataURL, "JPEG", xImg, y+1, drawW, drawH);
+
+        y += drawH + 8;
+
+        // Notes
+        const note = (it.note || "").trim();
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text("Notes:", margin, y);
+
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+
+        const noteText = note ? note : "—";
+        const lines = doc.splitTextToSize(noteText, contentW);
+        // notes box
+        const boxH = Math.max(14, lines.length * 5 + 6);
+        if(y + boxH > pageH - 12){
+          doc.addPage();
+          y = 18;
+        }
+        doc.setDrawColor(180);
+        doc.roundedRect(margin, y-4, contentW, boxH, 2, 2);
+        doc.text(lines, margin+3, y+2);
+
+        y += boxH + 10;
+      }
+
+      // Output blob
+      const pdfBlob = doc.output("blob");
+      const safeName = (jobName || "Job")
+        .replace(/[^\w\s-]/g,"")
+        .trim()
+        .replace(/\s+/g,"-")
+        .slice(0,40);
+
+      const filename = `Photo-Notes-${safeName}-${reportId}.pdf`;
+
+      state.pdfBlob = pdfBlob;
+      state.pdfFile = blobToFile(pdfBlob, filename, "application/pdf");
+      state.pdfName = filename;
+
+      updateBadges();
+      setStatus("PDF generated. Tap Share PDF and choose WhatsApp.", "✅");
+    } catch (err){
+      console.error(err);
+      alert("PDF generation failed. If you used very large photos, try fewer at once.");
+      setStatus("PDF generation failed.", "⚠️");
+    } finally {
+      $("btnMakePdf").disabled = false;
     }
   }
 
-  boot();
-</script>
+  // ---------- Sharing / Download ----------
+  async function sharePdf(){
+    if(!state.pdfFile){
+      alert("Generate the PDF first.");
+      return;
+    }
 
+    // Web Share (best for WhatsApp)
+    if(navigator.canShare && navigator.canShare({ files:[state.pdfFile] })){
+      try{
+        await navigator.share({
+          title: "Photo Notes PDF",
+          text: "Photo notes report attached.",
+          files: [state.pdfFile]
+        });
+        setStatus("Shared via share sheet.", "📤");
+        return;
+      } catch (e){
+        // user cancelled or share failed
+        console.warn(e);
+      }
+    }
+
+    // Fallback: download
+    downloadPdf();
+    alert("Your browser can't share files directly. Downloaded the PDF instead—then attach it in WhatsApp.");
+  }
+
+  function downloadPdf(){
+    if(!state.pdfBlob) return;
+    const url = URL.createObjectURL(state.pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = state.pdfName || "photo-notes.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setStatus("PDF downloaded.", "⬇️");
+  }
+
+  // ---------- Photo adding ----------
+  async function handleFiles(fileList){
+    const files = Array.from(fileList || []);
+    if(!files.length) return;
+
+    setStatus(`Adding ${files.length} photo(s)…`, "📸");
+    $("btnAddPhoto").disabled = true;
+
+    try{
+      for(const f of files){
+        if(!f.type.startsWith("image/")) continue;
+
+        const dataURL = await fileToDataURL(f);
+
+        state.items.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2),
+          dataURL,
+          ts: new Date(),
+          note: ""
+        });
+      }
+
+      // Invalidate PDF because content changed
+      state.pdfBlob = null; state.pdfFile = null; state.pdfName = null;
+
+      renderList();
+      updateBadges();
+      setStatus("Photos added. Add notes (or dictate), then generate the PDF.", "✅");
+    } finally {
+      $("btnAddPhoto").disabled = false;
+    }
+  }
+
+  // ---------- Init ----------
+  $("todayPill").textContent = `${ukDate(new Date())} • ${ukTime(new Date())}`;
+  $("reportId").value = makeReportId();
+  setSupportPill();
+  renderList();
+  updateBadges();
+
+  $("btnAddPhoto").onclick = () => $("photoInput").click();
+  $("photoInput").addEventListener("change", (e) => handleFiles(e.target.files));
+
+  $("btnMakePdf").onclick = generatePdf;
+  $("btnSharePdf").onclick = sharePdf;
+  $("btnDownloadPdf").onclick = downloadPdf;
+
+  $("btnClearAll").onclick = () => {
+    if(!confirm("Clear all photos and notes?")) return;
+    state.items = [];
+    state.pdfBlob = null; state.pdfFile = null; state.pdfName = null;
+    renderList();
+    updateBadges();
+    setStatus("Cleared.", "🗑️");
+  };
+
+  $("btnScrollTop").onclick = () => window.scrollTo({ top:0, behavior:"smooth" });
+
+})();
+</script>
 </body>
 </html>
