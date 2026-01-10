@@ -51,7 +51,7 @@
       padding:14px;
     }
     label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
-    input,textarea{
+    input,textarea,select{
       width:100%;
       background: rgba(0,0,0,.25);
       border:1px solid var(--line);
@@ -135,6 +135,14 @@
         <input id="address" placeholder="e.g., 12 High Street, London" />
         <button id="btnGps" class="primary smallBtn" type="button">📍 Use GPS</button>
       </div>
+
+      <!-- Full address picker -->
+      <div id="houseWrap" style="display:none; margin-top:8px;">
+        <label style="margin:0 0 6px;">Select Address (if needed)</label>
+        <select id="houseSelect"></select>
+        <div class="hint" id="houseHint" style="margin-top:6px;"></div>
+      </div>
+
       <div class="hint" id="gpsHint" style="margin-top:6px;"></div>
 
       <div class="row" style="gap:12px">
@@ -183,7 +191,6 @@
       if ('serviceWorker' in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
         for (const r of regs) {
-          // Unregister is safe; doesn't clear your saved form data
           await r.unregister().catch(()=>{});
         }
       }
@@ -194,30 +201,115 @@
     }catch(e){}
   }
 
-  // GPS reverse geocode (OpenStreetMap Nominatim - no API key)
+  // -------- GPS helpers (full address dropdown) --------
   async function reverseGeocodeOSM(lat, lon){
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
-    const res = await fetch(url, {
-      headers: {
-        "Accept": "application/json",
-        "Accept-Language": "en-GB"
-      }
-    });
+    const res = await fetch(url, { headers: { "Accept":"application/json", "Accept-Language":"en-GB" } });
     if(!res.ok) throw new Error("Reverse geocode failed");
-    const data = await res.json();
-
-    const a = data.address || {};
-    const line1 = [a.house_number, a.road].filter(Boolean).join(" ").trim();
-    const town = a.town || a.city || a.village || a.suburb || a.county || "";
-    const postcode = a.postcode || "";
-    const built = [line1, town, postcode].filter(Boolean).join(", ").trim();
-
-    return (built || data.display_name || "").trim();
+    return await res.json();
   }
-  function setGpsHint(msg){ const el = $("gpsHint"); if(el) el.textContent = msg; }
+  function setGpsHint(msg){ const el = $("gpsHint"); if(el) el.textContent = msg || ""; }
+  function setHouseHint(msg){ const el = $("houseHint"); if(el) el.textContent = msg || ""; }
+
+  function pickTown(a){
+    return a.town || a.city || a.village || a.suburb || a.county || "";
+  }
+  function buildAddress(houseNumber, road, town, postcode){
+    const line1 = [houseNumber, road].filter(Boolean).join(" ").trim();
+    return [line1, town, postcode].filter(Boolean).join(", ").trim();
+  }
+
+  async function fetchNearbyFullAddresses({road, town, postcode, lat, lon}){
+    // small viewbox around the location to keep it on the correct road
+    const d = 0.01; // ~1km-ish
+    const left = lon - d, right = lon + d, top = lat + d, bottom = lat - d;
+
+    const params = new URLSearchParams({
+      format: "jsonv2",
+      addressdetails: "1",
+      limit: "60",
+      countrycodes: "gb",
+      street: road || "",
+      city: town || "",
+      postalcode: postcode || "",
+      viewbox: `${left},${top},${right},${bottom}`,
+      bounded: "1"
+    });
+
+    const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+    const res = await fetch(url, { headers: { "Accept":"application/json", "Accept-Language":"en-GB" } });
+    if(!res.ok) throw new Error("Nearby address search failed");
+    const results = await res.json();
+
+    const seen = new Set();
+    const list = [];
+
+    for(const r of results){
+      const a = r.address || {};
+      const hn = (a.house_number || "").trim();
+      const rRoad = (a.road || a.pedestrian || a.footway || "").trim();
+      if(!hn) continue;
+      if(road && rRoad && rRoad.toLowerCase() !== road.toLowerCase()) continue;
+
+      const t = pickTown(a) || town || "";
+      const pc = (a.postcode || "").trim() || postcode || "";
+      const full = buildAddress(hn, rRoad || road, t, pc);
+      if(!full) continue;
+
+      const key = full.toLowerCase();
+      if(seen.has(key)) continue;
+      seen.add(key);
+
+      list.push({
+        label: full,
+        house: hn,
+        road: rRoad || road,
+        town: t,
+        postcode: pc
+      });
+    }
+
+    // Sort by numeric house then alpha
+    list.sort((A,B)=>{
+      const na = parseInt(A.house,10), nb = parseInt(B.house,10);
+      if(!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+      return A.label.localeCompare(B.label, "en-GB", {numeric:true, sensitivity:"base"});
+    });
+
+    return list.slice(0, 40);
+  }
+
+  function showAddressPicker(addresses, preselectLabel){
+    const wrap = $("houseWrap");
+    const sel = $("houseSelect");
+    if(!wrap || !sel) return;
+
+    sel.innerHTML = "";
+
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "Select the correct address…";
+    sel.appendChild(opt0);
+
+    addresses.forEach((a) => {
+      const opt = document.createElement("option");
+      opt.value = a.label;
+      opt.textContent = a.label;
+      sel.appendChild(opt);
+    });
+
+    wrap.style.display = addresses.length ? "block" : "none";
+
+    if(preselectLabel){
+      // If the exact label exists, select it
+      const found = addresses.find(x => x.label.toLowerCase() === preselectLabel.toLowerCase());
+      if(found) sel.value = found.label;
+    }
+  }
+  // -------- end GPS helpers --------
 
   const STORE = "fps_photo_notes_v2_store";
-  const VERSION_STAMP = "v2.0.1-gps"; // bump when you update
+  const VERSION_STAMP = "v2.0.2-gps-fulladdr"; // bump when you update
 
   function setStatus(msg){ $("status").textContent = msg; }
 
@@ -258,6 +350,8 @@
     }
 
     setGpsHint("Getting your location…");
+    setHouseHint("");
+    $("houseWrap").style.display = "none";
     $("btnGps").disabled = true;
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -265,23 +359,69 @@
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
 
-        setGpsHint("Finding address…");
-        const addr = await reverseGeocodeOSM(lat, lon);
+        setGpsHint("Finding road/postcode…");
+        const data = await reverseGeocodeOSM(lat, lon);
+        const a = data.address || {};
 
-        if(addr){
-          $("address").value = addr;
-          state.address = addr;
-          state.gps = { lat, lon, ts: new Date().toISOString() };
+        const hn = (a.house_number || "").trim();
+        const road = (a.road || a.pedestrian || a.footway || "").trim();
+        const town = pickTown(a);
+        const postcode = (a.postcode || "").trim();
+
+        // Fill what we can immediately
+        const base = buildAddress(hn, road, town, postcode) || (data.display_name || "");
+        if(base){
+          $("address").value = base;
+          state.address = base;
+          state.gps = { lat, lon, ts: new Date().toISOString(), road, town, postcode, house: hn || null };
           save();
-          setGpsHint("Address filled from GPS.");
-        } else {
-          setGpsHint("Got GPS, but couldn’t resolve an address. Try again.");
-          alert(`GPS found but address lookup failed.\nLat: ${lat}\nLon: ${lon}`);
         }
+
+        if(!road){
+          setGpsHint("GPS found, but no road name returned. You can type the address manually.");
+          return;
+        }
+
+        setGpsHint("Looking for nearby full addresses…");
+        const addresses = await fetchNearbyFullAddresses({ road, town, postcode, lat, lon });
+
+        if(addresses.length){
+          showAddressPicker(addresses, base);
+          setGpsHint(hn
+            ? "GPS found an address. If it’s slightly off, pick the correct one below."
+            : "GPS couldn’t find an exact house number — pick the correct address below.");
+
+          $("houseSelect").onchange = () => {
+            const chosen = $("houseSelect").value;
+            if(!chosen) return;
+
+            $("address").value = chosen;
+            state.address = chosen;
+
+            const picked = addresses.find(x => x.label === chosen);
+            state.gps = {
+              ...(state.gps || {}),
+              lat, lon,
+              ts: new Date().toISOString(),
+              road: picked?.road || road,
+              town: picked?.town || town,
+              postcode: picked?.postcode || postcode,
+              house: picked?.house || hn || null
+            };
+            save();
+
+            setHouseHint("Selected address applied.");
+          };
+        } else {
+          setGpsHint(hn
+            ? "GPS found an address."
+            : "Couldn’t find nearby addresses for this road. Type the number manually if needed.");
+        }
+
       }catch(err){
         console.warn(err);
-        setGpsHint("Couldn’t convert GPS to address. Try again.");
-        alert("Couldn’t convert GPS to an address (may be rate-limited). Try again in a moment.");
+        setGpsHint("Couldn’t get address list. Try again in a moment.");
+        alert("Couldn’t convert GPS to nearby addresses (may be rate-limited). Try again shortly.");
       }finally{
         $("btnGps").disabled = false;
       }
@@ -467,7 +607,6 @@
       doc.setFont("helvetica","normal"); doc.text(state.operative, margin + 22, 46);
     }
 
-    // Optional: include GPS coordinates if available
     if (state.gps && typeof state.gps.lat === "number" && typeof state.gps.lon === "number") {
       doc.setFont("helvetica","normal"); doc.setFontSize(9);
       doc.text(`GPS: ${state.gps.lat.toFixed(6)}, ${state.gps.lon.toFixed(6)}`, margin, 52);
@@ -553,7 +692,6 @@
       }catch(e){}
     }
 
-    // fallback download
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
     a.href = url;
@@ -578,9 +716,7 @@
 
   // INIT
   (async () => {
-    // Key part that stops stale “installed app” behaviour in this folder
     await killServiceWorkersAndCachesOnce();
-
     load();
     if (!$("date").value) $("date").value = todayISO();
     render();
