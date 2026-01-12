@@ -9,6 +9,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
 
+  <!-- ✅ jsPDF for Share PDF (real file for WhatsApp/email) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
   <style>
     :root{
       --bg:#0b1220;
@@ -457,6 +460,8 @@
       </div>
 
       <div class="modalActions">
+        <!-- ✅ NEW: Share PDF from inside Documents -->
+        <button id="docsSharePdf" class="purple" type="button">Share PDF</button>
         <button id="docsDone" class="ok" type="button">Done</button>
       </div>
     </div>
@@ -642,6 +647,13 @@
     }
     function telSan(s){ return String(s || "").trim().replace(/[^\d+]/g, ""); }
 
+    // ✅ jsPDF helper
+    function getJsPDF(){
+      const u = window.jspdf;
+      if(!u || !u.jsPDF) return null;
+      return u.jsPDF;
+    }
+
     const boardEl = document.getElementById('board');
     const totalCountEl = document.getElementById('totalCount');
     const savedStatusEl = document.getElementById('savedStatus');
@@ -684,6 +696,9 @@
     const docsList = document.getElementById('docsList');
     const docsEmpty = document.getElementById('docsEmpty');
     const docsInput = document.getElementById('docsInput');
+
+    // ✅ NEW share pdf button inside docs
+    const docsSharePdf = document.getElementById('docsSharePdf');
 
     const mDocsOpen = document.getElementById('mDocsOpen');
     const mDocsAdd  = document.getElementById('mDocsAdd');
@@ -1141,14 +1156,13 @@
       }
     }
 
-    // ✅ Existing: set invoice ref from button on "Works Completed – Invoice Required"
     function setInvoiceRef(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
 
       const current = (job.invRef || "").trim();
       const v = prompt("Enter invoice number / reference:", current);
-      if(v === null) return; // cancelled
+      if(v === null) return;
 
       job.invRef = String(v).trim();
       job.updatedAt = new Date().toISOString();
@@ -1160,14 +1174,13 @@
       }
     }
 
-    // ✅ NEW: set estimate number from button on "Attended – Estimate Required"
     function setEstimateNo(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
 
       const current = (job.estNo || "").trim();
       const v = prompt("Enter estimate number / reference:", current);
-      if(v === null) return; // cancelled
+      if(v === null) return;
 
       job.estNo = String(v).trim();
       job.updatedAt = new Date().toISOString();
@@ -1369,9 +1382,214 @@
       w.focus();
     }
 
+    // ✅ NEW: build a real PDF Blob using jsPDF (for WhatsApp/email share)
+    async function buildJobPdfBlob(jobId){
+      const job = jobs.find(j=>j.id===jobId);
+      if(!job) throw new Error("Job not found");
+
+      const JsPDF = getJsPDF();
+      if(!JsPDF) throw new Error("jsPDF not loaded");
+
+      const doc = new JsPDF({ unit:"pt", format:"a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 40;
+      let y = 40;
+
+      const logo = localStorage.getItem("fps_logo_v1") || "";
+      const title = job.address?.trim() ? job.address.trim() : "(No address)";
+      const worksDays = Number(job.worksDays || 1);
+      const estHours  = Number(job.estHours || 1);
+      const docsArr = Array.isArray(job.docs) ? job.docs.slice() : [];
+
+      // Header
+      if(logo){
+        try{
+          doc.addImage(logo, "JPEG", margin, y, 56, 56);
+        }catch{
+          // ignore logo errors
+        }
+      } else {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("FPS", margin + 8, y + 34);
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("Ford Property Services — Job Summary", margin + 70, y + 24);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Generated: ${nowStamp()}`, margin + 70, y + 44);
+
+      y += 80;
+
+      // Helper for key/value rows
+      function kv(label, value){
+        const leftW = 140;
+        doc.setFont("helvetica","bold"); doc.setFontSize(11);
+        doc.text(label, margin, y);
+        doc.setFont("helvetica","normal");
+        const text = String(value ?? "-");
+        const lines = doc.splitTextToSize(text, pageW - margin*2 - leftW);
+        doc.text(lines, margin + leftW, y);
+        y += 16 * lines.length;
+        y += 6;
+      }
+
+      doc.setDrawColor(220);
+      doc.setLineWidth(1);
+      doc.roundedRect(margin-10, y-10, pageW - (margin-10)*2, 200, 10, 10);
+
+      kv("Property:", title);
+      kv("Letting Agent:", job.agent || "-");
+      kv("Assigned Agent:", job.ref || "-");
+      kv("Status:", statusLabel(job.status));
+      kv("Estimate No:", job.estNo || "-");
+      kv("Invoice Ref:", job.invRef || "-");
+      kv("Phone:", job.phone || "-");
+
+      // Bookings
+      if(job.estVisitDT){
+        kv("Estimate Visit:", `${ukDT(job.estVisitDT)} (${estHours}h)`);
+      }
+      if(job.worksDT){
+        const ends = job.worksEndDT ? ` • Ends: ${prettyDT(job.worksEndDT)}` : "";
+        kv("Works Booking:", `${prettyDT(job.worksDT)} (${worksDays} days)${ends}`);
+      }
+
+      // Notes
+      y += 8;
+      doc.setFont("helvetica","bold"); doc.setFontSize(12);
+      doc.text("Notes", margin, y);
+      y += 12;
+
+      doc.setFont("helvetica","normal"); doc.setFontSize(10);
+      const notes = (job.notes || "").trim() || "No notes.";
+      const noteLines = doc.splitTextToSize(notes, pageW - margin*2);
+      noteLines.forEach(line=>{
+        if(y > 760){
+          doc.addPage();
+          y = 60;
+        }
+        doc.text(line, margin, y);
+        y += 14;
+      });
+
+      // Documents list
+      y += 10;
+      if(y > 740){ doc.addPage(); y = 60; }
+      doc.setFont("helvetica","bold"); doc.setFontSize(12);
+      doc.text(`Documents (${docsArr.length})`, margin, y);
+      y += 14;
+
+      doc.setFont("helvetica","normal"); doc.setFontSize(10);
+
+      const list = docsArr
+        .slice()
+        .sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0))
+        .slice(0, 25); // keep it tidy
+
+      if(list.length === 0){
+        doc.text("No documents uploaded.", margin, y);
+        y += 14;
+      } else {
+        for(const d of list){
+          const name = (d.name || "file").trim();
+          const when = d.createdAtMs ? new Date(d.createdAtMs).toLocaleString("en-GB") : "";
+          const url = (d.url || "").trim();
+
+          const line = `• ${name}${when ? " — " + when : ""}`;
+          const lines = doc.splitTextToSize(line, pageW - margin*2);
+          for(const ln of lines){
+            if(y > 780){
+              doc.addPage();
+              y = 60;
+            }
+            doc.text(ln, margin, y);
+            y += 14;
+          }
+
+          if(url){
+            const uLines = doc.splitTextToSize(url, pageW - margin*2);
+            for(const ln of uLines.slice(0,2)){
+              if(y > 780){
+                doc.addPage();
+                y = 60;
+              }
+              doc.setTextColor(30, 90, 200);
+              doc.text(ln, margin + 16, y);
+              doc.setTextColor(0, 0, 0);
+              y += 14;
+            }
+          }
+
+          y += 4;
+        }
+
+        if(docsArr.length > list.length){
+          doc.setFont("helvetica","italic");
+          doc.text(`(Showing latest ${list.length} documents)`, margin, y);
+          y += 14;
+          doc.setFont("helvetica","normal");
+        }
+      }
+
+      const safe = title.replace(/[^\w\- ]+/g,"").trim().slice(0,40) || "Job";
+      const filename = `FPS Job - ${safe}.pdf`;
+
+      const blob = doc.output("blob");
+      return { blob, filename };
+    }
+
+    // ✅ NEW: share pdf (or download fallback)
+    async function shareJobPdfFromDocs(jobId){
+      const job = jobs.find(j=>j.id===jobId);
+      if(!job) return;
+
+      docsSharePdf.disabled = true;
+      const prevText = docsSharePdf.textContent;
+      docsSharePdf.textContent = "Building PDF...";
+
+      try{
+        const { blob, filename } = await buildJobPdfBlob(jobId);
+        const file = new File([blob], filename, { type:"application/pdf" });
+
+        const shareData = {
+          title: "Ford Property Services — Job PDF",
+          text: job.address?.trim() ? job.address.trim() : "Job PDF",
+          files: [file]
+        };
+
+        // Web Share (files) = WhatsApp/email share sheet on Android
+        if(navigator.share && (!navigator.canShare || navigator.canShare({ files:[file] }))){
+          await navigator.share(shareData);
+          return;
+        }
+
+        // Fallback: download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=> URL.revokeObjectURL(url), 800);
+
+        alert("Your device doesn't support sharing PDF files directly here, so I've downloaded it instead.");
+      }catch(err){
+        console.error("Share PDF failed:", err);
+        alert("Couldn't create/share the PDF. Please try again.");
+      }finally{
+        docsSharePdf.disabled = false;
+        docsSharePdf.textContent = prevText;
+      }
+    }
+
     // ===== Book Now modal logic =====
     let bookJobId = null;
-    let bookMode = null; // "estimate" | "works"
+    let bookMode = null;
 
     function updateBookPreview(){
       const dt = bookDT.value || "";
@@ -1533,6 +1751,12 @@
       if(!docsJobId) return;
       docsInput.value = "";
       docsInput.click();
+    });
+
+    // ✅ NEW: share PDF button handler (inside Documents)
+    docsSharePdf.addEventListener("click", ()=>{
+      if(!docsJobId) return;
+      shareJobPdfFromDocs(docsJobId);
     });
 
     function bytesToNice(n){
@@ -1791,13 +2015,11 @@
             btns.push(`<button type="button" class="ok" data-act="move" data-to="attended_est_required">Attended</button>`);
           }
 
-          // ✅ Attended – Estimate Required: add Estimate No button (like Invoice No)
           if(job.status === "attended_est_required"){
             btns.push(`<button type="button" class="warn" data-act="estimateNo">Estimate No</button>`);
             btns.push(`<button type="button" class="ok" data-act="move" data-to="est_complete">Complete</button>`);
           }
 
-          // ✅ Estimate Complete: Accepted / Rejected
           if(job.status === "est_complete"){
             btns.push(`<button type="button" class="ok" data-act="move" data-to="est_accepted">Accepted</button>`);
             btns.push(`<button type="button" class="danger" data-act="move" data-to="est_not_accepted">Rejected</button>`);
@@ -1856,7 +2078,6 @@
           const invBtn = el.querySelector('[data-act="invoiceNo"]');
           if(invBtn) invBtn.addEventListener("click", ()=> setInvoiceRef(job.id));
 
-          // ✅ NEW: estimate number button handler
           const estBtn = el.querySelector('[data-act="estimateNo"]');
           if(estBtn) estBtn.addEventListener("click", ()=> setEstimateNo(job.id));
 
