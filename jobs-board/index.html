@@ -169,7 +169,6 @@
       display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
       margin-bottom:8px;
     }
-    .bookingsList{displayGrid: gap:8px}
     .bookingsList{display:grid; gap:8px}
     .bookingItem{
       border:1px solid rgba(255,255,255,.12);
@@ -439,7 +438,6 @@
       </div>
     </div>
   </div>
-
   <!-- Documents Modal -->
   <div class="modalBack" id="docsBack">
     <div class="modal" style="width:min(780px, 100%)">
@@ -460,7 +458,6 @@
       </div>
 
       <div class="modalActions">
-        <!-- ✅ NEW: share actual PDF file -->
         <button id="docsShare" class="purple" type="button">Share PDF</button>
         <button id="docsDone" class="ok" type="button">Done</button>
       </div>
@@ -484,7 +481,7 @@
     </div>
   </div>
 
-  <!-- ✅ Booking modal (Book Now) -->
+  <!-- Booking modal (Book Now) -->
   <div class="modalBack" id="bookBack">
     <div class="modal" style="width:min(520px, 100%)">
       <div class="modalHead">
@@ -504,14 +501,12 @@
           </div>
         </div>
 
-        <!-- ✅ Estimate duration (hours) -->
         <div id="bookHoursWrap" style="grid-column:1/-1; display:none">
           <label>How many hours?</label>
           <select id="bookHours"></select>
           <div class="small" id="bookEstEndPretty" style="margin-top:8px"></div>
         </div>
 
-        <!-- ✅ Works duration -->
         <div id="bookDurWrap" style="grid-column:1/-1; display:none">
           <label>How many days?</label>
           <select id="bookDays">
@@ -646,7 +641,6 @@
       return (STATUSES.find(s=>s.key===key)?.label) || key;
     }
     function telSan(s){ return String(s || "").trim().replace(/[^\d+]/g, ""); }
-
     const boardEl = document.getElementById('board');
     const totalCountEl = document.getElementById('totalCount');
     const savedStatusEl = document.getElementById('savedStatus');
@@ -683,7 +677,7 @@
     const docsBack = document.getElementById('docsBack');
     const docsClose = document.getElementById('docsClose');
     const docsDone = document.getElementById('docsDone');
-    const docsShare = document.getElementById('docsShare'); // ✅ NEW
+    const docsShare = document.getElementById('docsShare');
     const docsTitle = document.getElementById('docsTitle');
     const docsSub = document.getElementById('docsSub');
     const docsAddBtn = document.getElementById('docsAddBtn');
@@ -748,6 +742,7 @@
       logoImg.style.display = 'block';
       logoFallback.style.display = 'none';
     }
+
     async function fileToDataURL(file, maxDim=900, quality=0.90){
       const img = await new Promise((res, rej)=>{
         const i = new Image();
@@ -802,6 +797,64 @@
       renderAll();
     });
 
+    // ==============================
+    // ✅ NEW: MESSAGE BUTTON SYSTEM
+    // ==============================
+    // msgCount: 0..3
+    // msgLog: [{ n: 1|2|3, atMs: number }, ...]
+    function msgLevel(job){
+      const n = Number(job?.msgCount || 0);
+      if(n >= 3) return 3;
+      if(n >= 2) return 2;
+      if(n >= 1) return 1;
+      return 0;
+    }
+
+    function msgAddressStyle(job){
+      const lvl = msgLevel(job);
+      if(lvl === 1) return `color: var(--blue);`;
+      if(lvl === 2) return `color: var(--warn);`;
+      if(lvl === 3) return `color: var(--bad);`;
+      return ``;
+    }
+
+    function msgBadgeHtml(job){
+      const lvl = msgLevel(job);
+      if(lvl <= 0) return "";
+      const border =
+        lvl === 1 ? `rgba(74,163,255,.45)` :
+        lvl === 2 ? `rgba(245,158,11,.45)` :
+                    `rgba(239,68,68,.45)`;
+      const bg =
+        lvl === 1 ? `rgba(74,163,255,.12)` :
+        lvl === 2 ? `rgba(245,158,11,.12)` :
+                    `rgba(239,68,68,.12)`;
+      return `<div class="chip" style="color:var(--text);border-color:${border};background:${bg};font-weight:950">Message ${lvl}/3</div>`;
+    }
+
+    function pressMessage(jobId){
+      const job = jobs.find(j=>j.id===jobId);
+      if(!job) return;
+
+      const current = Math.min(3, Math.max(0, Number(job.msgCount || 0)));
+      if(current >= 3){
+        alert("Message counter already at 3/3.");
+        return;
+      }
+
+      job.msgCount = current + 1;
+      job.msgLog = Array.isArray(job.msgLog) ? job.msgLog : [];
+      job.msgLog.unshift({ n: job.msgCount, atMs: Date.now() });
+      job.updatedAt = new Date().toISOString();
+
+      save();
+      renderAll();
+
+      if(detailsBack.style.display==="flex" && detailsJobId===jobId){
+        openDetailsModal(jobId);
+      }
+    }
+
     function migrateJob(j){
       if(!j || typeof j !== "object") return j;
       j.id = j.id || uid();
@@ -817,6 +870,12 @@
       j.docs = Array.isArray(j.docs) ? j.docs : [];
       j.createdAt = j.createdAt || new Date().toISOString();
       j.updatedAt = j.updatedAt || new Date().toISOString();
+
+      // ✅ NEW defaults
+      if(j.msgCount === undefined || j.msgCount === null || j.msgCount === "") j.msgCount = 0;
+      const mc = Number(j.msgCount);
+      j.msgCount = Number.isFinite(mc) ? Math.min(3, Math.max(0, Math.floor(mc))) : 0;
+      j.msgLog = Array.isArray(j.msgLog) ? j.msgLog : [];
 
       // ✅ works days
       if(j.worksDays === undefined || j.worksDays === null || j.worksDays === "") j.worksDays = 1;
@@ -849,8 +908,7 @@
     function saveLocal(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
       savedStatusEl.textContent = nowStamp();
-    }
-
+                             }
     // ===== Cloud sync =====
     let currentUserId = null;
     let cloudReady = false;
@@ -1147,14 +1205,13 @@
       }
     }
 
-    // ✅ Existing: set invoice ref from button on "Works Completed – Invoice Required"
     function setInvoiceRef(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
 
       const current = (job.invRef || "").trim();
       const v = prompt("Enter invoice number / reference:", current);
-      if(v === null) return; // cancelled
+      if(v === null) return;
 
       job.invRef = String(v).trim();
       job.updatedAt = new Date().toISOString();
@@ -1166,14 +1223,13 @@
       }
     }
 
-    // ✅ NEW: set estimate number from button on "Attended – Estimate Required"
     function setEstimateNo(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
 
       const current = (job.estNo || "").trim();
       const v = prompt("Enter estimate number / reference:", current);
-      if(v === null) return; // cancelled
+      if(v === null) return;
 
       job.estNo = String(v).trim();
       job.updatedAt = new Date().toISOString();
@@ -1198,10 +1254,9 @@
       const u = new URL(location.href);
       u.searchParams.set("job", jobId);
       return u.toString();
-    }
-
+          }
     // ===========================
-    // ✅ REAL PDF SHARE (not link)
+    // REAL PDF SHARE (not link)
     // ===========================
     function getJsPDF(){
       const u = window.jspdf;
@@ -1346,7 +1401,6 @@
         const { blob, filename } = await buildJobPdfBlob(jobId);
         const file = new File([blob], filename, { type:"application/pdf" });
 
-        // ✅ Share as FILE (WhatsApp/email)
         if(navigator.share && (!navigator.canShare || navigator.canShare({ files:[file] }))){
           await navigator.share({
             title: "Ford Property Services — Job PDF",
@@ -1356,7 +1410,6 @@
           return;
         }
 
-        // ✅ Fallback: download
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -1373,6 +1426,7 @@
       }
     }
 
+    // ===== Details modal (UPDATED with Message log) =====
     function openDetailsModal(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
@@ -1389,6 +1443,30 @@
       const worksDays = Number(job.worksDays || 1);
       const estHours = Number(job.estHours || 1);
 
+      // ✅ NEW: message info
+      const msgCount = Math.min(3, Math.max(0, Number(job.msgCount || 0)));
+      const msgLog = Array.isArray(job.msgLog) ? job.msgLog : [];
+
+      const msgLine = msgCount
+        ? `<div style="margin-top:10px">${msgBadgeHtml(job)}</div>`
+        : `<div style="margin-top:10px;color:var(--muted)">Message 0/3</div>`;
+
+      const msgLogHtml = msgLog.length
+        ? `<div style="margin-top:12px">
+             <div style="font-weight:950;margin-bottom:6px">Message log</div>
+             <div style="display:grid;gap:6px">
+               ${msgLog.slice(0,12).map(x=>{
+                 const when = x?.atMs ? new Date(x.atMs).toLocaleString("en-GB") : "";
+                 const n = x?.n ?? "";
+                 return `<div style="border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);border-radius:12px;padding:8px 10px">
+                           <b>Message ${escapeHtml(String(n))}/3</b>
+                           <div class="small">${escapeHtml(when)}</div>
+                         </div>`;
+               }).join("")}
+             </div>
+           </div>`
+        : `<div style="margin-top:12px;color:var(--muted)">No message presses recorded yet.</div>`;
+
       detailsBody.innerHTML = `
         <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:14px;padding:10px">
           <div style="font-weight:950;margin-bottom:6px">${escapeHtml(title)}</div>
@@ -1399,6 +1477,11 @@
           ${job.invRef ? `<div>Invoice Ref: <b>${escapeHtml(job.invRef)}</b></div>` : ""}
           ${job.estVisitDT ? `<div style="margin-top:10px"><span class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))} • ${escapeHtml(String(estHours))}h</span></div>` : ""}
           ${job.worksDT ? `<div style="margin-top:10px"><span class="chip bookingWorks">Works: ${escapeHtml(prettyDT(job.worksDT))} • ${escapeHtml(String(worksDays))} days${job.worksEndDT ? ` • ends ${escapeHtml(prettyDT(job.worksEndDT))}` : ""}</span></div>` : ""}
+
+          <!-- ✅ NEW: message counter + log -->
+          ${msgLine}
+          ${msgLogHtml}
+
           ${job.notes ? `<div style="margin-top:12px;white-space:pre-wrap">${escapeHtml(job.notes)}</div>` : `<div style="margin-top:12px;color:var(--muted)">No notes.</div>`}
           <div style="margin-top:12px">Documents: <b>${docsCount}</b></div>
           <div class="row" style="margin-top:12px">
@@ -1415,12 +1498,11 @@
       detailsEdit.onclick = ()=> { closeDetails(); openEdit(jobId); };
       detailsPrint.onclick = ()=> printJobPdf(jobId);
 
-      // ✅ CHANGED: Share now sends a PDF file (not a link)
+      // Share button already shares PDF
       detailsShare.onclick = ()=> shareJobAsPdf(jobId);
 
       detailsBack.style.display = "flex";
-    }
-
+        }
     function printJobPdf(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
@@ -1672,7 +1754,7 @@
     docsDone.addEventListener("click", closeDocs);
     docsBack.addEventListener("click", (e)=>{ if(e.target===docsBack) closeDocs(); });
 
-    // ✅ NEW: Share PDF from Documents modal
+    // Share PDF from Documents modal
     docsShare.addEventListener("click", ()=>{
       if(!docsJobId) return;
       shareJobAsPdf(docsJobId);
@@ -1683,7 +1765,6 @@
       docsInput.value = "";
       docsInput.click();
     });
-
     function bytesToNice(n){
       const b = Number(n||0);
       if(!b) return "";
@@ -1876,6 +1957,11 @@
       });
     }
 
+    // ==========================
+    // ✅ BOARD RENDER (UPDATED)
+    // - Address colour changes based on msgCount (blue/amber/red)
+    // - Message button appears only in Requires Estimate
+    // ==========================
     function renderBoard(filteredJobs){
       boardEl.innerHTML = "";
 
@@ -1915,6 +2001,11 @@
           const estNo = job.estNo?.trim() ? job.estNo.trim() : "";
 
           const chipsHtml = [];
+
+          // ✅ NEW: show message badge chip if pressed
+          const badge = msgBadgeHtml(job);
+          if(badge) chipsHtml.push(badge);
+
           if(job.estVisitDT){
             const h = Number(job.estHours||1);
             chipsHtml.push(`<div class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))} • ${escapeHtml(String(h))}h</div>`);
@@ -1932,6 +2023,12 @@
           btns.push(`<button type="button" data-act="details">Details</button>`);
           btns.push(`<button type="button" data-act="documents">Documents</button>`);
 
+          // ✅ NEW: Message button ONLY on Requires Estimate
+          if(job.status === "req_est"){
+            const nextNum = Math.min(3, msgLevel(job) + 1);
+            btns.push(`<button type="button" class="warn" data-act="message">Message ${nextNum}/3</button>`);
+          }
+
           if(job.status === "req_est" || job.status === "est_accepted"){
             btns.push(`<button type="button" class="purple" data-act="book">Book Now</button>`);
           }
@@ -1940,13 +2037,11 @@
             btns.push(`<button type="button" class="ok" data-act="move" data-to="attended_est_required">Attended</button>`);
           }
 
-          // ✅ Attended – Estimate Required: add Estimate No button (like Invoice No)
           if(job.status === "attended_est_required"){
             btns.push(`<button type="button" class="warn" data-act="estimateNo">Estimate No</button>`);
             btns.push(`<button type="button" class="ok" data-act="move" data-to="est_complete">Complete</button>`);
           }
 
-          // ✅ Estimate Complete: Accepted / Rejected
           if(job.status === "est_complete"){
             btns.push(`<button type="button" class="ok" data-act="move" data-to="est_accepted">Accepted</button>`);
             btns.push(`<button type="button" class="danger" data-act="move" data-to="est_not_accepted">Rejected</button>`);
@@ -1981,11 +2076,14 @@
 
           const docsCount = Array.isArray(job.docs) ? job.docs.length : 0;
 
+          // ✅ NEW: address style changes based on messages (blue -> amber -> red)
+          const styledTitle = `<span style="${msgAddressStyle(job)}">${escapeHtml(title)}</span>`;
+
           el.innerHTML = `
             <div class="jobTop">
               <div style="min-width:240px;max-width:100%">
                 <div class="jobTitle">
-                  ${escapeHtml(title)}${estNo ? ` <span style="color:var(--muted);font-weight:800">• Est: ${escapeHtml(estNo)}</span>` : ""}
+                  ${styledTitle}${estNo ? ` <span style="color:var(--muted);font-weight:800">• Est: ${escapeHtml(estNo)}</span>` : ""}
                   ${docsCount ? ` <span style="color:var(--muted);font-weight:800">• Docs: ${docsCount}</span>` : ""}
                 </div>
                 <div class="meta">Letting Agent: ${escapeHtml(agent)} • Assigned Agent: ${escapeHtml(ref)}</div>
@@ -2005,9 +2103,12 @@
           const invBtn = el.querySelector('[data-act="invoiceNo"]');
           if(invBtn) invBtn.addEventListener("click", ()=> setInvoiceRef(job.id));
 
-          // ✅ NEW: estimate number button handler
           const estBtn = el.querySelector('[data-act="estimateNo"]');
           if(estBtn) estBtn.addEventListener("click", ()=> setEstimateNo(job.id));
+
+          // ✅ NEW: message press handler
+          const msgBtn = el.querySelector('[data-act="message"]');
+          if(msgBtn) msgBtn.addEventListener("click", ()=> pressMessage(job.id));
 
           el.querySelectorAll('[data-act="move"]').forEach(b=>{
             b.addEventListener("click", ()=>{
@@ -2036,7 +2137,6 @@
       renderBookings(filtered);
       renderBoard(filtered);
     }
-
     function csvEscape(v){
       const s = String(v ?? "");
       if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
@@ -2047,7 +2147,10 @@
         "id","status","status_label","letting_agent","assigned_agent","address","estimate_no",
         "estimate_visit_dt","estimate_hours",
         "works_booked_dt","works_days","works_end_dt",
-        "invoice_ref","phone","notes","documents_count","created_at","updated_at"
+        "invoice_ref","phone","notes","documents_count",
+        // ✅ NEW fields exported
+        "msg_count","msg_log_count",
+        "created_at","updated_at"
       ];
       const rows = jobs.map(j=>[
         j.id, j.status, statusLabel(j.status),
@@ -2059,6 +2162,9 @@
         j.invRef || "", j.phone || "",
         (j.notes || "").replace(/\n/g," "),
         Array.isArray(j.docs) ? j.docs.length : 0,
+        // ✅ NEW data
+        Math.min(3, Math.max(0, Number(j.msgCount||0))),
+        Array.isArray(j.msgLog) ? j.msgLog.length : 0,
         j.createdAt || "", j.updatedAt || ""
       ]);
       const csv = [header, ...rows].map(r=>r.map(csvEscape).join(",")).join("\n");
@@ -2095,6 +2201,7 @@
       docsInput.click();
     });
 
+    // ✅ Boot everything
     syncBoot();
   </script>
 </body>
