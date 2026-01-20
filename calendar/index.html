@@ -74,7 +74,10 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   gap:10px;
 }
 .dow{color:var(--muted);text-align:center;font-size:12px}
+
+/* ✅ day now supports overlay tint */
 .day{
+  position:relative;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(0,0,0,.18);
   border-radius:16px;
@@ -82,12 +85,50 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   padding:8px;
   cursor:pointer;
   min-width:0;
+  overflow:hidden;
 }
 .day.today{border-color:var(--blue);background:rgba(74,163,255,.10)}
 .dayNum{font-weight:950;margin-bottom:4px}
 
+/* ✅ overlay tint that never blocks clicks */
+.dayTint{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  border-radius:16px;
+  opacity:1;
+}
+
+/* ✅ block tags (names) */
+.blockTags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:6px 0 4px;
+  position:relative;
+  z-index:2;
+}
+.blockTag{
+  font-size:11px;
+  font-weight:950;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.08);
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.blockTag small{
+  font-weight:900;
+  opacity:.85;
+}
+
 /* Base event chip */
 .event{
+  position:relative;
+  z-index:2;
   margin-top:6px;
   padding:6px 8px;
   border-radius:12px;
@@ -102,7 +143,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   white-space:nowrap;
 }
 .event.est{border-left:4px solid var(--blue)}     /* 🔵 Estimate booked */
-.event.works{border-left:4px solid var(--green)}  /* 🟢 Works booked (incl. Estimate Accepted) */
+.event.works{border-left:4px solid var(--green)}  /* 🟢 Works booked */
 .event.manual{border-left:4px solid var(--purple)}
 
 /* Carry-on placeholder */
@@ -156,13 +197,23 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   }
 }
 .weekCol{
+  position:relative;
   border:1px solid rgba(255,255,255,.12);
   border-radius:16px;
   padding:10px;
   min-width:0;
+  overflow:hidden;
 }
 .weekCol.today{border-color:var(--blue);background:rgba(74,163,255,.06)}
+.weekTint{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  border-radius:16px;
+}
 .weekHead{
+  position:relative;
+  z-index:2;
   font-weight:950;
   margin-bottom:8px;
   display:flex;
@@ -196,6 +247,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
   .card{padding:12px}
   .grid{gap:6px}
   .day{min-height:78px;padding:6px;border-radius:14px}
+  .dayTint{border-radius:14px}
   .event{font-size:11px;padding:5px 6px;border-radius:11px}
   .weekEventDur{font-size:10.5px}
   .btn{padding:8px 10px}
@@ -248,6 +300,14 @@ textarea{min-height:110px; resize:vertical;}
   .two{grid-template-columns: 1fr 1fr;}
 }
 .smallnote{color:var(--muted);font-size:12px}
+.three{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+}
+@media(min-width:700px){
+  .three{grid-template-columns: 1fr 1fr 1fr;}
+}
 </style>
 </head>
 
@@ -260,6 +320,8 @@ textarea{min-height:110px; resize:vertical;}
         <span class="muted">Calendar</span>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <!-- ✅ new Blocks button -->
+        <button class="btn primary" id="newBlockBtn" type="button">+ Block</button>
         <button class="btn ok" id="newManualBtn" type="button">+ Manual</button>
         <a class="btn" href="../jobs-board/">Jobs Board</a>
       </div>
@@ -331,6 +393,58 @@ textarea{min-height:110px; resize:vertical;}
   </div>
 </dialog>
 
+<!-- ✅ Blocks dialog -->
+<dialog id="blockDlg">
+  <div class="dlgHead">
+    <strong id="blockDlgTitle">Block Out</strong>
+    <button class="btn" id="blockClose" type="button">✕</button>
+  </div>
+
+  <div class="dlgBody">
+    <div class="two">
+      <div class="field">
+        <label>Start date</label>
+        <input id="blkStart" type="date" />
+      </div>
+      <div class="field">
+        <label>End date</label>
+        <input id="blkEnd" type="date" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Name / label (shown on calendar)</label>
+      <input id="blkLabel" type="text" placeholder="e.g. Joe Out / Ben Holiday" />
+    </div>
+
+    <div class="three">
+      <div class="field">
+        <label>Colour</label>
+        <input id="blkColor" type="color" value="#ff7a18" />
+      </div>
+      <div class="field">
+        <label>Opacity (background)</label>
+        <input id="blkOpacity" type="range" min="0.06" max="0.45" step="0.01" value="0.18" />
+      </div>
+      <div class="field">
+        <label>Opacity value</label>
+        <input id="blkOpacityRead" type="text" value="0.18" readonly />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="blkNotes" placeholder="Optional notes..."></textarea>
+      <div class="smallnote">Blocks tint the day but still allow you to book jobs normally.</div>
+    </div>
+  </div>
+
+  <div class="dlgActions">
+    <button class="btn danger" id="blkDelete" type="button" style="display:none">Delete</button>
+    <button class="btn ok" id="blkSave" type="button">Save</button>
+  </div>
+</dialog>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
@@ -348,6 +462,9 @@ const db = getFirestore(app);
 /* ===== Manual appointments (CLOUD + local cache fallback) ===== */
 const MANUAL_CACHE_KEY = "fps_calendar_manual_cache_v1";
 
+/* ✅ Blocks cache */
+const BLOCKS_CACHE_KEY = "fps_calendar_blocks_cache_v1";
+
 function loadManualCache(){
   try{
     const raw = localStorage.getItem(MANUAL_CACHE_KEY);
@@ -358,9 +475,24 @@ function loadManualCache(){
 function saveManualCache(obj){
   localStorage.setItem(MANUAL_CACHE_KEY, JSON.stringify(obj || {}));
 }
+function loadBlocksCache(){
+  try{
+    const raw = localStorage.getItem(BLOCKS_CACHE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch{ return []; }
+}
+function saveBlocksCache(arr){
+  localStorage.setItem(BLOCKS_CACHE_KEY, JSON.stringify(Array.isArray(arr) ? arr : []));
+}
+
 function uid(){
   return "man_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
 }
+function uidBlk(){
+  return "blk_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+}
+
 function normaliseManual(obj){
   const out = {};
   if(!obj || typeof obj !== "object") return out;
@@ -380,8 +512,46 @@ function normaliseManual(obj){
   return out;
 }
 
+/* ✅ Blocks normaliser (range-based) */
+function clamp01(n){ n = Number(n); if(!Number.isFinite(n)) return 0.18; return Math.min(0.45, Math.max(0.06, n)); }
+function normaliseBlocks(list){
+  const out = [];
+  const arr = Array.isArray(list) ? list : [];
+  for(const b of arr){
+    if(!b || typeof b !== "object") continue;
+    let start = String(b.start || b.startISO || "").slice(0,10);
+    let end   = String(b.end || b.endISO || "").slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(start)) continue;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(end)) end = start;
+
+    // ensure start <= end
+    if(start > end){ const tmp = start; start = end; end = tmp; }
+
+    const label = String(b.label || b.name || "").trim();
+    if(!label) continue;
+
+    const color = String(b.color || "#ff7a18").trim() || "#ff7a18";
+    const opacity = clamp01(b.opacity);
+
+    out.push({
+      id: String(b.id || uidBlk()),
+      start, end,
+      label,
+      color,
+      opacity,
+      notes: String(b.notes || "").trim()
+    });
+  }
+  // stable sort for nicer rendering
+  out.sort((a,b)=> (a.start.localeCompare(b.start)) || (a.label.localeCompare(b.label)));
+  return out;
+}
+
 let manualCloud = normaliseManual(loadManualCache());
 let manualLoadedFromCloud = false;
+
+let blocksCloud = normaliseBlocks(loadBlocksCache());
+let blocksLoadedFromCloud = false;
 
 const cloudStatusEl = document.getElementById("cloudStatus");
 function setCloudStatus(msg){
@@ -397,6 +567,7 @@ onSnapshot(sharedRef, (snap)=>{
   const data = snap.data() || {};
   jobs = Array.isArray(data.jobs) ? data.jobs : [];
 
+  /* Manual */
   const cloudManual = normaliseManual(data.calendarManual || {});
   if(!manualLoadedFromCloud){
     manualLoadedFromCloud = true;
@@ -416,6 +587,25 @@ onSnapshot(sharedRef, (snap)=>{
     manualCloud = cloudManual;
     saveManualCache(manualCloud);
     setCloudStatus("Synced.");
+  }
+
+  /* ✅ Blocks */
+  const cloudBlocks = normaliseBlocks(data.calendarBlocks || []);
+  if(!blocksLoadedFromCloud){
+    blocksLoadedFromCloud = true;
+
+    const cacheB = normaliseBlocks(loadBlocksCache());
+    const cloudIsEmptyB = cloudBlocks.length === 0;
+    const cacheHasB = cacheB.length > 0;
+
+    blocksCloud = cloudIsEmptyB ? cacheB : cloudBlocks;
+
+    if(cloudIsEmptyB && cacheHasB){
+      queueBlocksCloudSave("Seeding blocks to cloud…");
+    }
+  } else {
+    blocksCloud = cloudBlocks;
+    saveBlocksCache(blocksCloud);
   }
 
   render();
@@ -443,6 +633,28 @@ async function queueManualCloudSave(statusText = "Saving…"){
     }catch(e){
       console.error("Manual cloud save failed:", e);
       setCloudStatus("Save failed — check internet / rules.");
+    }
+  }, 450);
+}
+
+let blocksSaveTimer = null;
+async function queueBlocksCloudSave(statusText = "Saving blocks…"){
+  setCloudStatus(statusText);
+  saveBlocksCache(blocksCloud);
+
+  if(blocksSaveTimer) clearTimeout(blocksSaveTimer);
+  blocksSaveTimer = setTimeout(async ()=>{
+    try{
+      const u = auth.currentUser;
+      await setDoc(sharedRef, {
+        calendarBlocks: blocksCloud,
+        calendarBlocksUpdatedAtMs: Date.now(),
+        calendarBlocksUpdatedBy: u?.uid || "anon"
+      }, { merge: true });
+      setCloudStatus("Blocks saved.");
+    }catch(e){
+      console.error("Blocks cloud save failed:", e);
+      setCloudStatus("Blocks save failed — check internet / rules.");
     }
   }, 450);
 }
@@ -500,21 +712,20 @@ function worksDaysLabel(job){
 }
 function worksSpanDays(job){
   const d = getWorksDays(job);
-  if(d <= 1) return 1;      // 0.5 or 1 => only booked day
-  return Math.ceil(d);      // 1.5 => 2, 2.5 => 3, etc
+  if(d <= 1) return 1;
+  return Math.ceil(d);
 }
 function remainingForCarryDay(totalDays, dayIndex){
-  // dayIndex: 0=start day, 1=second day, 2=third day...
   if(dayIndex <= 0) return totalDays;
 
   const span = (totalDays <= 1) ? 1 : Math.ceil(totalDays);
-  const remainder = totalDays - Math.floor(totalDays); // 0 or 0.5 etc
+  const remainder = totalDays - Math.floor(totalDays);
   const lastIndex = span - 1;
 
   if(dayIndex === lastIndex && remainder > 0){
-    return remainder; // e.g. 0.5
+    return remainder;
   }
-  return 1; // full day for non-last carry days
+  return 1;
 }
 
 /* ✅ ONLY show jobs that are actually booked in these two job-board folders */
@@ -528,16 +739,51 @@ function isWorksBooked(job){
   return jobStatusKey(job) === "works_booked";
 }
 
+/* ✅ Blocks helpers */
+function blocksFor(dateISO){
+  const d = String(dateISO || "");
+  return blocksCloud.filter(b => b.start <= d && d <= b.end);
+}
+function blockTintStyle(blocks){
+  // no blocks => ""
+  const arr = Array.isArray(blocks) ? blocks : [];
+  if(!arr.length) return "";
+
+  // one block => single tint
+  if(arr.length === 1){
+    const b = arr[0];
+    return `background: rgba(0,0,0,0); background-color: ${hexToRgba(b.color, b.opacity)};`;
+  }
+
+  // multiple => striped blend
+  // build a linear-gradient with equal segments
+  const seg = 100 / arr.length;
+  const stops = arr.map((b, i)=>{
+    const a = i * seg;
+    const z = (i+1) * seg;
+    const c = hexToRgba(b.color, b.opacity);
+    return `${c} ${a.toFixed(2)}%, ${c} ${z.toFixed(2)}%`;
+  }).join(", ");
+  return `background: linear-gradient(90deg, ${stops});`;
+}
+function hexToRgba(hex, alpha){
+  let h = String(hex||"").trim().replace("#","");
+  if(h.length===3) h = h.split("").map(x=>x+x).join("");
+  if(!/^[0-9a-fA-F]{6}$/.test(h)) h = "ff7a18";
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  const a = clamp01(alpha);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 /* Build all events for a date */
 function eventsFor(dateISO){
   const out = [];
 
   for(const j of jobs){
-    // 🔵 Estimate visit booked (ONLY when status is est_visit_booked)
-    if(
-      isEstVisitBooked(j) &&
-      j.estVisitDT?.startsWith(dateISO)
-    ){
+    // 🔵 Estimate visit booked
+    if(isEstVisitBooked(j) && j.estVisitDT?.startsWith(dateISO)){
       const t = j.estVisitDT.slice(11,16);
       out.push({
         t,
@@ -551,7 +797,7 @@ function eventsFor(dateISO){
       });
     }
 
-    // 🟢 Works booked (ONLY when status is works_booked)
+    // 🟢 Works booked
     if(isWorksBooked(j) && j.worksDT){
       const { dateISO:startISO, time:startTime } = splitDT(j.worksDT);
       if(!startISO) continue;
@@ -568,7 +814,7 @@ function eventsFor(dateISO){
             t: startTime,
             sortKey: minutesFromHHMM(startTime),
             a: firstLine(j.address),
-            dur: worksDaysLabel(j), // total, e.g. 1.5 days
+            dur: worksDaysLabel(j),
             id: j.id,
             type:"works",
             src:"job",
@@ -576,13 +822,13 @@ function eventsFor(dateISO){
           });
         }else{
           const total = getWorksDays(j);
-          const dayIdx = keys.indexOf(dateISO); // 1,2,3...
-          const left = remainingForCarryDay(total, dayIdx); // ✅ 0.5 on last carry day
+          const dayIdx = keys.indexOf(dateISO);
+          const left = remainingForCarryDay(total, dayIdx);
           out.push({
             t: "Carry on",
             sortKey: 9000,
             a: firstLine(j.address),
-            dur: dayLabel(left), // ✅ shows remaining for this day
+            dur: dayLabel(left),
             id: j.id,
             type:"carry",
             src:"job",
@@ -593,7 +839,7 @@ function eventsFor(dateISO){
     }
   }
 
-  // Manual events (unchanged)
+  // Manual events
   const arr = Array.isArray(manualCloud[dateISO]) ? manualCloud[dateISO] : [];
   for(const e of arr){
     const t = (e.time || "00:00");
@@ -663,7 +909,38 @@ function render(){
 
       const box=document.createElement("div");
       box.className="day"+(dISO===todayISO?" today":"");
-      box.innerHTML=`<div class="dayNum">${d}</div>`;
+
+      // ✅ tint overlay (blocks)
+      const bks = blocksFor(dISO);
+      if(bks.length){
+        const tint = document.createElement("div");
+        tint.className = "dayTint";
+        tint.style.cssText = blockTintStyle(bks);
+        box.appendChild(tint);
+      }
+
+      // content
+      const num = document.createElement("div");
+      num.className = "dayNum";
+      num.textContent = String(d);
+      box.appendChild(num);
+
+      // ✅ block tags
+      if(bks.length){
+        const tags = document.createElement("div");
+        tags.className = "blockTags";
+        for(const b of bks){
+          const t = document.createElement("div");
+          t.className = "blockTag";
+          t.style.borderColor = "rgba(255,255,255,.22)";
+          t.style.background = hexToRgba(b.color, Math.min(0.32, b.opacity + 0.08));
+          t.textContent = b.label;
+          t.title = `${b.label} (${b.start} → ${b.end})`;
+          t.onclick = (evt)=>{ evt.stopPropagation(); openBlockDialog(b.id); };
+          tags.appendChild(t);
+        }
+        box.appendChild(tags);
+      }
 
       eventsFor(dISO).forEach(e=>{
         const ev=document.createElement("div");
@@ -706,13 +983,22 @@ function render(){
       d.setDate(start.getDate()+i);
       const dISO = iso(d);
       const evs=eventsFor(dISO);
+      const bks = blocksFor(dISO);
 
       const col=document.createElement("div");
       col.className="weekCol"+(dISO===todayISO?" today":"");
 
+      // ✅ week tint overlay
+      if(bks.length){
+        const tint = document.createElement("div");
+        tint.className = "weekTint";
+        tint.style.cssText = blockTintStyle(bks);
+        col.appendChild(tint);
+      }
+
       const inMonth = (`${d.getFullYear()}-${pad2(d.getMonth()+1)}` === monthKey);
 
-      col.innerHTML = `
+      col.innerHTML += `
         <div class="weekHead">
           <div style="${inMonth ? "" : "opacity:.55"}">
             ${d.toLocaleDateString("en-GB",{weekday:"short",day:"2-digit",month:"short"})}
@@ -720,6 +1006,23 @@ function render(){
           <span class="badge">${evs.length} booking${evs.length===1?"":"s"}</span>
         </div>
       `;
+
+      // ✅ block tags (week)
+      if(bks.length){
+        const tags = document.createElement("div");
+        tags.className = "blockTags";
+        tags.style.margin = "0 0 8px";
+        for(const b of bks){
+          const t = document.createElement("div");
+          t.className = "blockTag";
+          t.style.background = hexToRgba(b.color, Math.min(0.32, b.opacity + 0.08));
+          t.textContent = b.label;
+          t.title = `${b.label} (${b.start} → ${b.end})`;
+          t.onclick = (evt)=>{ evt.stopPropagation(); openBlockDialog(b.id); };
+          tags.appendChild(t);
+        }
+        col.appendChild(tags);
+      }
 
       if(!evs.length){
         const none=document.createElement("div");
@@ -754,6 +1057,7 @@ function render(){
 
       col.addEventListener("click",(evt)=>{
         if(evt.target.closest(".event")) return;
+        if(evt.target.closest(".blockTag")) return;
         setSelected(d);
         mode="day";
         render();
@@ -769,16 +1073,41 @@ function render(){
   if(mode==="day"){
     const dISO = iso(selected);
     const evs=eventsFor(dISO);
+    const bks = blocksFor(dISO);
 
     const head=document.createElement("div");
     head.className="weekCol"+(dISO===todayISO?" today":"");
-    head.innerHTML = `
+
+    if(bks.length){
+      const tint = document.createElement("div");
+      tint.className = "weekTint";
+      tint.style.cssText = blockTintStyle(bks);
+      head.appendChild(tint);
+    }
+
+    head.innerHTML += `
       <div class="weekHead">
         <div>${selected.toLocaleDateString("en-GB",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})}</div>
         <span class="badge">${evs.length} appointment${evs.length===1?"":"s"}</span>
       </div>
     `;
     dayView.appendChild(head);
+
+    // ✅ block tags in day view
+    if(bks.length){
+      const tags = document.createElement("div");
+      tags.className = "blockTags";
+      tags.style.margin = "0 0 10px";
+      for(const b of bks){
+        const t = document.createElement("div");
+        t.className = "blockTag";
+        t.style.background = hexToRgba(b.color, Math.min(0.32, b.opacity + 0.08));
+        t.textContent = `${b.label} (${b.start} → ${b.end})`;
+        t.onclick = (evt)=>{ evt.stopPropagation(); openBlockDialog(b.id); };
+        tags.appendChild(t);
+      }
+      dayView.appendChild(tags);
+    }
 
     const list=document.createElement("div");
     list.className="list";
@@ -919,6 +1248,90 @@ manDelete.onclick = ()=>{
 
   queueManualCloudSave("Deleting…");
   manualDlg.close();
+  render();
+};
+
+/* ===== ✅ Blocks dialog logic ===== */
+const newBlockBtn = document.getElementById("newBlockBtn");
+const blockDlg = document.getElementById("blockDlg");
+const blockDlgTitle = document.getElementById("blockDlgTitle");
+const blockClose = document.getElementById("blockClose");
+const blkStart = document.getElementById("blkStart");
+const blkEnd = document.getElementById("blkEnd");
+const blkLabel = document.getElementById("blkLabel");
+const blkColor = document.getElementById("blkColor");
+const blkOpacity = document.getElementById("blkOpacity");
+const blkOpacityRead = document.getElementById("blkOpacityRead");
+const blkNotes = document.getElementById("blkNotes");
+const blkDelete = document.getElementById("blkDelete");
+const blkSave = document.getElementById("blkSave");
+
+let editingBlockId = null;
+
+function openBlockDialog(blockId=null){
+  const existing = blockId ? blocksCloud.find(b=>b.id===blockId) : null;
+  editingBlockId = existing?.id || null;
+
+  blockDlgTitle.textContent = existing ? "Edit Block" : "New Block";
+
+  const today = iso(new Date());
+  blkStart.value = existing?.start || today;
+  blkEnd.value   = existing?.end || blkStart.value || today;
+  blkLabel.value = existing?.label || "";
+  blkColor.value = existing?.color || "#ff7a18";
+  blkOpacity.value = String(existing?.opacity ?? 0.18);
+  blkOpacityRead.value = String(blkOpacity.value);
+  blkNotes.value = existing?.notes || "";
+
+  blkDelete.style.display = existing ? "inline-flex" : "none";
+
+  blockDlg.showModal();
+}
+
+blockClose.onclick = ()=> blockDlg.close();
+blkOpacity.addEventListener("input", ()=>{ blkOpacityRead.value = String(blkOpacity.value); });
+
+newBlockBtn.onclick = ()=>{
+  openBlockDialog(null);
+};
+
+blkSave.onclick = ()=>{
+  let start = String(blkStart.value||"").trim();
+  let end   = String(blkEnd.value||"").trim();
+  const label = String(blkLabel.value||"").trim();
+  const color = String(blkColor.value||"#ff7a18").trim();
+  const opacity = clamp01(blkOpacity.value);
+  const notes = String(blkNotes.value||"").trim();
+
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(end)) end = start;
+  if(start > end){ const tmp = start; start = end; end = tmp; }
+  if(!label){
+    alert("Please enter a name/label for the block.");
+    return;
+  }
+
+  const id = editingBlockId || uidBlk();
+  const next = blocksCloud.filter(b=>b.id !== id);
+  next.push({ id, start, end, label, color, opacity, notes });
+  blocksCloud = normaliseBlocks(next);
+
+  queueBlocksCloudSave("Saving blocks…");
+
+  // jump to start day in day view for quick checking
+  setSelected(new Date(start));
+  mode = "day";
+  blockDlg.close();
+  render();
+};
+
+blkDelete.onclick = ()=>{
+  if(!editingBlockId) return;
+  if(!confirm("Delete this block?")) return;
+
+  blocksCloud = normaliseBlocks(blocksCloud.filter(b=>b.id !== editingBlockId));
+  queueBlocksCloudSave("Deleting block…");
+  blockDlg.close();
   render();
 };
 
