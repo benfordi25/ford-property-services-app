@@ -362,7 +362,6 @@
       <div class="hint">Install to Home Screen for app mode.</div>
     </div>
   </main>
-
   <!-- Add/Edit Modal -->
   <div class="modalBack" id="modalBack">
     <div class="modal">
@@ -438,6 +437,7 @@
       </div>
     </div>
   </div>
+
   <!-- Documents Modal -->
   <div class="modalBack" id="docsBack">
     <div class="modal" style="width:min(780px, 100%)">
@@ -530,6 +530,7 @@
   </div>
 
   <input id="docsInput" type="file" accept="image/*,application/pdf" multiple style="display:none" />
+  <input id="logoInput" type="file" accept="image/*" style="display:none" />
 
   <!-- Dashboard button -->
   <a href="../dashboard/" style="
@@ -641,6 +642,7 @@
       return (STATUSES.find(s=>s.key===key)?.label) || key;
     }
     function telSan(s){ return String(s || "").trim().replace(/[^\d+]/g, ""); }
+
     const boardEl = document.getElementById('board');
     const totalCountEl = document.getElementById('totalCount');
     const savedStatusEl = document.getElementById('savedStatus');
@@ -760,6 +762,7 @@
       URL.revokeObjectURL(img.src);
       return url;
     }
+
     logoBox.addEventListener('click', ()=> logoInput.click());
     logoInput.addEventListener('change', async (e)=>{
       const f = e.target.files && e.target.files[0];
@@ -797,11 +800,16 @@
       renderAll();
     });
 
+    /* =========================
+       PART 3 STARTS NEXT
+       - Message tap/hold logic
+       - increaseMessage/decreaseMessage
+       ========================= */
     // ==============================
-    // ✅ NEW: MESSAGE BUTTON SYSTEM
+    // ✅ MESSAGE BUTTON SYSTEM (UPDATED)
     // ==============================
     // msgCount: 0..3
-    // msgLog: [{ n: 1|2|3, atMs: number }, ...]
+    // msgLog: [{ n: 0|1|2|3, atMs: number, action:"inc"|"dec" }, ...]
     function msgLevel(job){
       const n = Number(job?.msgCount || 0);
       if(n >= 3) return 3;
@@ -832,7 +840,7 @@
       return `<div class="chip" style="color:var(--text);border-color:${border};background:${bg};font-weight:950">Message ${lvl}/3</div>`;
     }
 
-    function pressMessage(jobId){
+    function increaseMessage(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
 
@@ -844,7 +852,7 @@
 
       job.msgCount = current + 1;
       job.msgLog = Array.isArray(job.msgLog) ? job.msgLog : [];
-      job.msgLog.unshift({ n: job.msgCount, atMs: Date.now() });
+      job.msgLog.unshift({ n: job.msgCount, atMs: Date.now(), action:"inc" });
       job.updatedAt = new Date().toISOString();
 
       save();
@@ -853,6 +861,79 @@
       if(detailsBack.style.display==="flex" && detailsJobId===jobId){
         openDetailsModal(jobId);
       }
+    }
+
+    function decreaseMessage(jobId){
+      const job = jobs.find(j=>j.id===jobId);
+      if(!job) return;
+
+      const current = Math.min(3, Math.max(0, Number(job.msgCount || 0)));
+      if(current <= 0){
+        // silent (no alert) so it’s not annoying on accidental holds
+        return;
+      }
+
+      job.msgCount = current - 1;
+      job.msgLog = Array.isArray(job.msgLog) ? job.msgLog : [];
+      job.msgLog.unshift({ n: job.msgCount, atMs: Date.now(), action:"dec" });
+      job.updatedAt = new Date().toISOString();
+
+      save();
+      renderAll();
+
+      if(detailsBack.style.display==="flex" && detailsJobId===jobId){
+        openDetailsModal(jobId);
+      }
+    }
+
+    // ✅ Attach TAP vs HOLD behaviour to a button element
+    function attachTapHold(btn, {
+      onTap,
+      onHold,
+      holdMs = 1200
+    }){
+      let holdTimer = null;
+      let didHold = false;
+
+      const clear = ()=>{
+        if(holdTimer) clearTimeout(holdTimer);
+        holdTimer = null;
+      };
+
+      const start = (e)=>{
+        // prevent long-press context menu on mobile
+        e.preventDefault?.();
+        didHold = false;
+        clear();
+        holdTimer = setTimeout(()=>{
+          didHold = true;
+          onHold && onHold();
+        }, holdMs);
+      };
+
+      const end = ()=>{
+        clear();
+      };
+
+      // Pointer events cover mouse + touch (modern browsers)
+      btn.addEventListener("pointerdown", start, { passive:false });
+      btn.addEventListener("pointerup", end);
+      btn.addEventListener("pointercancel", end);
+      btn.addEventListener("pointerleave", end);
+
+      // If the user taps, click fires after pointerup.
+      // We only run tap if hold didn't already run.
+      btn.addEventListener("click", (e)=>{
+        if(didHold){
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onTap && onTap();
+      });
+
+      // Extra: stop iOS context menu / selection
+      btn.addEventListener("contextmenu", (e)=> e.preventDefault());
     }
 
     function migrateJob(j){
@@ -871,7 +952,7 @@
       j.createdAt = j.createdAt || new Date().toISOString();
       j.updatedAt = j.updatedAt || new Date().toISOString();
 
-      // ✅ NEW defaults
+      // ✅ message defaults
       if(j.msgCount === undefined || j.msgCount === null || j.msgCount === "") j.msgCount = 0;
       const mc = Number(j.msgCount);
       j.msgCount = Number.isFinite(mc) ? Math.min(3, Math.max(0, Math.floor(mc))) : 0;
@@ -908,7 +989,8 @@
     function saveLocal(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
       savedStatusEl.textContent = nowStamp();
-                             }
+    }
+
     // ===== Cloud sync =====
     let currentUserId = null;
     let cloudReady = false;
@@ -1254,7 +1336,8 @@
       const u = new URL(location.href);
       u.searchParams.set("job", jobId);
       return u.toString();
-          }
+    }
+
     // ===========================
     // REAL PDF SHARE (not link)
     // ===========================
@@ -1392,7 +1475,6 @@
       const blob = doc.output("blob");
       return { blob, filename };
     }
-
     async function shareJobAsPdf(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
@@ -1443,7 +1525,7 @@
       const worksDays = Number(job.worksDays || 1);
       const estHours = Number(job.estHours || 1);
 
-      // ✅ NEW: message info
+      // ✅ message info
       const msgCount = Math.min(3, Math.max(0, Number(job.msgCount || 0)));
       const msgLog = Array.isArray(job.msgLog) ? job.msgLog : [];
 
@@ -1458,12 +1540,14 @@
                ${msgLog.slice(0,12).map(x=>{
                  const when = x?.atMs ? new Date(x.atMs).toLocaleString("en-GB") : "";
                  const n = x?.n ?? "";
+                 const act = x?.action === "dec" ? " (decrease)" : (x?.action === "inc" ? " (increase)" : "");
                  return `<div style="border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);border-radius:12px;padding:8px 10px">
-                           <b>Message ${escapeHtml(String(n))}/3</b>
+                           <b>Message ${escapeHtml(String(n))}/3${escapeHtml(act)}</b>
                            <div class="small">${escapeHtml(when)}</div>
                          </div>`;
                }).join("")}
              </div>
+             <div class="small" style="margin-top:8px;color:var(--muted)">Tip: tap message button to increase • hold to decrease.</div>
            </div>`
         : `<div style="margin-top:12px;color:var(--muted)">No message presses recorded yet.</div>`;
 
@@ -1478,7 +1562,6 @@
           ${job.estVisitDT ? `<div style="margin-top:10px"><span class="chip bookingEst">Est visit: ${escapeHtml(ukDT(job.estVisitDT))} • ${escapeHtml(String(estHours))}h</span></div>` : ""}
           ${job.worksDT ? `<div style="margin-top:10px"><span class="chip bookingWorks">Works: ${escapeHtml(prettyDT(job.worksDT))} • ${escapeHtml(String(worksDays))} days${job.worksEndDT ? ` • ends ${escapeHtml(prettyDT(job.worksEndDT))}` : ""}</span></div>` : ""}
 
-          <!-- ✅ NEW: message counter + log -->
           ${msgLine}
           ${msgLogHtml}
 
@@ -1497,12 +1580,11 @@
       detailsDocs.onclick = ()=> openDocs(jobId);
       detailsEdit.onclick = ()=> { closeDetails(); openEdit(jobId); };
       detailsPrint.onclick = ()=> printJobPdf(jobId);
-
-      // Share button already shares PDF
       detailsShare.onclick = ()=> shareJobAsPdf(jobId);
 
       detailsBack.style.display = "flex";
-        }
+    }
+
     function printJobPdf(jobId){
       const job = jobs.find(j=>j.id===jobId);
       if(!job) return;
@@ -1754,7 +1836,6 @@
     docsDone.addEventListener("click", closeDocs);
     docsBack.addEventListener("click", (e)=>{ if(e.target===docsBack) closeDocs(); });
 
-    // Share PDF from Documents modal
     docsShare.addEventListener("click", ()=>{
       if(!docsJobId) return;
       shareJobAsPdf(docsJobId);
@@ -1765,6 +1846,7 @@
       docsInput.value = "";
       docsInput.click();
     });
+
     function bytesToNice(n){
       const b = Number(n||0);
       if(!b) return "";
@@ -1903,7 +1985,6 @@
         refreshJobSheetDocsUI();
       }
     });
-
     function renderBookings(filteredJobs){
       const now = Date.now();
       const items = [];
@@ -1961,6 +2042,7 @@
     // ✅ BOARD RENDER (UPDATED)
     // - Address colour changes based on msgCount (blue/amber/red)
     // - Message button appears only in Requires Estimate
+    // - TAP increases, HOLD (1.2s) decreases (same button)
     // ==========================
     function renderBoard(filteredJobs){
       boardEl.innerHTML = "";
@@ -2002,7 +2084,7 @@
 
           const chipsHtml = [];
 
-          // ✅ NEW: show message badge chip if pressed
+          // show message badge chip if pressed
           const badge = msgBadgeHtml(job);
           if(badge) chipsHtml.push(badge);
 
@@ -2023,10 +2105,23 @@
           btns.push(`<button type="button" data-act="details">Details</button>`);
           btns.push(`<button type="button" data-act="documents">Documents</button>`);
 
-          // ✅ NEW: Message button ONLY on Requires Estimate
+          // Message button ONLY on Requires Estimate
           if(job.status === "req_est"){
-            const nextNum = Math.min(3, msgLevel(job) + 1);
-            btns.push(`<button type="button" class="warn" data-act="message">Message ${nextNum}/3</button>`);
+            const lvl = msgLevel(job);
+            const nextUp = Math.min(3, lvl + 1);
+            const nextDown = Math.max(0, lvl - 1);
+
+            // label hints what will happen
+            // Tap => goes to nextUp
+            // Hold => goes to nextDown
+            const label =
+              lvl === 0 ? `Message 1/3` :
+              lvl === 1 ? `Message 2/3` :
+              lvl === 2 ? `Message 3/3` :
+                          `Message 3/3`;
+
+            btns.push(`<button type="button" class="warn" data-act="message"
+              title="Tap to increase. Hold to decrease.">${label}</button>`);
           }
 
           if(job.status === "req_est" || job.status === "est_accepted"){
@@ -2076,7 +2171,6 @@
 
           const docsCount = Array.isArray(job.docs) ? job.docs.length : 0;
 
-          // ✅ NEW: address style changes based on messages (blue -> amber -> red)
           const styledTitle = `<span style="${msgAddressStyle(job)}">${escapeHtml(title)}</span>`;
 
           el.innerHTML = `
@@ -2106,9 +2200,15 @@
           const estBtn = el.querySelector('[data-act="estimateNo"]');
           if(estBtn) estBtn.addEventListener("click", ()=> setEstimateNo(job.id));
 
-          // ✅ NEW: message press handler
+          // ✅ UPDATED: Message button tap/hold
           const msgBtn = el.querySelector('[data-act="message"]');
-          if(msgBtn) msgBtn.addEventListener("click", ()=> pressMessage(job.id));
+          if(msgBtn){
+            attachTapHold(msgBtn, {
+              onTap: ()=> increaseMessage(job.id),
+              onHold: ()=> decreaseMessage(job.id),
+              holdMs: 1200
+            });
+          }
 
           el.querySelectorAll('[data-act="move"]').forEach(b=>{
             b.addEventListener("click", ()=>{
@@ -2137,18 +2237,19 @@
       renderBookings(filtered);
       renderBoard(filtered);
     }
+
     function csvEscape(v){
       const s = String(v ?? "");
       if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
       return s;
     }
+
     function exportCsv(){
       const header = [
         "id","status","status_label","letting_agent","assigned_agent","address","estimate_no",
         "estimate_visit_dt","estimate_hours",
         "works_booked_dt","works_days","works_end_dt",
         "invoice_ref","phone","notes","documents_count",
-        // ✅ NEW fields exported
         "msg_count","msg_log_count",
         "created_at","updated_at"
       ];
@@ -2162,7 +2263,6 @@
         j.invRef || "", j.phone || "",
         (j.notes || "").replace(/\n/g," "),
         Array.isArray(j.docs) ? j.docs.length : 0,
-        // ✅ NEW data
         Math.min(3, Math.max(0, Number(j.msgCount||0))),
         Array.isArray(j.msgLog) ? j.msgLog.length : 0,
         j.createdAt || "", j.updatedAt || ""
@@ -2205,4 +2305,4 @@
     syncBoot();
   </script>
 </body>
-  </html>
+</html>
