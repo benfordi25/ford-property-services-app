@@ -841,7 +841,50 @@
         alert("Message counter already at 3/3.");
         return;
       }
+// ==============================
+// HOLD-TO-CONFIRM MESSAGE
+// ==============================
+let msgHoldTimer = null;
+const MSG_HOLD_MS = 700; // hold duration (ms)
 
+function attachHoldToMessage(btn, jobId){
+  if(!btn) return;
+
+  const start = (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+
+    if(msgHoldTimer) clearTimeout(msgHoldTimer);
+
+    btn.style.opacity = "0.6";
+    btn.textContent = "Hold…";
+
+    msgHoldTimer = setTimeout(()=>{
+      btn.style.opacity = "";
+      btn.textContent = btn.getAttribute("data-label") || "Message";
+      pressMessage(jobId);
+      msgHoldTimer = null;
+    }, MSG_HOLD_MS);
+  };
+
+  const cancel = ()=>{
+    if(msgHoldTimer){
+      clearTimeout(msgHoldTimer);
+      msgHoldTimer = null;
+    }
+    btn.style.opacity = "";
+    btn.textContent = btn.getAttribute("data-label") || btn.textContent;
+  };
+
+  // Touch + mouse support
+  btn.addEventListener("mousedown", start);
+  btn.addEventListener("touchstart", start, { passive:false });
+
+  btn.addEventListener("mouseup", cancel);
+  btn.addEventListener("mouseleave", cancel);
+  btn.addEventListener("touchend", cancel);
+  btn.addEventListener("touchcancel", cancel);
+}
       job.msgCount = current + 1;
       job.msgLog = Array.isArray(job.msgLog) ? job.msgLog : [];
       job.msgLog.unshift({ n: job.msgCount, atMs: Date.now() });
