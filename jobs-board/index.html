@@ -2151,7 +2151,10 @@ function attachHoldToMessage(btn, jobId){
 
           // ✅ NEW: message press handler
           const msgBtn = el.querySelector('[data-act="message"]');
-          if(msgBtn) msgBtn.addEventListener("click", ()=> pressMessage(job.id));
+if(msgBtn){
+  msgBtn.setAttribute("data-label", msgBtn.textContent);
+  attachHoldToMessage(msgBtn, job.id);
+}
 
           el.querySelectorAll('[data-act="move"]').forEach(b=>{
             b.addEventListener("click", ()=>{
