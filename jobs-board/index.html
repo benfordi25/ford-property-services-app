@@ -1337,6 +1337,30 @@
       u.searchParams.set("job", jobId);
       return u.toString();
     }
+    function photoNotesLink(job){
+  // Adjust if your Photo Notes folder name/path is different:
+  const base = "../photo-notes/";
+
+  const u = new URL(base, location.href); // resolves relative to current page
+  u.searchParams.set("job", job.id);
+
+  // best-effort auto-populate
+  if(job.address) u.searchParams.set("address", job.address);
+  if(job.agent)   u.searchParams.set("agent", job.agent);
+  if(job.ref)     u.searchParams.set("ref", job.ref);
+  if(job.estNo)   u.searchParams.set("estNo", job.estNo);
+
+  // back link straight to this job’s details
+  u.searchParams.set("back", jobDeepLink(job.id));
+
+  return u.toString();
+}
+
+function openJobNotes(jobId){
+  const job = jobs.find(j=>j.id===jobId);
+  if(!job) return;
+  window.location.href = photoNotesLink(job);
+}
 
     // ===========================
     // REAL PDF SHARE (not link)
@@ -2104,6 +2128,8 @@
           btns.push(`<button type="button" data-act="edit">Edit</button>`);
           btns.push(`<button type="button" data-act="details">Details</button>`);
           btns.push(`<button type="button" data-act="documents">Documents</button>`);
+          const notesBtn = el.querySelector('[data-act="jobnotes"]');
+if(notesBtn) notesBtn.addEventListener("click", ()=> openJobNotes(job.id));
 
           // Message button ONLY on Requires Estimate
           if(job.status === "req_est"){
@@ -2133,8 +2159,9 @@
           }
 
           if(job.status === "attended_est_required"){
-            btns.push(`<button type="button" class="warn" data-act="estimateNo">Estimate No</button>`);
-            btns.push(`<button type="button" class="ok" data-act="move" data-to="est_complete">Complete</button>`);
+  btns.push(`<button type="button" class="primary" data-act="jobnotes">Job Notes</button>`);
+  btns.push(`<button type="button" class="warn" data-act="estimateNo">Estimate No</button>`);
+  btns.push(`<button type="button" class="ok" data-act="move" data-to="est_complete">Complete</button>`);
           }
 
           if(job.status === "est_complete"){
