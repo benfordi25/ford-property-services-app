@@ -209,7 +209,8 @@
       <div class="title">Ford Property Services • Photo Notes</div>
       <span class="pill" id="speechPill">Dictation: checking…</span>
     </div>
-    <a class="back" href="../dashboard/">← Dashboard</a>
+    <!-- ✅ AMENDED: becomes "Back to Job" when opened from Jobs Board -->
+    <a class="back" id="backLink" href="../dashboard/">← Dashboard</a>
   </div>
 </header>
 
@@ -247,6 +248,10 @@
         <button id="btnPdf" class="good" type="button">🧾 Generate PDF</button>
         <button id="btnShare" class="primary" type="button" disabled>📤 Share PDF (WhatsApp)</button>
         <button id="btnDownload" class="primary" type="button" disabled>⬇️ Download PDF</button>
+
+        <!-- ✅ AMENDED: Save into Jobs Board Documents -->
+        <button id="btnSaveToJob" class="good" type="button" disabled>💾 Save to Job (Docs)</button>
+
         <button id="btnClear" class="bad" type="button">🗑️ Clear All</button>
       </div>
 
@@ -291,749 +296,1007 @@
     </div>
   </div>
 </div>
+<script type="module">
+/* =========================================================
+   Firebase (SAME PROJECT AS JOBS BOARD)
+   ========================================================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getFirestore, doc, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
-<script>
-(() => {
-  const $ = (id) => document.getElementById(id);
+const firebaseConfig = {
+  apiKey: "AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
+  authDomain: "fps-jobs-board.firebaseapp.com",
+  projectId: "fps-jobs-board",
+  storageBucket: "fps-jobs-board.firebasestorage.app",
+  messagingSenderId: "386598717430",
+  appId: "1:386598717430:web:06a2b508f1d7fcc92069d7"
+};
 
-  async function killServiceWorkersAndCachesOnce(){
-    try{
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const r of regs) await r.unregister().catch(()=>{});
-      }
-      if (window.caches) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k).catch(()=>{})));
-      }
-    }catch(e){}
-  }
+const fbApp   = initializeApp(firebaseConfig);
+const auth    = getAuth(fbApp);
+const db      = getFirestore(fbApp);
+const storage = getStorage(fbApp);
+const JOBS_DOC = doc(db, "jobsBoard", "shared");
 
-  // -------- GPS helpers --------
-  async function reverseGeocodeOSM(lat, lon){
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
-    const res = await fetch(url, { headers: { "Accept":"application/json", "Accept-Language":"en-GB" } });
-    if(!res.ok) throw new Error("Reverse geocode failed");
-    return await res.json();
-  }
-  function setGpsHint(msg){ $("gpsHint").textContent = msg || ""; }
-  function setHouseHint(msg){ $("houseHint").textContent = msg || ""; }
-  function pickTown(a){ return a.town || a.city || a.village || a.suburb || a.county || ""; }
-  function buildAddress(houseNumber, road, town, postcode){
-    const line1 = [houseNumber, road].filter(Boolean).join(" ").trim();
-    return [line1, town, postcode].filter(Boolean).join(", ").trim();
-  }
-  async function fetchNearbyFullAddresses({road, town, postcode, lat, lon}){
-    const d = 0.01;
-    const left = lon - d, right = lon + d, top = lat + d, bottom = lat - d;
-    const params = new URLSearchParams({
-      format: "jsonv2",
-      addressdetails: "1",
-      limit: "60",
-      countrycodes: "gb",
-      street: road || "",
-      city: town || "",
-      postalcode: postcode || "",
-      viewbox: `${left},${top},${right},${bottom}`,
-      bounded: "1"
-    });
-    const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
-    const res = await fetch(url, { headers: { "Accept":"application/json", "Accept-Language":"en-GB" } });
-    if(!res.ok) throw new Error("Nearby address search failed");
-    const results = await res.json();
-
-    const seen = new Set();
-    const list = [];
-    for(const r of results){
-      const a = r.address || {};
-      const hn = (a.house_number || "").trim();
-      const rRoad = (a.road || a.pedestrian || a.footway || "").trim();
-      if(!hn) continue;
-      if(road && rRoad && rRoad.toLowerCase() !== road.toLowerCase()) continue;
-
-      const t = pickTown(a) || town || "";
-      const pc = (a.postcode || "").trim() || postcode || "";
-      const full = buildAddress(hn, rRoad || road, t, pc);
-      if(!full) continue;
-
-      const key = full.toLowerCase();
-      if(seen.has(key)) continue;
-      seen.add(key);
-
-      list.push({ label: full, house: hn, road: rRoad || road, town: t, postcode: pc });
-    }
-    list.sort((A,B)=>{
-      const na = parseInt(A.house,10), nb = parseInt(B.house,10);
-      if(!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
-      return A.label.localeCompare(B.label, "en-GB", {numeric:true, sensitivity:"base"});
-    });
-    return list.slice(0, 40);
-  }
-  function showAddressPicker(addresses, preselectLabel){
-    const wrap = $("houseWrap");
-    const sel = $("houseSelect");
-    sel.innerHTML = "";
-    const opt0 = document.createElement("option");
-    opt0.value = "";
-    opt0.textContent = "Select the correct address…";
-    sel.appendChild(opt0);
-    addresses.forEach((a) => {
-      const opt = document.createElement("option");
-      opt.value = a.label;
-      opt.textContent = a.label;
-      sel.appendChild(opt);
-    });
-    wrap.style.display = addresses.length ? "block" : "none";
-    if(preselectLabel){
-      const found = addresses.find(x => x.label.toLowerCase() === preselectLabel.toLowerCase());
-      if(found) sel.value = found.label;
-    }
-  }
-
-  const STORE = "fps_photo_notes_v2_store";
-  const VERSION_STAMP = "v2.3.0-keep-block-together-download";
-
-  function setStatus(msg){ $("status").textContent = msg; }
-  function setDebug(msg){ $("debug").textContent = msg || ""; }
-  function todayISO(){ return new Date().toISOString().slice(0,10); }
-  function ukDateFromISO(iso){ return new Date(iso).toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"}); }
-
-  let state = { address:"", date: todayISO(), operative:"", photos: [], gps:null };
-  let pdfBlob = null;
-  let pdfFile = null;
-  let pdfName = "";
-
-  function save(){ localStorage.setItem(STORE, JSON.stringify(state)); }
-  function load(){
-    const raw = localStorage.getItem(STORE);
-    if (raw) { try { state = JSON.parse(raw); } catch {} }
-    state.photos = (state.photos || []).map(p => ({ subject: p.subject || "", ...p }));
-
-    $("address").value = state.address || "";
-    $("date").value = state.date || todayISO();
-    $("operative").value = state.operative || "";
-    state.date = $("date").value;
-  }
-
-  $("address").addEventListener("input", e => { state.address = e.target.value; save(); });
-  $("date").addEventListener("change", e => { state.date = e.target.value; save(); });
-  $("operative").addEventListener("input", e => { state.operative = e.target.value; save(); });
-
-  $("btnGps").onclick = () => {
-    if(!navigator.geolocation){ alert("GPS not supported on this device/browser."); return; }
-    setGpsHint("Getting your location…");
-    setHouseHint("");
-    $("houseWrap").style.display = "none";
-    $("btnGps").disabled = true;
-
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try{
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-
-        setGpsHint("Finding road/postcode…");
-        const data = await reverseGeocodeOSM(lat, lon);
-        const a = data.address || {};
-
-        const hn = (a.house_number || "").trim();
-        const road = (a.road || a.pedestrian || a.footway || "").trim();
-        const town = pickTown(a);
-        const postcode = (a.postcode || "").trim();
-
-        const base = buildAddress(hn, road, town, postcode) || (data.display_name || "");
-        if(base){
-          $("address").value = base;
-          state.address = base;
-          state.gps = { lat, lon, ts: new Date().toISOString(), road, town, postcode, house: hn || null };
-          save();
-        }
-
-        if(!road){ setGpsHint("GPS found, but no road name returned. You can type the address manually."); return; }
-
-        setGpsHint("Looking for nearby full addresses…");
-        const addresses = await fetchNearbyFullAddresses({ road, town, postcode, lat, lon });
-
-        if(addresses.length){
-          showAddressPicker(addresses, base);
-          setGpsHint(hn
-            ? "GPS found an address. If it’s slightly off, pick the correct one below."
-            : "GPS couldn’t find an exact house number — pick the correct address below.");
-
-          $("houseSelect").onchange = () => {
-            const chosen = $("houseSelect").value;
-            if(!chosen) return;
-
-            $("address").value = chosen;
-            state.address = chosen;
-
-            const picked = addresses.find(x => x.label === chosen);
-            state.gps = {
-              ...(state.gps || {}),
-              lat, lon,
-              ts: new Date().toISOString(),
-              road: picked?.road || road,
-              town: picked?.town || town,
-              postcode: picked?.postcode || postcode,
-              house: picked?.house || hn || null
-            };
-            save();
-            setHouseHint("Selected address applied.");
-          };
-        } else {
-          setGpsHint(hn ? "GPS found an address." : "Couldn’t find nearby addresses for this road. Type the number manually if needed.");
-        }
-
-      }catch(err){
-        console.warn(err);
-        setGpsHint("Couldn’t get address list. Try again in a moment.");
-        alert("Couldn’t convert GPS to nearby addresses (may be rate-limited). Try again shortly.");
-      }finally{
-        $("btnGps").disabled = false;
-      }
-    }, () => {
-      $("btnGps").disabled = false;
-      setGpsHint("GPS permission denied or unavailable.");
-      alert("GPS not available. Please allow location permission and try again.");
-    }, { enableHighAccuracy:true, timeout:12000, maximumAge:60000 });
-  };
-
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const dictationSupported = !!SpeechRecognition;
-  $("speechPill").textContent = dictationSupported ? "Dictation: supported" : "Dictation: not supported";
-
-  // Bullet dictation
-  const BULLET = "• ";
-  function ensureEndsWithNewline(text){
-    if(!text) return "";
-    return text.endsWith("\n") ? text : (text + "\n");
-  }
-  function prepareBulletPrefix(currentText){
-    const t = (currentText || "");
-    const trimmed = t.trimEnd();
-    if(!trimmed) return BULLET;
-    const lines = trimmed.split("\n");
-    const last = lines[lines.length - 1].trim();
-    if(last === "•" || last === BULLET.trim()) return "";
-    return ensureEndsWithNewline(t) + BULLET;
-  }
-
-  // Delete modal hold-to-delete
-  let deleteTargetId = null;
-  let holdRAF = null;
-  let holdStart = 0;
-
-  function openDeleteModal(photo){
-    deleteTargetId = photo.id;
-    $("delThumb").src = photo.img;
-    const subj = (photo.subject || "").trim();
-    $("delSub").textContent = `Photo subject: ${subj ? subj : "—"}`;
-    $("delModal").classList.add("show");
-    $("holdFillBig").style.width = "0%";
-    $("delModal").setAttribute("aria-hidden", "false");
-  }
-  function closeDeleteModal(){
-    cancelHold();
-    deleteTargetId = null;
-    $("delModal").classList.remove("show");
-    $("delModal").setAttribute("aria-hidden", "true");
-    $("holdFillBig").style.width = "0%";
-  }
-  function cancelHold(){
-    if(holdRAF){ cancelAnimationFrame(holdRAF); holdRAF = null; }
-    $("holdFillBig").style.width = "0%";
-  }
-  function startHold(){
-    if(!deleteTargetId) return;
-    cancelHold();
-    holdStart = Date.now();
-    if(navigator.vibrate) navigator.vibrate(25);
-
-    const tick = () => {
-      const elapsed = Date.now() - holdStart;
-      const pct = Math.min(100, (elapsed/2000)*100);
-      $("holdFillBig").style.width = pct.toFixed(1) + "%";
-      if(elapsed >= 2000){
-        const id = deleteTargetId;
-        closeDeleteModal();
-        state.photos = state.photos.filter(p => p.id !== id);
-        save();
-        pdfBlob = pdfFile = null;
-        $("btnShare").disabled = true;
-        $("btnDownload").disabled = true;
-        setStatus("Photo deleted.");
-        if(navigator.vibrate) navigator.vibrate(90);
-        render();
-        return;
-      }
-      holdRAF = requestAnimationFrame(tick);
-    };
-    holdRAF = requestAnimationFrame(tick);
-  }
-
-  $("delCancel").onclick = closeDeleteModal;
-  $("delModal").addEventListener("click", (e) => {
-    if(e.target === $("delModal")) closeDeleteModal();
+async function ensureSignedIn(){
+  if(auth.currentUser) return auth.currentUser;
+  const u = await new Promise(resolve=>{
+    const unsub = onAuthStateChanged(auth, usr=>{ unsub(); resolve(usr); });
   });
+  if(u) return u;
+  await signInAnonymously(auth);
+  return auth.currentUser;
+}
 
-  const holdArea = $("holdArea");
-  holdArea.addEventListener("touchstart", (e)=>{ e.preventDefault(); startHold(); }, {passive:false});
-  holdArea.addEventListener("touchend", (e)=>{ e.preventDefault(); cancelHold(); }, {passive:false});
-  holdArea.addEventListener("touchcancel", cancelHold);
-  holdArea.addEventListener("mousedown", (e)=>{ e.preventDefault(); startHold(); });
-  window.addEventListener("mouseup", cancelHold);
-  window.addEventListener("blur", cancelHold);
+/* =========================================================
+   LINK CONTEXT FROM JOBS BOARD
+   ========================================================= */
+const params      = new URLSearchParams(location.search);
+const linkedJobId = params.get("job") || "";
+const backUrl     = params.get("back") || "../dashboard/";
 
-  // Images import helpers
-  function looksLikeImage(file){
-    const name = (file?.name || "").toLowerCase();
-    const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
-    const typeOk = (file?.type || "").startsWith("image/");
-    return typeOk || extOk;
+const backLink = document.getElementById("backLink");
+if(linkedJobId){
+  backLink.textContent = "← Back to Job";
+  backLink.href = backUrl;
+}
+
+/* =========================================================
+   STATE / HELPERS
+   ========================================================= */
+const $ = (id) => document.getElementById(id);
+
+const STORE = "fps_photo_notes_v2_store";
+const VERSION_STAMP = "v2.4.0-job-linked-doc-save";
+
+let state = {
+  address:"",
+  date:"",
+  operative:"",
+  photos:[],
+  gps:null
+};
+
+let pdfBlob = null;
+let pdfFile = null;
+let pdfName = "";
+
+function save(){
+  localStorage.setItem(STORE, JSON.stringify(state));
+}
+
+function load(){
+  const raw = localStorage.getItem(STORE);
+  if(raw){
+    try{ state = JSON.parse(raw); }catch{}
   }
-  function loadImageFromObjectURL(file){
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image load failed")); };
-      img.src = url;
-    });
+  state.photos = (state.photos || []).map(p=>({
+    id:p.id,
+    img:p.img,
+    subject:p.subject||"",
+    note:p.note||"",
+    ts:p.ts
+  }));
+
+  $("address").value   = state.address || "";
+  $("operative").value = state.operative || "";
+  $("date").value      = state.date || new Date().toISOString().slice(0,10);
+}
+
+/* =========================================================
+   AUTO-POPULATE FROM JOB (BEST EFFORT)
+   ========================================================= */
+function applyLinkContext(){
+  const addr  = params.get("address");
+  const agent = params.get("agent");
+  const ref   = params.get("ref");
+  const estNo = params.get("estNo");
+
+  if(addr && !$("address").value.trim()){
+    $("address").value = addr;
+    state.address = addr;
   }
-  function compressToJpegDataURL(img, maxW=1600, maxH=1600, quality=0.85){
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
-    const scale = Math.min(1, maxW / w, maxH / h);
-    const cw = Math.max(1, Math.round(w * scale));
-    const ch = Math.max(1, Math.round(h * scale));
-    const c = document.createElement("canvas");
-    c.width = cw; c.height = ch;
-    const ctx = c.getContext("2d", { alpha:false });
-    ctx.drawImage(img, 0, 0, cw, ch);
-    return c.toDataURL("image/jpeg", quality);
-  }
 
-  $("btnCamera").onclick = () => $("cameraInput").click();
-  $("btnGallery").onclick = () => $("galleryInput").click();
-
-  async function handleFiles(e){
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    setStatus(`Adding ${files.length} photo(s)…`);
-    setDebug(`Picker returned ${files.length} file(s).`);
-
-    let added = 0, skipped = 0;
-
-    for (const f of files) {
-      try{
-        if (!f || !looksLikeImage(f)) { skipped++; continue; }
-        const img = await loadImageFromObjectURL(f);
-        const dataURL = compressToJpegDataURL(img, 1600, 1600, 0.85);
-        if (!dataURL.startsWith("data:image/")) { skipped++; continue; }
-
-        state.photos.push({
-          id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
-          img: dataURL,
-          subject: "",
-          note: "",
-          ts: new Date().toISOString()
-        });
-        added++;
-      }catch(err){
-        console.warn("Import fail:", err);
-        skipped++;
-      }
+  if(!$("operative").value.trim()){
+    const bits = [];
+    if(agent) bits.push(agent);
+    if(ref)   bits.push(ref);
+    if(estNo) bits.push(`Est ${estNo}`);
+    if(bits.length){
+      $("operative").value = bits.join(" • ");
+      state.operative = $("operative").value;
     }
-
-    save();
-    pdfBlob = pdfFile = null;
-    $("btnShare").disabled = true;
-    $("btnDownload").disabled = true;
-    render();
-
-    if (added) setStatus(`Photos added: ${added}${skipped ? ` (skipped ${skipped})` : ""}.`);
-    else setStatus("No photos added. (If your phone uses HEIC, switch Camera settings to JPEG.)");
-    e.target.value = "";
   }
+  save();
+}
 
-  $("cameraInput").addEventListener("change", handleFiles);
-  $("galleryInput").addEventListener("change", handleFiles);
+/* =========================================================
+   BASIC FORM BINDINGS
+   ========================================================= */
+$("address").addEventListener("input", e=>{
+  state.address = e.target.value;
+  save();
+});
 
-  function escapeHtml(str){
-    return String(str||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+$("operative").addEventListener("input", e=>{
+  state.operative = e.target.value;
+  save();
+});
+
+$("date").addEventListener("change", e=>{
+  state.date = e.target.value;
+  save();
+});
+  /* =========================================================
+   CACHE / SERVICE WORKER KILL (your existing)
+   ========================================================= */
+async function killServiceWorkersAndCachesOnce(){
+  try{
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister().catch(()=>{});
+    }
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k).catch(()=>{})));
+    }
+  }catch(e){}
+}
+
+/* =========================================================
+   GPS helpers (your existing)
+   ========================================================= */
+async function reverseGeocodeOSM(lat, lon){
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
+  const res = await fetch(url, { headers: { "Accept":"application/json", "Accept-Language":"en-GB" } });
+  if(!res.ok) throw new Error("Reverse geocode failed");
+  return await res.json();
+}
+function setGpsHint(msg){ $("gpsHint").textContent = msg || ""; }
+function setHouseHint(msg){ $("houseHint").textContent = msg || ""; }
+function pickTown(a){ return a.town || a.city || a.village || a.suburb || a.county || ""; }
+function buildAddress(houseNumber, road, town, postcode){
+  const line1 = [houseNumber, road].filter(Boolean).join(" ").trim();
+  return [line1, town, postcode].filter(Boolean).join(", ").trim();
+}
+async function fetchNearbyFullAddresses({road, town, postcode, lat, lon}){
+  const d = 0.01;
+  const left = lon - d, right = lon + d, top = lat + d, bottom = lat - d;
+  const params = new URLSearchParams({
+    format: "jsonv2",
+    addressdetails: "1",
+    limit: "60",
+    countrycodes: "gb",
+    street: road || "",
+    city: town || "",
+    postalcode: postcode || "",
+    viewbox: `${left},${top},${right},${bottom}`,
+    bounded: "1"
+  });
+  const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+  const res = await fetch(url, { headers: { "Accept":"application/json", "Accept-Language":"en-GB" } });
+  if(!res.ok) throw new Error("Nearby address search failed");
+  const results = await res.json();
+
+  const seen = new Set();
+  const list = [];
+  for(const r of results){
+    const a = r.address || {};
+    const hn = (a.house_number || "").trim();
+    const rRoad = (a.road || a.pedestrian || a.footway || "").trim();
+    if(!hn) continue;
+    if(road && rRoad && rRoad.toLowerCase() !== road.toLowerCase()) continue;
+
+    const t = pickTown(a) || town || "";
+    const pc = (a.postcode || "").trim() || postcode || "";
+    const full = buildAddress(hn, rRoad || road, t, pc);
+    if(!full) continue;
+
+    const key = full.toLowerCase();
+    if(seen.has(key)) continue;
+    seen.add(key);
+
+    list.push({ label: full, house: hn, road: rRoad || road, town: t, postcode: pc });
   }
-  function escapeAttr(str){
-    return escapeHtml(str).replace(/"/g, "&quot;");
+  list.sort((A,B)=>{
+    const na = parseInt(A.house,10), nb = parseInt(B.house,10);
+    if(!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+    return A.label.localeCompare(B.label, "en-GB", {numeric:true, sensitivity:"base"});
+  });
+  return list.slice(0, 40);
+}
+function showAddressPicker(addresses, preselectLabel){
+  const wrap = $("houseWrap");
+  const sel = $("houseSelect");
+  sel.innerHTML = "";
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = "Select the correct address…";
+  sel.appendChild(opt0);
+  addresses.forEach((a) => {
+    const opt = document.createElement("option");
+    opt.value = a.label;
+    opt.textContent = a.label;
+    sel.appendChild(opt);
+  });
+  wrap.style.display = addresses.length ? "block" : "none";
+  if(preselectLabel){
+    const found = addresses.find(x => x.label.toLowerCase() === preselectLabel.toLowerCase());
+    if(found) sel.value = found.label;
   }
+}
 
-  function render(){
-    $("countPill").textContent = `${state.photos.length} photo${state.photos.length===1?"":"s"}`;
-    const list = $("list");
-    list.innerHTML = "";
+function setStatus(msg){ $("status").textContent = msg; }
+function setDebug(msg){ $("debug").textContent = msg || ""; }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 
-    if (!state.photos.length) {
-      const div = document.createElement("div");
-      div.className = "hint";
-      div.textContent = "No photos yet. Tap “Camera” or “Gallery”.";
-      list.appendChild(div);
+/* =========================================================
+   GPS button (your existing)
+   ========================================================= */
+$("btnGps").onclick = () => {
+  if(!navigator.geolocation){ alert("GPS not supported on this device/browser."); return; }
+  setGpsHint("Getting your location…");
+  setHouseHint("");
+  $("houseWrap").style.display = "none";
+  $("btnGps").disabled = true;
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try{
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      setGpsHint("Finding road/postcode…");
+      const data = await reverseGeocodeOSM(lat, lon);
+      const a = data.address || {};
+
+      const hn = (a.house_number || "").trim();
+      const road = (a.road || a.pedestrian || a.footway || "").trim();
+      const town = pickTown(a);
+      const postcode = (a.postcode || "").trim();
+
+      const base = buildAddress(hn, road, town, postcode) || (data.display_name || "");
+      if(base){
+        $("address").value = base;
+        state.address = base;
+        state.gps = { lat, lon, ts: new Date().toISOString(), road, town, postcode, house: hn || null };
+        save();
+      }
+
+      if(!road){ setGpsHint("GPS found, but no road name returned. You can type the address manually."); return; }
+
+      setGpsHint("Looking for nearby full addresses…");
+      const addresses = await fetchNearbyFullAddresses({ road, town, postcode, lat, lon });
+
+      if(addresses.length){
+        showAddressPicker(addresses, base);
+        setGpsHint(hn
+          ? "GPS found an address. If it’s slightly off, pick the correct one below."
+          : "GPS couldn’t find an exact house number — pick the correct address below.");
+
+        $("houseSelect").onchange = () => {
+          const chosen = $("houseSelect").value;
+          if(!chosen) return;
+
+          $("address").value = chosen;
+          state.address = chosen;
+
+          const picked = addresses.find(x => x.label === chosen);
+          state.gps = {
+            ...(state.gps || {}),
+            lat, lon,
+            ts: new Date().toISOString(),
+            road: picked?.road || road,
+            town: picked?.town || town,
+            postcode: picked?.postcode || postcode,
+            house: picked?.house || hn || null
+          };
+          save();
+          setHouseHint("Selected address applied.");
+        };
+      } else {
+        setGpsHint(hn ? "GPS found an address." : "Couldn’t find nearby addresses for this road. Type the number manually if needed.");
+      }
+
+    }catch(err){
+      console.warn(err);
+      setGpsHint("Couldn’t get address list. Try again in a moment.");
+      alert("Couldn’t convert GPS to nearby addresses (may be rate-limited). Try again shortly.");
+    }finally{
+      $("btnGps").disabled = false;
+    }
+  }, () => {
+    $("btnGps").disabled = false;
+    setGpsHint("GPS permission denied or unavailable.");
+    alert("GPS not available. Please allow location permission and try again.");
+  }, { enableHighAccuracy:true, timeout:12000, maximumAge:60000 });
+};
+
+/* =========================================================
+   Dictation support (your existing)
+   ========================================================= */
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const dictationSupported = !!SpeechRecognition;
+$("speechPill").textContent = dictationSupported ? "Dictation: supported" : "Dictation: not supported";
+
+const BULLET = "• ";
+function ensureEndsWithNewline(text){
+  if(!text) return "";
+  return text.endsWith("\n") ? text : (text + "\n");
+}
+function prepareBulletPrefix(currentText){
+  const t = (currentText || "");
+  const trimmed = t.trimEnd();
+  if(!trimmed) return BULLET;
+  const lines = trimmed.split("\n");
+  const last = lines[lines.length - 1].trim();
+  if(last === "•" || last === BULLET.trim()) return "";
+  return ensureEndsWithNewline(t) + BULLET;
+}
+
+/* =========================================================
+   Delete modal hold-to-delete (your existing)
+   ========================================================= */
+let deleteTargetId = null;
+let holdRAF = null;
+let holdStart = 0;
+
+function openDeleteModal(photo){
+  deleteTargetId = photo.id;
+  $("delThumb").src = photo.img;
+  const subj = (photo.subject || "").trim();
+  $("delSub").textContent = `Photo subject: ${subj ? subj : "—"}`;
+  $("delModal").classList.add("show");
+  $("holdFillBig").style.width = "0%";
+  $("delModal").setAttribute("aria-hidden", "false");
+}
+function closeDeleteModal(){
+  cancelHold();
+  deleteTargetId = null;
+  $("delModal").classList.remove("show");
+  $("delModal").setAttribute("aria-hidden", "true");
+  $("holdFillBig").style.width = "0%";
+}
+function cancelHold(){
+  if(holdRAF){ cancelAnimationFrame(holdRAF); holdRAF = null; }
+  $("holdFillBig").style.width = "0%";
+}
+function startHold(){
+  if(!deleteTargetId) return;
+  cancelHold();
+  holdStart = Date.now();
+  if(navigator.vibrate) navigator.vibrate(25);
+
+  const tick = () => {
+    const elapsed = Date.now() - holdStart;
+    const pct = Math.min(100, (elapsed/2000)*100);
+    $("holdFillBig").style.width = pct.toFixed(1) + "%";
+    if(elapsed >= 2000){
+      const id = deleteTargetId;
+      closeDeleteModal();
+      state.photos = state.photos.filter(p => p.id !== id);
+      save();
+      pdfBlob = pdfFile = null;
+      $("btnShare").disabled = true;
+      $("btnDownload").disabled = true;
+      $("btnSaveToJob").disabled = true;
+      setStatus("Photo deleted.");
+      if(navigator.vibrate) navigator.vibrate(90);
+      render();
       return;
     }
+    holdRAF = requestAnimationFrame(tick);
+  };
+  holdRAF = requestAnimationFrame(tick);
+}
 
-    state.photos.forEach((p, idx) => {
-      const item = document.createElement("div");
-      item.className = "item";
-      item.innerHTML = `
-        <div class="itemTop">
-          <img class="thumb" src="${p.img}" alt="Photo ${idx+1}">
-          <div class="meta">
-            <div class="metaHead">
-              <div class="metaLeft">
-                <p class="t">Photo ${idx+1}${p.subject ? " • " + escapeHtml(p.subject) : ""}</p>
-                <p class="s">Notes + subject</p>
-              </div>
-              <button class="dangerTop" type="button" data-delopen="${p.id}">🗑️ Delete</button>
+$("delCancel").onclick = closeDeleteModal;
+$("delModal").addEventListener("click", (e) => {
+  if(e.target === $("delModal")) closeDeleteModal();
+});
+
+const holdArea = $("holdArea");
+holdArea.addEventListener("touchstart", (e)=>{ e.preventDefault(); startHold(); }, {passive:false});
+holdArea.addEventListener("touchend", (e)=>{ e.preventDefault(); cancelHold(); }, {passive:false});
+holdArea.addEventListener("touchcancel", cancelHold);
+holdArea.addEventListener("mousedown", (e)=>{ e.preventDefault(); startHold(); });
+window.addEventListener("mouseup", cancelHold);
+window.addEventListener("blur", cancelHold);
+
+/* =========================================================
+   Images import helpers (your existing)
+   ========================================================= */
+function looksLikeImage(file){
+  const name = (file?.name || "").toLowerCase();
+  const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
+  const typeOk = (file?.type || "").startsWith("image/");
+  return typeOk || extOk;
+}
+function loadImageFromObjectURL(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image load failed")); };
+    img.src = url;
+  });
+}
+function compressToJpegDataURL(img, maxW=1600, maxH=1600, quality=0.85){
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const scale = Math.min(1, maxW / w, maxH / h);
+  const cw = Math.max(1, Math.round(w * scale));
+  const ch = Math.max(1, Math.round(h * scale));
+  const c = document.createElement("canvas");
+  c.width = cw; c.height = ch;
+  const ctx = c.getContext("2d", { alpha:false });
+  ctx.drawImage(img, 0, 0, cw, ch);
+  return c.toDataURL("image/jpeg", quality);
+}
+
+$("btnCamera").onclick = () => $("cameraInput").click();
+$("btnGallery").onclick = () => $("galleryInput").click();
+
+async function handleFiles(e){
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+
+  setStatus(`Adding ${files.length} photo(s)…`);
+  setDebug(`Picker returned ${files.length} file(s).`);
+
+  let added = 0, skipped = 0;
+
+  for (const f of files) {
+    try{
+      if (!f || !looksLikeImage(f)) { skipped++; continue; }
+      const img = await loadImageFromObjectURL(f);
+      const dataURL = compressToJpegDataURL(img, 1600, 1600, 0.85);
+      if (!dataURL.startsWith("data:image/")) { skipped++; continue; }
+
+      state.photos.push({
+        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+        img: dataURL,
+        subject: "",
+        note: "",
+        ts: new Date().toISOString()
+      });
+      added++;
+    }catch(err){
+      console.warn("Import fail:", err);
+      skipped++;
+    }
+  }
+
+  save();
+  pdfBlob = pdfFile = null;
+  $("btnShare").disabled = true;
+  $("btnDownload").disabled = true;
+  $("btnSaveToJob").disabled = true;
+  render();
+
+  if (added) setStatus(`Photos added: ${added}${skipped ? ` (skipped ${skipped})` : ""}.`);
+  else setStatus("No photos added. (If your phone uses HEIC, switch Camera settings to JPEG.)");
+  e.target.value = "";
+}
+
+$("cameraInput").addEventListener("change", handleFiles);
+$("galleryInput").addEventListener("change", handleFiles);
+
+/* =========================================================
+   Render (your existing)
+   ========================================================= */
+function escapeHtml(str){
+  return String(str||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){
+  return escapeHtml(str).replace(/"/g, "&quot;");
+}
+
+function render(){
+  $("countPill").textContent = `${state.photos.length} photo${state.photos.length===1?"":"s"}`;
+  const list = $("list");
+  list.innerHTML = "";
+
+  if (!state.photos.length) {
+    const div = document.createElement("div");
+    div.className = "hint";
+    div.textContent = "No photos yet. Tap “Camera” or “Gallery”.";
+    list.appendChild(div);
+    return;
+  }
+
+  state.photos.forEach((p, idx) => {
+    const item = document.createElement("div");
+    item.className = "item";
+    item.innerHTML = `
+      <div class="itemTop">
+        <img class="thumb" src="${p.img}" alt="Photo ${idx+1}">
+        <div class="meta">
+          <div class="metaHead">
+            <div class="metaLeft">
+              <p class="t">Photo ${idx+1}${p.subject ? " • " + escapeHtml(p.subject) : ""}</p>
+              <p class="s">Notes + subject</p>
             </div>
-
-            <input data-subject="${p.id}" placeholder="Subject (e.g., Kitchen door, Bathroom basin)" value="${escapeAttr(p.subject || "")}">
-            <div style="height:8px"></div>
-            <textarea placeholder="Notes…">${p.note || ""}</textarea>
+            <button class="dangerTop" type="button" data-delopen="${p.id}">🗑️ Delete</button>
           </div>
+
+          <input data-subject="${p.id}" placeholder="Subject (e.g., Kitchen door, Bathroom basin)" value="${escapeAttr(p.subject || "")}">
+          <div style="height:8px"></div>
+          <textarea placeholder="Notes…">${p.note || ""}</textarea>
         </div>
+      </div>
 
-        <div class="itemBtns">
-          <button class="small primary" type="button" ${dictationSupported ? "" : "disabled"} data-dict="${p.id}">🎙️ Dictate</button>
-          <button class="small ghost" type="button" disabled data-stop="${p.id}">⏹️ Stop</button>
-          <button class="small" type="button" data-clearnote="${p.id}">🧽 Clear Notes</button>
-        </div>
-      `;
+      <div class="itemBtns">
+        <button class="small primary" type="button" ${dictationSupported ? "" : "disabled"} data-dict="${p.id}">🎙️ Dictate</button>
+        <button class="small ghost" type="button" disabled data-stop="${p.id}">⏹️ Stop</button>
+        <button class="small" type="button" data-clearnote="${p.id}">🧽 Clear Notes</button>
+      </div>
+    `;
 
-      item.querySelector(`[data-delopen="${p.id}"]`).onclick = () => openDeleteModal(p);
+    item.querySelector(`[data-delopen="${p.id}"]`).onclick = () => openDeleteModal(p);
 
-      const subj = item.querySelector(`[data-subject="${p.id}"]`);
-      subj.addEventListener("input", () => {
-        p.subject = subj.value;
-        save();
-        pdfBlob = pdfFile = null;
-        $("btnShare").disabled = true;
-        $("btnDownload").disabled = true;
-        item.querySelector(".t").textContent = `Photo ${idx+1}${p.subject ? " • " + p.subject : ""}`;
-      });
-
-      const ta = item.querySelector("textarea");
-      ta.addEventListener("input", () => {
-        p.note = ta.value;
-        save();
-        pdfBlob = pdfFile = null;
-        $("btnShare").disabled = true;
-        $("btnDownload").disabled = true;
-      });
-
-      item.querySelector(`[data-clearnote="${p.id}"]`).onclick = () => {
-        if(!confirm("Clear notes for this photo only?")) return;
-        p.note = "";
-        ta.value = "";
-        save();
-        pdfBlob = pdfFile = null;
-        $("btnShare").disabled = true;
-        $("btnDownload").disabled = true;
-        setStatus("Notes cleared for that photo.");
-      };
-
-      const btnDict = item.querySelector(`[data-dict="${p.id}"]`);
-      const btnStop = item.querySelector(`[data-stop="${p.id}"]`);
-      if (dictationSupported) {
-        btnDict.onclick = () => {
-          const rec = new SpeechRecognition();
-          rec.lang = "en-GB";
-          rec.interimResults = true;
-          rec.continuous = false;
-
-          btnDict.disabled = true;
-          btnStop.disabled = false;
-
-          const prefix = prepareBulletPrefix(ta.value);
-          if(prefix){
-            ta.value = prefix;
-            p.note = ta.value;
-            save();
-          }
-          setStatus("Listening… speak your bullet point.");
-
-          let finalText = "";
-          btnStop.onclick = () => { try{ rec.stop(); }catch{} };
-
-          rec.onresult = (e) => {
-            let interim = "";
-            for (let i = e.resultIndex; i < e.results.length; i++){
-              const t = e.results[i][0].transcript;
-              if (e.results[i].isFinal) finalText += t;
-              else interim += t;
-            }
-            const spoken = (finalText + interim).trim();
-            if(!spoken) return;
-
-            const current = ta.value || "";
-            const lastBulletIdx = current.lastIndexOf(BULLET);
-            if(lastBulletIdx !== -1){
-              const before = current.slice(0, lastBulletIdx + BULLET.length);
-              ta.value = before + spoken;
-            }else{
-              ta.value = (current.trim() ? (current.trimEnd() + "\n") : "") + BULLET + spoken;
-            }
-            p.note = ta.value;
-            save();
-          };
-
-          rec.onerror = () => {
-            setStatus("Dictation error. Try again.");
-            btnDict.disabled = false;
-            btnStop.disabled = true;
-          };
-
-          rec.onend = () => {
-            setStatus("Ready.");
-            btnDict.disabled = false;
-            btnStop.disabled = true;
-            ta.value = (ta.value || "").replace(/[ \t]+$/g, "");
-            p.note = ta.value;
-            save();
-          };
-
-          try { rec.start(); } catch {
-            setStatus("Couldn’t start dictation. Try again.");
-            btnDict.disabled = false;
-            btnStop.disabled = true;
-          }
-        };
-      }
-
-      list.appendChild(item);
+    const subj = item.querySelector(`[data-subject="${p.id}"]`);
+    subj.addEventListener("input", () => {
+      p.subject = subj.value;
+      save();
+      pdfBlob = pdfFile = null;
+      $("btnShare").disabled = true;
+      $("btnDownload").disabled = true;
+      $("btnSaveToJob").disabled = true;
+      item.querySelector(".t").textContent = `Photo ${idx+1}${p.subject ? " • " + p.subject : ""}`;
     });
-  }
 
-  // ---------- PDF helpers ----------
-  function addPageNumbers(doc){
-    const pageCount = doc.getNumberOfPages();
-    for(let i=1;i<=pageCount;i++){
-      doc.setPage(i);
-      const w = doc.internal.pageSize.getWidth();
-      const h = doc.internal.pageSize.getHeight();
-      doc.setFont("helvetica","normal");
-      doc.setFontSize(9);
-      doc.setTextColor(130);
-      doc.text(`Page ${i} of ${pageCount}`, w - 12, h - 8, { align:"right" });
+    const ta = item.querySelector("textarea");
+    ta.addEventListener("input", () => {
+      p.note = ta.value;
+      save();
+      pdfBlob = pdfFile = null;
+      $("btnShare").disabled = true;
+      $("btnDownload").disabled = true;
+      $("btnSaveToJob").disabled = true;
+    });
+
+    item.querySelector(`[data-clearnote="${p.id}"]`).onclick = () => {
+      if(!confirm("Clear notes for this photo only?")) return;
+      p.note = "";
+      ta.value = "";
+      save();
+      pdfBlob = pdfFile = null;
+      $("btnShare").disabled = true;
+      $("btnDownload").disabled = true;
+      $("btnSaveToJob").disabled = true;
+      setStatus("Notes cleared for that photo.");
+    };
+
+    const btnDict = item.querySelector(`[data-dict="${p.id}"]`);
+    const btnStop = item.querySelector(`[data-stop="${p.id}"]`);
+    if (dictationSupported) {
+      btnDict.onclick = () => {
+        const rec = new SpeechRecognition();
+        rec.lang = "en-GB";
+        rec.interimResults = true;
+        rec.continuous = false;
+
+        btnDict.disabled = true;
+        btnStop.disabled = false;
+
+        const prefix = prepareBulletPrefix(ta.value);
+        if(prefix){
+          ta.value = prefix;
+          p.note = ta.value;
+          save();
+        }
+        setStatus("Listening… speak your bullet point.");
+
+        let finalText = "";
+        btnStop.onclick = () => { try{ rec.stop(); }catch{} };
+
+        rec.onresult = (e) => {
+          let interim = "";
+          for (let i = e.resultIndex; i < e.results.length; i++){
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal) finalText += t;
+            else interim += t;
+          }
+          const spoken = (finalText + interim).trim();
+          if(!spoken) return;
+
+          const current = ta.value || "";
+          const lastBulletIdx = current.lastIndexOf(BULLET);
+          if(lastBulletIdx !== -1){
+            const before = current.slice(0, lastBulletIdx + BULLET.length);
+            ta.value = before + spoken;
+          }else{
+            ta.value = (current.trim() ? (current.trimEnd() + "\n") : "") + BULLET + spoken;
+          }
+          p.note = ta.value;
+          save();
+        };
+
+        rec.onerror = () => {
+          setStatus("Dictation error. Try again.");
+          btnDict.disabled = false;
+          btnStop.disabled = true;
+        };
+
+        rec.onend = () => {
+          setStatus("Ready.");
+          btnDict.disabled = false;
+          btnStop.disabled = true;
+          ta.value = (ta.value || "").replace(/[ \t]+$/g, "");
+          p.note = ta.value;
+          save();
+        };
+
+        try { rec.start(); } catch {
+          setStatus("Couldn’t start dictation. Try again.");
+          btnDict.disabled = false;
+          btnStop.disabled = true;
+        }
+      };
     }
-  }
 
-  function downloadLastPdf(){
-    if(!pdfBlob){ alert("Generate the PDF first."); return; }
-    const url = URL.createObjectURL(pdfBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = pdfName || "photo-notes.pdf";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 2000);
-    setStatus("PDF downloaded.");
-  }
-
-  $("btnDownload").onclick = downloadLastPdf;
-
-  // ---------- CLEAN PROFESSIONAL PDF (NO TIMESTAMPS, KEEP PHOTO+NOTES TOGETHER) ----------
-  $("btnPdf").onclick = async () => {
-    if (!state.address.trim()) { alert("Add the property address first."); return; }
-    if (!state.photos.length) { alert("Add at least one photo first."); return; }
-
-    setStatus("Generating PDF…");
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:"p", unit:"mm", format:"a4" });
-
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const margin = 12;
-    const contentW = pageW - margin*2;
-
-    const border = 210;
-    const dark = 20;
-    const mid = 110;
-
-    const dateUK = ukDateFromISO(state.date);
-    const gpsLine = (state.gps && typeof state.gps.lat==="number" && typeof state.gps.lon==="number")
-      ? `${state.gps.lat.toFixed(6)}, ${state.gps.lon.toFixed(6)}`
-      : "";
-
-    function hr(y){
-      doc.setDrawColor(border);
-      doc.setLineWidth(0.3);
-      doc.line(margin, y, pageW - margin, y);
-    }
-    function card(x, y, w, h){
-      doc.setDrawColor(border);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(x, y, w, h, 3, 3);
-    }
-
-    async function dataURLToImage(dataURL){
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = dataURL;
-      });
-    }
-
-    function ensureSpace(neededHeight, y){
-      if (y + neededHeight > pageH - 12) {
-        doc.addPage();
-        return 18;
+    list.appendChild(item);
+  });
       }
-      return y;
-    }
-
-    // Header
-    doc.setTextColor(dark);
-    doc.setFont("helvetica","bold");
-    doc.setFontSize(16);
-    doc.text("FORD PROPERTY SERVICES", margin, 18);
-
-    doc.setFontSize(12);
+  /* =========================================================
+   PDF helpers (your existing)
+   ========================================================= */
+function addPageNumbers(doc){
+  const pageCount = doc.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    const w = doc.internal.pageSize.getWidth();
+    const h = doc.internal.pageSize.getHeight();
     doc.setFont("helvetica","normal");
-    doc.setTextColor(mid);
-    doc.text("PHOTO NOTES REPORT", margin, 25);
+    doc.setFontSize(9);
+    doc.setTextColor(130);
+    doc.text(`Page ${i} of ${pageCount}`, w - 12, h - 8, { align:"right" });
+  }
+}
 
-    hr(30);
+function downloadLastPdf(){
+  if(!pdfBlob){ alert("Generate the PDF first."); return; }
+  const url = URL.createObjectURL(pdfBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = pdfName || "photo-notes.pdf";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  setStatus("PDF downloaded.");
+}
 
-    // Info block
-    let y = 36;
-    const infoH = gpsLine ? 32 : 26;
-    card(margin, y, contentW, infoH);
+$("btnDownload").onclick = downloadLastPdf;
 
+/* =========================================================
+   CLEAN PROFESSIONAL PDF (NO TIMESTAMPS, KEEP PHOTO+NOTES TOGETHER)
+   (your existing)
+   ========================================================= */
+function ukDateFromISO(iso){
+  try{
+    return new Date(iso).toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"});
+  }catch{
+    return iso || "";
+  }
+}
+
+async function dataURLToImage(dataURL){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataURL;
+  });
+}
+
+function safeFilePart(s){
+  return String(s||"")
+    .replace(/[^\w\s-]/g,"")
+    .trim()
+    .replace(/\s+/g,"-")
+    .slice(0,40) || "Report";
+}
+
+$("btnPdf").onclick = async () => {
+  if (!state.address.trim()) { alert("Add the property address first."); return; }
+  if (!state.photos.length) { alert("Add at least one photo first."); return; }
+
+  setStatus("Generating PDF…");
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"p", unit:"mm", format:"a4" });
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 12;
+  const contentW = pageW - margin*2;
+
+  const border = 210;
+  const dark = 20;
+  const mid = 110;
+
+  const dateUK = ukDateFromISO(state.date || todayISO());
+  const gpsLine = (state.gps && typeof state.gps.lat==="number" && typeof state.gps.lon==="number")
+    ? `${state.gps.lat.toFixed(6)}, ${state.gps.lon.toFixed(6)}`
+    : "";
+
+  function hr(y){
+    doc.setDrawColor(border);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, pageW - margin, y);
+  }
+  function card(x, y, w, h){
+    doc.setDrawColor(border);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, w, h, 3, 3);
+  }
+
+  function ensureSpace(neededHeight, y){
+    if (y + neededHeight > pageH - 12) {
+      doc.addPage();
+      return 18;
+    }
+    return y;
+  }
+
+  // Header
+  doc.setTextColor(dark);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(16);
+  doc.text("FORD PROPERTY SERVICES", margin, 18);
+
+  doc.setFontSize(12);
+  doc.setFont("helvetica","normal");
+  doc.setTextColor(mid);
+  doc.text("PHOTO NOTES REPORT", margin, 25);
+
+  hr(30);
+
+  // Info block
+  let y = 36;
+  const infoH = gpsLine ? 32 : 26;
+  card(margin, y, contentW, infoH);
+
+  doc.setTextColor(dark);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(10);
+
+  doc.text("Property:", margin+4, y+7);
+  doc.text("Date:", margin+4, y+14);
+  doc.text("Operative:", margin+4, y+21);
+  if (gpsLine) doc.text("GPS:", margin+4, y+28);
+
+  doc.setFont("helvetica","normal");
+  doc.setTextColor(dark);
+
+  const addrLines = doc.splitTextToSize(state.address.trim(), contentW - 30);
+  doc.text(addrLines, margin+26, y+7);
+
+  doc.text(dateUK, margin+26, y+14);
+  doc.text((state.operative || "").trim() || "—", margin+26, y+21);
+  if (gpsLine) doc.text(gpsLine, margin+26, y+28);
+
+  y += infoH + 10;
+
+  // Photos: keep each block together
+  for (let i=0; i<state.photos.length; i++){
+    const p = state.photos[i];
+    const subjectLine = (p.subject || "").trim();
+
+    const note = (p.note || "").trim() || "—";
+    const noteLines = doc.splitTextToSize(note, contentW - 8);
+    const noteBoxH = Math.max(14, (noteLines.length * 5) + 8);
+
+    // Determine image draw size
+    const img = await dataURLToImage(p.img);
+    const imgWpx = img.naturalWidth || img.width;
+    const imgHpx = img.naturalHeight || img.height;
+
+    const titleH = 10;
+    const imgMaxH = 85;
+    let drawW = contentW;
+    let drawH = (imgHpx / imgWpx) * drawW;
+    if (drawH > imgMaxH) { drawH = imgMaxH; drawW = (imgWpx / imgHpx) * drawH; }
+
+    const imgCardH = drawH + 6;
+    const notesH = 4 + noteBoxH + 6;
+    const blockH = titleH + imgCardH + notesH + 8;
+
+    y = ensureSpace(blockH, y);
+
+    // Title
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(11);
     doc.setTextColor(dark);
+    doc.text(`Photo ${i+1}${subjectLine ? " — " + subjectLine : ""}`, margin, y);
+    y += 5;
+
+    // Image card
+    const xImg = margin + (contentW - drawW)/2;
+    card(margin, y, contentW, imgCardH);
+    doc.addImage(p.img, "JPEG", xImg, y+3, drawW, drawH);
+    y += imgCardH + 6;
+
+    // Notes label + box
     doc.setFont("helvetica","bold");
     doc.setFontSize(10);
-
-    doc.text("Property:", margin+4, y+7);
-    doc.text("Date:", margin+4, y+14);
-    doc.text("Operative:", margin+4, y+21);
-    if (gpsLine) doc.text("GPS:", margin+4, y+28);
+    doc.setTextColor(dark);
+    doc.text("Notes", margin, y);
+    y += 4;
 
     doc.setFont("helvetica","normal");
+    doc.setFontSize(10);
     doc.setTextColor(dark);
 
-    const addrLines = doc.splitTextToSize(state.address.trim(), contentW - 30);
-    doc.text(addrLines, margin+26, y+7);
+    card(margin, y, contentW, noteBoxH);
+    doc.text(noteLines, margin+4, y+6);
 
-    doc.text(dateUK, margin+26, y+14);
-    doc.text((state.operative || "").trim() || "—", margin+26, y+21);
-    if (gpsLine) doc.text(gpsLine, margin+26, y+28);
+    y += noteBoxH + 12;
+  }
 
-    y += infoH + 10;
+  addPageNumbers(doc);
 
-    // Photos: keep each block together
-    for (let i=0; i<state.photos.length; i++){
-      const p = state.photos[i];
-      const subjectLine = (p.subject || "").trim();
+  pdfBlob = doc.output("blob");
+  const safeAddr = safeFilePart(state.address);
+  const datePart = (state.date || todayISO());
+  pdfName = `Photo-Notes-${safeAddr}-${datePart}.pdf`;
+  pdfFile = new File([pdfBlob], pdfName, { type:"application/pdf" });
 
-      const note = (p.note || "").trim() || "—";
-      const noteLines = doc.splitTextToSize(note, contentW - 8);
-      const noteBoxH = Math.max(14, (noteLines.length * 5) + 8);
+  $("btnShare").disabled = false;
+  $("btnDownload").disabled = false;
 
-      // Determine image draw size (same logic we will use for actual drawing)
-      const img = await dataURLToImage(p.img);
-      const imgWpx = img.naturalWidth || img.width;
-      const imgHpx = img.naturalHeight || img.height;
+  // ✅ enable save-to-job only if linked to a job
+  $("btnSaveToJob").disabled = !(linkedJobId && pdfBlob);
 
-      const titleH = 10;        // title + gap
-      const imgMaxH = 85;
-      let drawW = contentW;
-      let drawH = (imgHpx / imgWpx) * drawW;
-      if (drawH > imgMaxH) { drawH = imgMaxH; drawW = (imgWpx / imgHpx) * drawH; }
+  setStatus(linkedJobId
+    ? "PDF generated. Tap Share / Download, or Save to Job Documents."
+    : "PDF generated. Tap Share or Download.");
+};
 
-      const imgCardH = drawH + 6;
-      const notesH = 4 + noteBoxH + 6; // "Notes" label + box + gap
-      const blockH = titleH + imgCardH + notesH + 8;
+/* =========================================================
+   Share (your existing)
+   ========================================================= */
+$("btnShare").onclick = async () => {
+  if (!pdfFile) { alert("Generate the PDF first."); return; }
+  if (navigator.canShare && navigator.canShare({ files:[pdfFile] })) {
+    try{
+      await navigator.share({ title: "Photo Notes", text: "Photo notes report attached.", files:[pdfFile] });
+      setStatus("Shared.");
+      return;
+    }catch(e){}
+  }
+  downloadLastPdf();
+  alert("If Share isn’t supported on this device, the PDF downloads—attach it in WhatsApp.");
+};
 
-      // If block doesn't fit, move to next page BEFORE drawing it
-      y = ensureSpace(blockH, y);
+/* =========================================================
+   ✅ NEW: SAVE PDF INTO JOB BOARD DOCUMENTS
+   - Uploads PDF to Firebase Storage
+   - Appends into the matching job.docs in jobsBoard/shared
+   ========================================================= */
+function bytesToNice(n){
+  const b = Number(n||0);
+  if(!b) return "";
+  const units = ["B","KB","MB","GB"];
+  let v=b, i=0;
+  while(v>=1024 && i<units.length-1){ v/=1024; i++; }
+  return `${v.toFixed(i===0?0:1)} ${units[i]}`;
+}
 
-      // Title
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(11);
-      doc.setTextColor(dark);
-      doc.text(`Photo ${i+1}${subjectLine ? " — " + subjectLine : ""}`, margin, y);
-      y += 5;
+async function savePdfToJobDocs(){
+  if(!linkedJobId){
+    alert("This report is not linked to a job. Open Photo Notes from the Jobs Board Job Notes button.");
+    return;
+  }
+  if(!pdfBlob){
+    alert("Generate the PDF first.");
+    return;
+  }
 
-      // Image card
-      const xImg = margin + (contentW - drawW)/2;
-      card(margin, y, contentW, imgCardH);
-      doc.addImage(p.img, "JPEG", xImg, y+3, drawW, drawH);
-      y += imgCardH + 6;
+  $("btnSaveToJob").disabled = true;
+  setStatus("Saving PDF to Job Documents…");
 
-      // Notes label + box (kept together with this photo block)
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(10);
-      doc.setTextColor(dark);
-      doc.text("Notes", margin, y);
-      y += 4;
+  try{
+    await ensureSignedIn();
 
-      doc.setFont("helvetica","normal");
-      doc.setFontSize(10);
-      doc.setTextColor(dark);
+    // Upload to Storage
+    const ts = Date.now();
+    const safeName = (pdfName || `Photo-Notes-${ts}.pdf`).replace(/[^\w.\-() ]+/g, "_");
+    const docId = "doc_" + Math.random().toString(16).slice(2) + "_" + ts.toString(16);
+    const path = `jobsBoard/shared/jobs/${linkedJobId}/${docId}_${safeName}`;
 
-      card(margin, y, contentW, noteBoxH);
-      doc.text(noteLines, margin+4, y+6);
+    const storageRef = sRef(storage, path);
+    await uploadBytes(storageRef, pdfBlob, { contentType:"application/pdf" });
+    const url = await getDownloadURL(storageRef);
 
-      y += noteBoxH + 12;
-    }
+    // Append to Firestore job.docs (transaction)
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(JOBS_DOC);
+      if(!snap.exists()) throw new Error("Jobs doc not found");
 
-    addPageNumbers(doc);
+      const data = snap.data() || {};
+      const arr = Array.isArray(data.jobs) ? data.jobs.slice() : [];
 
-    pdfBlob = doc.output("blob");
-    const safeAddr = state.address.replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"-").slice(0,40);
-    pdfName = `Photo-Notes-${safeAddr}-${state.date}.pdf`;
-    pdfFile = new File([pdfBlob], pdfName, { type:"application/pdf" });
+      const idx = arr.findIndex(j => j && j.id === linkedJobId);
+      if(idx < 0) throw new Error("Linked job not found in jobs list");
 
-    $("btnShare").disabled = false;
-    $("btnDownload").disabled = false;
-    setStatus("PDF generated. Tap Share or Download.");
-  };
+      const job = { ...(arr[idx] || {}) };
+      job.docs = Array.isArray(job.docs) ? job.docs.slice() : [];
 
-  $("btnShare").onclick = async () => {
-    if (!pdfFile) { alert("Generate the PDF first."); return; }
-    if (navigator.canShare && navigator.canShare({ files:[pdfFile] })) {
-      try{
-        await navigator.share({ title: "Photo Notes", text: "Photo notes report attached.", files:[pdfFile] });
-        setStatus("Shared.");
-        return;
-      }catch(e){}
-    }
-    downloadLastPdf();
-    alert("If Share isn’t supported on this device, the PDF downloads—attach it in WhatsApp.");
-  };
+      job.docs.push({
+        id: docId,
+        name: safeName,
+        mime: "application/pdf",
+        size: pdfBlob.size || 0,
+        url,
+        storagePath: path,
+        createdAtMs: ts
+      });
 
-  $("btnClear").onclick = () => {
-    if (!confirm("Clear ALL photos and notes for this report?")) return;
-    state.photos = [];
-    save();
-    pdfBlob = pdfFile = null;
-    $("btnShare").disabled = true;
-    $("btnDownload").disabled = true;
-    setStatus("Cleared.");
-    render();
-  };
+      job.updatedAt = new Date().toISOString();
+      arr[idx] = job;
 
-  // Boot
-  (async () => {
-    await killServiceWorkersAndCachesOnce();
-    load();
-    if (!$("date").value) $("date").value = todayISO();
-    render();
+      tx.set(JOBS_DOC, {
+        jobs: arr,
+        updatedAtMs: ts,
+        updatedBy: auth.currentUser?.uid || null
+      }, { merge:true });
+    });
+
+    setStatus(`Saved to Job Documents ✅ (${bytesToNice(pdfBlob.size)})`);
+    if(navigator.vibrate) navigator.vibrate(60);
+
+  }catch(err){
+    console.error(err);
+    alert("Couldn’t save PDF into Job Documents. Check Storage/Firestore rules and try again.");
+    setStatus("Save failed.");
+  }finally{
+    // re-enable if still linked and pdf exists
+    $("btnSaveToJob").disabled = !(linkedJobId && pdfBlob);
+  }
+}
+
+$("btnSaveToJob").onclick = savePdfToJobDocs;
+
+/* =========================================================
+   Clear all (your existing)
+   ========================================================= */
+$("btnClear").onclick = () => {
+  if (!confirm("Clear ALL photos and notes for this report?")) return;
+  state.photos = [];
+  save();
+  pdfBlob = pdfFile = null;
+  $("btnShare").disabled = true;
+  $("btnDownload").disabled = true;
+  $("btnSaveToJob").disabled = true;
+  setStatus("Cleared.");
+  render();
+};
+
+/* =========================================================
+   Boot
+   ========================================================= */
+(async () => {
+  await killServiceWorkersAndCachesOnce();
+  load();
+
+  if (!$("date").value) $("date").value = todayISO();
+  state.date = $("date").value || todayISO();
+
+  applyLinkContext();
+  render();
+
+  // If job-linked, show hint
+  if(linkedJobId){
+    setStatus("Linked to job — add photos, generate PDF, then Save to Job Documents.");
+  }else{
     setStatus("Ready.");
-  })();
-
+  }
 })();
 </script>
+
 </body>
 </html>
