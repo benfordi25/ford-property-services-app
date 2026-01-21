@@ -2216,6 +2216,8 @@ function openJobNotes(jobId){
           el.querySelector('[data-act="edit"]').addEventListener('click', ()=> openEdit(job.id));
           el.querySelector('[data-act="details"]').addEventListener('click', ()=> openDetailsModal(job.id));
           el.querySelector('[data-act="documents"]').addEventListener('click', ()=> openDocs(job.id));
+          const notesBtn = el.querySelector('[data-act="jobnotes"]');
+if(notesBtn) notesBtn.addEventListener("click", ()=> openJobNotes(job.id));
 
           const bookBtn = el.querySelector('[data-act="book"]');
           if(bookBtn) bookBtn.addEventListener('click', ()=> openBookNow(job.id));
