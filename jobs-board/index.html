@@ -2128,8 +2128,7 @@ function openJobNotes(jobId){
           btns.push(`<button type="button" data-act="edit">Edit</button>`);
           btns.push(`<button type="button" data-act="details">Details</button>`);
           btns.push(`<button type="button" data-act="documents">Documents</button>`);
-          const notesBtn = el.querySelector('[data-act="jobnotes"]');
-if(notesBtn) notesBtn.addEventListener("click", ()=> openJobNotes(job.id));
+          
 
           // Message button ONLY on Requires Estimate
           if(job.status === "req_est"){
