@@ -55,7 +55,7 @@ header .sub{
 
 main{
   padding:16px;
-  max-width:900px;
+  max-width:950px;
   margin:auto;
 }
 
@@ -97,7 +97,7 @@ textarea{resize:vertical}
   gap:10px;
 }
 
-@media (max-width:700px){
+@media (max-width:780px){
   .row{grid-template-columns:1fr}
 }
 
@@ -112,6 +112,7 @@ button{
 }
 
 button:active{transform:scale(.99)}
+button:disabled{opacity:.55; cursor:not-allowed}
 
 button.secondary{
   background:#1b2a55;
@@ -128,9 +129,7 @@ button.danger{
   color:var(--muted);
 }
 
-.list{
-  margin-top:10px;
-}
+.list{ margin-top:10px; }
 
 .list-head{
   display:grid;
@@ -183,18 +182,117 @@ hr.sep{
   border-top:1px solid var(--line);
   margin:12px 0;
 }
+
+.toolbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.toolbar > *{flex:1 1 180px}
+
+.estList{
+  margin-top:10px;
+  display:grid;
+  gap:10px;
+}
+
+.estCard{
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#0b1630;
+  padding:12px;
+}
+
+.estTop{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  justify-content:space-between;
+}
+
+.estTitle{
+  font-weight:900;
+  font-size:14px;
+  margin:0 0 2px;
+}
+
+.estMeta{
+  color:var(--muted);
+  font-size:12px;
+  white-space:pre-line;
+}
+
+.estActions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.estActions button{
+  padding:10px 12px;
+  border-radius:12px;
+  font-weight:900;
+}
+
+.badge{
+  display:inline-flex;
+  gap:8px;
+  align-items:center;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#0b1630;
+  color:var(--muted);
+  font-size:12px;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#64748b}
+.dot.ok{background:var(--green)}
+.dot.bad{background:var(--red)}
 </style>
 </head>
 
 <body>
-
 <header>
   <h1>On-Site Estimate</h1>
-  <div class="sub">On-site estimate • materials + labour • GPS address • PDF export</div>
+  <div class="sub">Multiple estimates • Firestore sync • materials + labour • GPS address • PDF export</div>
 </header>
 
 <main>
-  <!-- ================= AGENT & JOB ================= -->
+
+<!-- ================= SAVED ESTIMATES ================= -->
+<section class="card">
+  <h2>Saved Estimates</h2>
+
+  <div class="toolbar">
+    <div>
+      <label>Workspace (shared across devices)</label>
+      <input id="workspaceKey" placeholder="e.g. FPS">
+      <div class="small">Tip: keep this the same on all devices so you see the same estimates.</div>
+    </div>
+
+    <div>
+      <label>Search</label>
+      <input id="searchBox" placeholder="Search agent, address, date...">
+    </div>
+
+    <div>
+      <label>&nbsp;</label>
+      <button id="newEstimateBtnTop" class="secondary" type="button">+ New Estimate</button>
+      <div style="margin-top:8px" class="badge">
+        <span class="dot" id="syncDot"></span>
+        <span id="syncText">Connecting…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="small" id="listHint" style="margin-top:10px"></div>
+  <div class="estList" id="estimatesList"></div>
+</section>
+
+<!-- ================= JOB DETAILS ================= -->
 <section class="card">
   <h2>Job Details</h2>
 
@@ -229,6 +327,11 @@ hr.sep{
   <div style="margin-top:10px">
     <label>Scope of Works</label>
     <textarea id="jobDesc" rows="3" placeholder="Describe works to be carried out"></textarea>
+  </div>
+
+  <div class="small" style="margin-top:10px">
+    Current estimate:
+    <span class="pill" id="currentIdPill">New (not saved yet)</span>
   </div>
 </section>
 
@@ -334,7 +437,7 @@ hr.sep{
   </div>
 
   <div class="row" style="margin-top:12px">
-    <button class="secondary" id="saveDraftBtn" type="button">Save Draft</button>
+    <button class="secondary" id="saveDraftBtn" type="button">Save to Cloud</button>
     <button id="makePdfBtn" type="button">Generate PDF</button>
   </div>
 
@@ -342,12 +445,42 @@ hr.sep{
     <button class="secondary" id="newEstimateBtn" type="button">New / Clear</button>
     <button class="secondary" id="exportJsonBtn" type="button">Export Backup</button>
   </div>
+
+  <div class="small" id="saveStatus" style="margin-top:10px"></div>
 </section>
-<script>
+
+<script type="module">
 /* ===========================
-   On-Site Estimate • FPS
+   Firebase + Firestore (modular)
+   Multiple Estimates (cloud synced)
    =========================== */
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc,
+  onSnapshot, query, where, orderBy, limit,
+  serverTimestamp, enableIndexedDbPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+/* --- Your config (from Firebase console) --- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
+  authDomain: "fps-jobs-board.firebaseapp.com",
+  projectId: "fps-jobs-board",
+  storageBucket: "fps-jobs-board.firebasestorage.app",
+  messagingSenderId: "386598717430",
+  appId: "1:386598717430:web:06a2b508f1d7fcc92069d7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Offline cache for Firestore (best effort)
+enableIndexedDbPersistence(db).catch(()=>{});
+
+/* ===========================
+   Helpers
+   =========================== */
 const fmtGBP = (n)=> {
   const x = Number(n||0);
   return "£" + x.toFixed(2);
@@ -363,7 +496,34 @@ const escapeHtml = (s)=> String(s ?? "")
   .replaceAll('"',"&quot;")
   .replaceAll("'","&#039;");
 
+function todayISO(){
+  const d = new Date();
+  const tz = d.getTimezoneOffset()*60000;
+  return new Date(d - tz).toISOString().slice(0,10);
+}
+function nowPretty(ts){
+  try{
+    const d = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : null);
+    if(!d) return "";
+    return d.toLocaleString("en-GB", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
+  }catch{return "";}
+}
+function uid(){
+  return (crypto?.randomUUID?.() || ("id_" + Math.random().toString(16).slice(2) + Date.now().toString(16)));
+}
+
+/* ===========================
+   DOM
+   =========================== */
 const els = {
+  workspaceKey: document.getElementById("workspaceKey"),
+  searchBox: document.getElementById("searchBox"),
+  newEstimateBtnTop: document.getElementById("newEstimateBtnTop"),
+  estimatesList: document.getElementById("estimatesList"),
+  listHint: document.getElementById("listHint"),
+  syncDot: document.getElementById("syncDot"),
+  syncText: document.getElementById("syncText"),
+
   clientName: document.getElementById("clientName"),
   estimateDate: document.getElementById("estimateDate"),
   doorNo: document.getElementById("doorNo"),
@@ -371,6 +531,7 @@ const els = {
   gpsStatus: document.getElementById("gpsStatus"),
   jobAddress: document.getElementById("jobAddress"),
   jobDesc: document.getElementById("jobDesc"),
+  currentIdPill: document.getElementById("currentIdPill"),
 
   matName: document.getElementById("matName"),
   matQty: document.getElementById("matQty"),
@@ -400,19 +561,21 @@ const els = {
   makePdfBtn: document.getElementById("makePdfBtn"),
   newEstimateBtn: document.getElementById("newEstimateBtn"),
   exportJsonBtn: document.getElementById("exportJsonBtn"),
+  saveStatus: document.getElementById("saveStatus"),
 };
 
 let state = { materials: [], labour: [] };
+let currentEstimateId = null;
+let estimatesCache = []; // list from Firestore
+let unsub = null;
 
-function todayISO(){
-  const d = new Date();
-  const tz = d.getTimezoneOffset()*60000;
-  return new Date(d - tz).toISOString().slice(0,10);
-}
+const LS_WS = "fps_est_ws_v1";
+els.workspaceKey.value = localStorage.getItem(LS_WS) || "FPS";
+
 if(!els.estimateDate.value) els.estimateDate.value = todayISO();
 
 /* ===========================
-   Lists
+   Render lists (materials/labour)
    =========================== */
 function renderMaterials(){
   els.materialsList.innerHTML = "";
@@ -421,9 +584,9 @@ function renderMaterials(){
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
-      <input value="${escapeHtml(m.name)}" data-k="name" data-i="${idx}">
-      <input type="number" inputmode="decimal" value="${m.qty}" data-k="qty" data-i="${idx}">
-      <input type="number" inputmode="decimal" value="${m.unit}" data-k="unit" data-i="${idx}">
+      <input value="${escapeHtml(m.name)}" data-k="name" data-i="${idx}" data-t="mat">
+      <input type="number" inputmode="decimal" value="${m.qty}" data-k="qty" data-i="${idx}" data-t="mat">
+      <input type="number" inputmode="decimal" value="${m.unit}" data-k="unit" data-i="${idx}" data-t="mat">
       <button class="danger remove" type="button" data-remove="mat" data-i="${idx}">✕</button>
     `;
     els.materialsList.appendChild(div);
@@ -445,9 +608,9 @@ function renderLabour(){
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
-      <input value="${escapeHtml(l.name)}" data-k="name" data-i="${idx}">
-      <input type="number" inputmode="decimal" value="${l.days}" data-k="days" data-i="${idx}">
-      <input type="number" inputmode="decimal" value="${l.rate}" data-k="rate" data-i="${idx}">
+      <input value="${escapeHtml(l.name)}" data-k="name" data-i="${idx}" data-t="lab">
+      <input type="number" inputmode="decimal" value="${l.days}" data-k="days" data-i="${idx}" data-t="lab">
+      <input type="number" inputmode="decimal" value="${l.rate}" data-k="rate" data-i="${idx}" data-t="lab">
       <button class="danger remove" type="button" data-remove="lab" data-i="${idx}">✕</button>
     `;
     els.labourList.appendChild(div);
@@ -492,7 +655,54 @@ function calc(){
 }
 
 /* ===========================
-   Add items
+   Estimate document (for Firestore)
+   =========================== */
+function getDocData(){
+  const totals = calc();
+  const ws = (els.workspaceKey.value || "FPS").trim() || "FPS";
+
+  return {
+    workspace: ws,
+    agentBranch: (els.clientName.value || "").trim(),
+    estimateDate: els.estimateDate.value || todayISO(),
+    doorNo: (els.doorNo.value || "").trim(),
+    jobAddress: (els.jobAddress.value || "").trim(),
+    jobDesc: (els.jobDesc.value || "").trim(),
+    markupGBP: num(els.markupGBP.value),
+    commissionPct: num(els.commissionPct.value),
+    vatPct: num(els.vatPct.value),
+    materials: state.materials,
+    labour: state.labour,
+    totals: {
+      materialsSubtotal: totals.matSub,
+      labourSubtotal: totals.labSub,
+      subtotal: totals.sub,
+      markup: totals.markup,
+      commission: totals.commission,
+      vat: totals.vat,
+      total: totals.total
+    }
+  };
+}
+
+function setFromDocData(d){
+  els.clientName.value = d.agentBranch || "";
+  els.estimateDate.value = d.estimateDate || todayISO();
+  els.doorNo.value = d.doorNo || "";
+  els.jobAddress.value = d.jobAddress || "";
+  els.jobDesc.value = d.jobDesc || "";
+  els.markupGBP.value = (d.markupGBP ?? 0);
+  els.commissionPct.value = (d.commissionPct ?? 0);
+  els.vatPct.value = (d.vatPct ?? 20);
+  state.materials = Array.isArray(d.materials) ? d.materials : [];
+  state.labour = Array.isArray(d.labour) ? d.labour : [];
+  renderMaterials();
+  renderLabour();
+  calc();
+}
+
+/* ===========================
+   Materials / Labour add + edit + remove
    =========================== */
 function addMaterial(){
   const name = els.matName.value.trim();
@@ -506,9 +716,7 @@ function addMaterial(){
   els.matCost.value = "";
   renderMaterials();
   calc();
-  autosave();
 }
-
 function addLabour(){
   const name = els.labName.value.trim();
   const days = num(els.labDays.value);
@@ -521,7 +729,6 @@ function addLabour(){
   els.labRate.value = "";
   renderLabour();
   calc();
-  autosave();
 }
 
 els.addMatBtn.addEventListener("click", addMaterial);
@@ -548,111 +755,30 @@ document.addEventListener("click",(e)=>{
     renderLabour();
   }
   calc();
-  autosave();
 });
 
 document.addEventListener("input",(e)=>{
   const inp = e.target;
   const k = inp.dataset.k;
   const i = inp.dataset.i;
-  if(k==null || i==null) return;
+  const t = inp.dataset.t;
+  if(k==null || i==null || t==null) return;
   const idx = parseInt(i,10);
 
-  if(state.materials[idx] && (k==="name"||k==="qty"||k==="unit")){
+  if(t==="mat" && state.materials[idx] && (k==="name"||k==="qty"||k==="unit")){
     state.materials[idx][k] = (k==="name") ? inp.value : num(inp.value);
-    calc(); autosave();
+    calc();
   }
-  if(state.labour[idx] && (k==="name"||k==="days"||k==="rate")){
+  if(t==="lab" && state.labour[idx] && (k==="name"||k==="days"||k==="rate")){
     state.labour[idx][k] = (k==="name") ? inp.value : num(inp.value);
-    calc(); autosave();
+    calc();
   }
 });
 
-[els.markupGBP, els.commissionPct, els.vatPct].forEach(el=>el.addEventListener("input", ()=>{ calc(); autosave(); }));
+[els.markupGBP, els.commissionPct, els.vatPct].forEach(el=>el.addEventListener("input", calc));
 
 /* ===========================
-   Draft save/load
-   =========================== */
-const KEY = "fps_on_site_estimate_draft_v2";
-
-function getDoc(){
-  return {
-    clientName: els.clientName.value.trim(),
-    estimateDate: els.estimateDate.value,
-    doorNo: els.doorNo.value.trim(),
-    jobAddress: els.jobAddress.value.trim(),
-    jobDesc: els.jobDesc.value.trim(),
-    markupGBP: num(els.markupGBP.value),
-    commissionPct: num(els.commissionPct.value),
-    vatPct: num(els.vatPct.value),
-    materials: state.materials,
-    labour: state.labour,
-    savedAt: new Date().toISOString()
-  };
-}
-
-function setDoc(doc){
-  els.clientName.value = doc.clientName || "";
-  els.estimateDate.value = doc.estimateDate || todayISO();
-  els.doorNo.value = doc.doorNo || "";
-  els.jobAddress.value = doc.jobAddress || "";
-  els.jobDesc.value = doc.jobDesc || "";
-  els.markupGBP.value = (doc.markupGBP ?? 0);
-  els.commissionPct.value = (doc.commissionPct ?? 0);
-  els.vatPct.value = (doc.vatPct ?? 20);
-  state.materials = Array.isArray(doc.materials) ? doc.materials : [];
-  state.labour = Array.isArray(doc.labour) ? doc.labour : [];
-  renderMaterials();
-  renderLabour();
-  calc();
-}
-
-function autosave(){
-  try{ localStorage.setItem(KEY, JSON.stringify(getDoc())); }catch{}
-}
-
-function loadDraft(){
-  try{
-    const raw = localStorage.getItem(KEY);
-    if(!raw) return;
-    const doc = JSON.parse(raw);
-    setDoc(doc);
-  }catch{}
-}
-
-els.saveDraftBtn.addEventListener("click", ()=>{
-  autosave();
-  alert("Draft saved on this device.");
-});
-
-els.newEstimateBtn.addEventListener("click", ()=>{
-  if(!confirm("Clear this estimate?")) return;
-  state.materials = [];
-  state.labour = [];
-  els.clientName.value = "";
-  els.estimateDate.value = todayISO();
-  els.doorNo.value = "";
-  els.jobAddress.value = "";
-  els.jobDesc.value = "";
-  els.markupGBP.value = 0;
-  els.commissionPct.value = 0;
-  els.vatPct.value = 20;
-  renderMaterials(); renderLabour(); calc();
-  autosave();
-});
-
-els.exportJsonBtn.addEventListener("click", ()=>{
-  const blob = new Blob([JSON.stringify(getDoc(), null, 2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `FPS_OnSiteEstimate_Backup_${(els.estimateDate.value||todayISO())}.json`;
-  a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
-});
-
-/* ===========================
-   GPS Address
-   Uses OpenStreetMap Nominatim reverse geocode
+   GPS Address (OpenStreetMap Nominatim)
    =========================== */
 async function reverseGeocode(lat, lon){
   const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
@@ -687,12 +813,10 @@ els.gpsBtn.addEventListener("click", async ()=>{
       const county = a.county || "";
       const postcode = a.postcode || "";
 
-      // Build a clean UK-ish line
       let line1 = [house, road].filter(Boolean).join(" ").trim();
       let line2 = [suburb, town].filter(Boolean).join(", ").trim();
       let line3 = [county, postcode].filter(Boolean).join(", ").trim();
 
-      // If no house number, let user use Door/Flat field
       const door = els.doorNo.value.trim();
       if(!house && door){
         line1 = [door, road].filter(Boolean).join(" ").trim();
@@ -702,24 +826,229 @@ els.gpsBtn.addEventListener("click", async ()=>{
       if(addr) els.jobAddress.value = addr;
 
       els.gpsStatus.textContent = addr ? "Address filled ✔" : "Location found but no address returned — type manually.";
-      calc(); autosave();
-    }catch(err){
+      calc();
+    }catch{
       els.gpsStatus.textContent = "Couldn’t get address — you can type it manually.";
     }finally{
       els.gpsBtn.disabled = false;
     }
-  }, (err)=>{
+  }, ()=>{
     els.gpsStatus.textContent = "GPS blocked/denied — allow location permission then try again.";
     els.gpsBtn.disabled = false;
   }, {enableHighAccuracy:true, timeout:12000, maximumAge:30000});
 });
 
 /* ===========================
+   Firestore: list / save / open / duplicate / delete
+   =========================== */
+const estimatesCol = collection(db, "estimates");
+
+function setSync(ok, msg){
+  els.syncDot.className = "dot " + (ok ? "ok" : "bad");
+  els.syncText.textContent = msg || (ok ? "Synced" : "Offline");
+}
+
+function workspace(){
+  const ws = (els.workspaceKey.value || "FPS").trim() || "FPS";
+  return ws;
+}
+
+function attachListener(){
+  if(unsub) unsub();
+  const ws = workspace();
+  els.listHint.textContent = `Workspace: "${ws}" • showing latest estimates`;
+
+  const qy = query(
+    estimatesCol,
+    where("workspace","==", ws),
+    orderBy("updatedAt","desc"),
+    limit(60)
+  );
+
+  setSync(true, "Syncing…");
+
+  unsub = onSnapshot(qy, (snap)=>{
+    estimatesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setSync(true, `Synced (${estimatesCache.length})`);
+    renderEstimatesList();
+  }, ()=>{
+    setSync(false, "Offline (will sync when back online)");
+    renderEstimatesList();
+  });
+}
+
+function renderEstimatesList(){
+  const term = (els.searchBox.value || "").trim().toLowerCase();
+  const rows = !term ? estimatesCache : estimatesCache.filter(e=>{
+    const s = [
+      e.agentBranch, e.jobAddress, e.estimateDate, e.doorNo
+    ].filter(Boolean).join(" | ").toLowerCase();
+    return s.includes(term);
+  });
+
+  els.estimatesList.innerHTML = "";
+  if(rows.length === 0){
+    els.estimatesList.innerHTML = `<div class="small">No saved estimates found in this workspace.</div>`;
+    return;
+  }
+
+  rows.forEach(e=>{
+    const total = (e?.totals?.total ?? 0);
+    const meta = [
+      `Date: ${e.estimateDate || ""}`,
+      e.doorNo ? `Door/Flat: ${e.doorNo}` : "",
+      e.jobAddress ? e.jobAddress : "",
+      e.updatedAt ? `Updated: ${nowPretty(e.updatedAt)}` : ""
+    ].filter(Boolean).join("\n");
+
+    const div = document.createElement("div");
+    div.className = "estCard";
+    div.innerHTML = `
+      <div class="estTop">
+        <div>
+          <div class="estTitle">${escapeHtml(e.agentBranch || "Untitled")} • ${fmtGBP(total)}</div>
+          <div class="estMeta">${escapeHtml(meta)}</div>
+        </div>
+        <div class="estActions">
+          <button class="secondary" type="button" data-open="${e.id}">Open</button>
+          <button class="secondary" type="button" data-dup="${e.id}">Duplicate</button>
+          <button class="danger" type="button" data-del="${e.id}">Delete</button>
+        </div>
+      </div>
+    `;
+    els.estimatesList.appendChild(div);
+  });
+}
+
+async function saveToCloud(){
+  const ws = workspace();
+  localStorage.setItem(LS_WS, ws);
+
+  const data = getDocData();
+  els.saveStatus.textContent = "Saving…";
+
+  try{
+    if(!currentEstimateId){
+      // Create new
+      const newId = uid(); // create our own id for easy referencing
+      const ref = doc(db, "estimates", newId);
+      await setDoc(ref, {
+        ...data,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      currentEstimateId = newId;
+      els.currentIdPill.textContent = `Saved • ${currentEstimateId}`;
+      els.saveStatus.textContent = "Saved to cloud ✔";
+    }else{
+      // Update existing
+      const ref = doc(db, "estimates", currentEstimateId);
+      await updateDoc(ref, {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+      els.saveStatus.textContent = "Updated in cloud ✔";
+    }
+  }catch(err){
+    els.saveStatus.textContent = "Could not save (offline?) — try again when signal returns.";
+  }
+}
+
+function setCurrentId(id){
+  currentEstimateId = id || null;
+  els.currentIdPill.textContent = currentEstimateId ? `Saved • ${currentEstimateId}` : "New (not saved yet)";
+}
+
+function clearForm(confirmAsk=true){
+  if(confirmAsk && !confirm("Start a new estimate? Unsaved changes will be lost unless you saved to cloud.")) return;
+
+  setCurrentId(null);
+  state.materials = [];
+  state.labour = [];
+  els.clientName.value = "";
+  els.estimateDate.value = todayISO();
+  els.doorNo.value = "";
+  els.jobAddress.value = "";
+  els.jobDesc.value = "";
+  els.markupGBP.value = 0;
+  els.commissionPct.value = 0;
+  els.vatPct.value = 20;
+  els.gpsStatus.textContent = "";
+  els.saveStatus.textContent = "";
+  renderMaterials();
+  renderLabour();
+  calc();
+}
+
+async function openEstimate(id){
+  const e = estimatesCache.find(x=>x.id===id);
+  if(!e) return;
+  setFromDocData({
+    agentBranch: e.agentBranch,
+    estimateDate: e.estimateDate,
+    doorNo: e.doorNo,
+    jobAddress: e.jobAddress,
+    jobDesc: e.jobDesc,
+    markupGBP: e.markupGBP,
+    commissionPct: e.commissionPct,
+    vatPct: e.vatPct,
+    materials: e.materials,
+    labour: e.labour
+  });
+  setCurrentId(id);
+  els.saveStatus.textContent = "Loaded. Tap “Save to Cloud” to update.";
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+async function duplicateEstimate(id){
+  const e = estimatesCache.find(x=>x.id===id);
+  if(!e) return;
+  if(!confirm("Duplicate this estimate as a new one?")) return;
+
+  setFromDocData({
+    agentBranch: e.agentBranch,
+    estimateDate: e.estimateDate || todayISO(),
+    doorNo: e.doorNo,
+    jobAddress: e.jobAddress,
+    jobDesc: e.jobDesc,
+    markupGBP: e.markupGBP,
+    commissionPct: e.commissionPct,
+    vatPct: e.vatPct,
+    materials: e.materials,
+    labour: e.labour
+  });
+  setCurrentId(null);
+  els.saveStatus.textContent = "Duplicated. Tap “Save to Cloud” to create a new record.";
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+async function deleteEstimate(id){
+  if(!confirm("Delete this estimate from the cloud?")) return;
+  try{
+    await deleteDoc(doc(db, "estimates", id));
+    if(currentEstimateId === id) clearForm(false);
+  }catch{
+    alert("Could not delete (offline?)");
+  }
+}
+
+document.addEventListener("click",(e)=>{
+  const openBtn = e.target.closest("[data-open]");
+  if(openBtn) return openEstimate(openBtn.dataset.open);
+
+  const dupBtn = e.target.closest("[data-dup]");
+  if(dupBtn) return duplicateEstimate(dupBtn.dataset.dup);
+
+  const delBtn = e.target.closest("[data-del]");
+  if(delBtn) return deleteEstimate(delBtn.dataset.del);
+});
+
+/* ===========================
    PDF generation
    =========================== */
-function wrapText(doc, text, x, y, maxW, lineH){
-  const lines = doc.splitTextToSize(String(text||""), maxW);
-  lines.forEach((ln, idx)=> doc.text(ln, x, y + idx*lineH));
+function wrapText(docp, text, x, y, maxW, lineH){
+  const lines = docp.splitTextToSize(String(text||""), maxW);
+  lines.forEach((ln, idx)=> docp.text(ln, x, y + idx*lineH));
   return y + (lines.length * lineH);
 }
 
@@ -727,173 +1056,192 @@ els.makePdfBtn.addEventListener("click", ()=>{
   const totals = calc();
   const { jsPDF } = window.jspdf;
 
-  const doc = new jsPDF({unit:"pt", format:"a4"});
-  const W = doc.internal.pageSize.getWidth();
-  const H = doc.internal.pageSize.getHeight();
+  const docp = new jsPDF({unit:"pt", format:"a4"});
+  const W = docp.internal.pageSize.getWidth();
+  const H = docp.internal.pageSize.getHeight();
   const M = 42;
 
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(16);
-  doc.text("FORD PROPERTY SERVICES", M, 56);
+  docp.setFont("helvetica","bold");
+  docp.setFontSize(16);
+  docp.text("FORD PROPERTY SERVICES", M, 56);
 
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(10);
-  doc.text("On-Site Estimate", M, 74);
-  doc.text(`Date: ${els.estimateDate.value || ""}`, W - M, 56, {align:"right"});
+  docp.setFont("helvetica","normal");
+  docp.setFontSize(10);
+  docp.text("On-Site Estimate", M, 74);
+  docp.text(`Date: ${els.estimateDate.value || ""}`, W - M, 56, {align:"right"});
 
   let y = 96;
-  doc.setDrawColor(220);
-  doc.setLineWidth(0.8);
-  doc.roundedRect(M, y, W-(M*2), 92, 10, 10);
+  docp.setDrawColor(220);
+  docp.setLineWidth(0.8);
+  docp.roundedRect(M, y, W-(M*2), 92, 10, 10);
 
-  doc.setFont("helvetica","bold");
-  doc.text("Agent / Job", M+12, y+18);
-  doc.setFont("helvetica","normal");
+  docp.setFont("helvetica","bold");
+  docp.text("Agent / Job", M+12, y+18);
+  docp.setFont("helvetica","normal");
 
-  doc.text(`Agent/Branch: ${els.clientName.value || ""}`, M+12, y+36);
+  docp.text(`Agent/Branch: ${els.clientName.value || ""}`, M+12, y+36);
 
   const door = els.doorNo.value.trim();
-  const doorLine = door ? `Door/Flat: ${door}` : "";
-  if(doorLine) doc.text(doorLine, M+12, y+52);
+  if(door) docp.text(`Door/Flat: ${door}`, M+12, y+52);
 
-  doc.text("Address:", (W/2), y+18);
-  wrapText(doc, els.jobAddress.value || "", (W/2), y+36, (W/2)-M-12, 12);
+  docp.text("Address:", (W/2), y+18);
+  wrapText(docp, els.jobAddress.value || "", (W/2), y+36, (W/2)-M-12, 12);
 
   y = 200;
-  doc.roundedRect(M, y, W-(M*2), 92, 10, 10);
-  doc.setFont("helvetica","bold");
-  doc.text("Scope of Works", M+12, y+18);
-  doc.setFont("helvetica","normal");
-  wrapText(doc, els.jobDesc.value || "", M+12, y+36, W-(M*2)-24, 12);
+  docp.roundedRect(M, y, W-(M*2), 92, 10, 10);
+  docp.setFont("helvetica","bold");
+  docp.text("Scope of Works", M+12, y+18);
+  docp.setFont("helvetica","normal");
+  wrapText(docp, els.jobDesc.value || "", M+12, y+36, W-(M*2)-24, 12);
 
   y = 312;
 
   function tableTitle(title){
-    doc.setFont("helvetica","bold");
-    doc.setFontSize(12);
-    doc.text(title, M, y);
+    docp.setFont("helvetica","bold");
+    docp.setFontSize(12);
+    docp.text(title, M, y);
     y += 10;
-    doc.setLineWidth(0.8);
-    doc.line(M, y, W-M, y);
+    docp.setLineWidth(0.8);
+    docp.line(M, y, W-M, y);
     y += 16;
   }
 
   function ensureSpace(minSpace){
     if(y + minSpace > H - M){
-      doc.addPage();
+      docp.addPage();
       y = M;
     }
   }
 
   // Materials
   tableTitle("Materials");
-  doc.setFontSize(10);
-  doc.setFont("helvetica","bold");
-  doc.text("Item", M, y);
-  doc.text("Qty", W-220, y);
-  doc.text("Unit", W-160, y);
-  doc.text("Total", W-M, y, {align:"right"});
-  doc.setFont("helvetica","normal");
+  docp.setFontSize(10);
+  docp.setFont("helvetica","bold");
+  docp.text("Item", M, y);
+  docp.text("Qty", W-220, y);
+  docp.text("Unit", W-160, y);
+  docp.text("Total", W-M, y, {align:"right"});
+  docp.setFont("helvetica","normal");
   y += 12;
 
   const mat = state.materials.slice().reverse();
   if(mat.length === 0){
-    doc.text("—", M, y); y += 14;
+    docp.text("—", M, y); y += 14;
   }else{
     mat.forEach(m=>{
       ensureSpace(28);
       const lineTotal = num(m.qty)*num(m.unit);
-      doc.text(String(m.name||""), M, y);
-      doc.text(String(m.qty||0), W-220, y);
-      doc.text(fmtGBP(m.unit), W-160, y);
-      doc.text(fmtGBP(lineTotal), W-M, y, {align:"right"});
+      docp.text(String(m.name||""), M, y);
+      docp.text(String(m.qty||0), W-220, y);
+      docp.text(fmtGBP(m.unit), W-160, y);
+      docp.text(fmtGBP(lineTotal), W-M, y, {align:"right"});
       y += 14;
     });
   }
 
-  doc.setFont("helvetica","bold");
-  doc.text("Materials Subtotal", W-220, y+6);
-  doc.text(fmtGBP(totals.matSub), W-M, y+6, {align:"right"});
-  doc.setFont("helvetica","normal");
+  docp.setFont("helvetica","bold");
+  docp.text("Materials Subtotal", W-220, y+6);
+  docp.text(fmtGBP(totals.matSub), W-M, y+6, {align:"right"});
+  docp.setFont("helvetica","normal");
   y += 26;
 
   // Labour
   tableTitle("Labour");
-  doc.setFontSize(10);
-  doc.setFont("helvetica","bold");
-  doc.text("Name", M, y);
-  doc.text("Days", W-220, y);
-  doc.text("Rate", W-160, y);
-  doc.text("Total", W-M, y, {align:"right"});
-  doc.setFont("helvetica","normal");
+  docp.setFontSize(10);
+  docp.setFont("helvetica","bold");
+  docp.text("Name", M, y);
+  docp.text("Days", W-220, y);
+  docp.text("Rate", W-160, y);
+  docp.text("Total", W-M, y, {align:"right"});
+  docp.setFont("helvetica","normal");
   y += 12;
 
   const lab = state.labour.slice().reverse();
   if(lab.length === 0){
-    doc.text("—", M, y); y += 14;
+    docp.text("—", M, y); y += 14;
   }else{
     lab.forEach(l=>{
       ensureSpace(28);
       const lineTotal = num(l.days)*num(l.rate);
-      doc.text(String(l.name||""), M, y);
-      doc.text(String(l.days||0), W-220, y);
-      doc.text(fmtGBP(l.rate), W-160, y);
-      doc.text(fmtGBP(lineTotal), W-M, y, {align:"right"});
+      docp.text(String(l.name||""), M, y);
+      docp.text(String(l.days||0), W-220, y);
+      docp.text(fmtGBP(l.rate), W-160, y);
+      docp.text(fmtGBP(lineTotal), W-M, y, {align:"right"});
       y += 14;
     });
   }
 
-  doc.setFont("helvetica","bold");
-  doc.text("Labour Subtotal", W-220, y+6);
-  doc.text(fmtGBP(totals.labSub), W-M, y+6, {align:"right"});
-  doc.setFont("helvetica","normal");
+  docp.setFont("helvetica","bold");
+  docp.text("Labour Subtotal", W-220, y+6);
+  docp.text(fmtGBP(totals.labSub), W-M, y+6, {align:"right"});
+  docp.setFont("helvetica","normal");
   y += 26;
 
-  // Totals box
+  // Totals
   ensureSpace(150);
-  doc.roundedRect(M, y, W-(M*2), 130, 10, 10);
-  doc.setFont("helvetica","bold");
-  doc.text("Totals", M+12, y+20);
+  docp.roundedRect(M, y, W-(M*2), 130, 10, 10);
+  docp.setFont("helvetica","bold");
+  docp.text("Totals", M+12, y+20);
 
-  doc.setFont("helvetica","normal");
-  doc.text("Subtotal", M+12, y+42);
-  doc.text(fmtGBP(totals.sub), W-M-12, y+42, {align:"right"});
+  docp.setFont("helvetica","normal");
+  docp.text("Subtotal", M+12, y+42);
+  docp.text(fmtGBP(totals.sub), W-M-12, y+42, {align:"right"});
 
-  doc.text("Markup", M+12, y+58);
-  doc.text(fmtGBP(totals.markup), W-M-12, y+58, {align:"right"});
+  docp.text("Markup", M+12, y+58);
+  docp.text(fmtGBP(totals.markup), W-M-12, y+58, {align:"right"});
 
-  doc.text(`Commission (${totals.commissionPct}%)`, M+12, y+74);
-  doc.text(fmtGBP(totals.commission), W-M-12, y+74, {align:"right"});
+  docp.text(`Commission (${totals.commissionPct}%)`, M+12, y+74);
+  docp.text(fmtGBP(totals.commission), W-M-12, y+74, {align:"right"});
 
-  doc.text(`VAT (${totals.vatPct}%)`, M+12, y+90);
-  doc.text(fmtGBP(totals.vat), W-M-12, y+90, {align:"right"});
+  docp.text(`VAT (${totals.vatPct}%)`, M+12, y+90);
+  docp.text(fmtGBP(totals.vat), W-M-12, y+90, {align:"right"});
 
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(14);
-  doc.text("TOTAL", M+12, y+114);
-  doc.text(fmtGBP(totals.total), W-M-12, y+114, {align:"right"});
+  docp.setFont("helvetica","bold");
+  docp.setFontSize(14);
+  docp.text("TOTAL", M+12, y+114);
+  docp.text(fmtGBP(totals.total), W-M-12, y+114, {align:"right"});
 
-  doc.setFontSize(9);
-  doc.setFont("helvetica","normal");
-  doc.text("Prepared on site • Ford Property Services", M, H - 26);
+  docp.setFontSize(9);
+  docp.setFont("helvetica","normal");
+  docp.text("Prepared on site • Ford Property Services", M, H - 26);
 
   const fname = `FPS_Estimate_${(els.clientName.value||"Agent").replace(/[^a-z0-9]+/gi,"_")}_${(els.estimateDate.value||todayISO())}.pdf`;
-  doc.save(fname);
+  docp.save(fname);
+});
+
+/* ===========================
+   Buttons / events
+   =========================== */
+els.saveDraftBtn.addEventListener("click", saveToCloud);
+
+els.newEstimateBtn.addEventListener("click", ()=> clearForm(true));
+els.newEstimateBtnTop.addEventListener("click", ()=> clearForm(true));
+
+els.exportJsonBtn.addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify({ id: currentEstimateId, ...getDocData() }, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `FPS_OnSiteEstimate_Backup_${(els.estimateDate.value||todayISO())}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+});
+
+els.searchBox.addEventListener("input", renderEstimatesList);
+
+els.workspaceKey.addEventListener("change", ()=>{
+  localStorage.setItem(LS_WS, workspace());
+  attachListener();
 });
 
 /* ===========================
    Init
    =========================== */
-loadDraft();
 renderMaterials();
 renderLabour();
 calc();
-
-[
-  els.clientName, els.estimateDate, els.doorNo,
-  els.jobAddress, els.jobDesc,
-  els.markupGBP, els.commissionPct, els.vatPct
-].forEach(el=> el.addEventListener("input", autosave));
+setCurrentId(null);
+attachListener();
+setSync(true, "Syncing…");
 </script>
 
 </main>
