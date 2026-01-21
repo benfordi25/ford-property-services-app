@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ford Property Services • On-Site Estimate</title>
+
+<meta name="theme-color" content="#0b1220">
+
+<!-- jsPDF -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+  --bg:#0b1220;
+  --card:#0f1a33;
+  --text:#e7eefc;
+  --muted:#a9b7d3;
+  --line:rgba(255,255,255,.14);
+  --blue:#4aa3ff;
+  --green:#22c55e;
+  --red:#ef4444;
+  --radius:18px;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial;
+  background:var(--bg);
+  color:var(--text);
+}
+
+header{
+  position:sticky;
+  top:0;
+  z-index:5;
+  background:linear-gradient(180deg,#0b1220,#0b1220cc);
+  padding:14px 16px;
+  border-bottom:1px solid var(--line);
+}
+
+header h1{
+  margin:0;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:.2px;
+}
+
+header .sub{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:12px;
+}
+
+main{
+  padding:16px;
+  max-width:900px;
+  margin:auto;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px;
+  margin-bottom:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+
+.card h2{
+  margin:0 0 10px;
+  font-size:15px;
+}
+
+label{
+  font-size:12px;
+  color:var(--muted);
+}
+
+input,textarea,select{
+  width:100%;
+  background:#081226;
+  border:1px solid var(--line);
+  color:var(--text);
+  border-radius:12px;
+  padding:10px;
+  margin-top:4px;
+  outline:none;
+}
+
+textarea{resize:vertical}
+
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+@media (max-width:700px){
+  .row{grid-template-columns:1fr}
+}
+
+button{
+  border:none;
+  border-radius:14px;
+  padding:12px;
+  font-weight:800;
+  background:var(--blue);
+  color:#081226;
+  cursor:pointer;
+}
+
+button:active{transform:scale(.99)}
+
+button.secondary{
+  background:#1b2a55;
+  color:var(--text);
+}
+
+button.danger{
+  background:var(--red);
+  color:#081226;
+}
+
+.small{
+  font-size:12px;
+  color:var(--muted);
+}
+
+.list{
+  margin-top:10px;
+}
+
+.list-head{
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr auto;
+  gap:8px;
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+
+.list-item{
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr auto;
+  gap:8px;
+  align-items:center;
+  margin-bottom:8px;
+}
+
+.list-item .remove{
+  width:44px;
+  padding:10px 0;
+  text-align:center;
+}
+
+.pill{
+  display:inline-block;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#0b1630;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.total-line{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+  margin:6px 0;
+}
+
+.total{
+  font-size:20px;
+  font-weight:900;
+  color:var(--green);
+}
+
+hr.sep{
+  border:none;
+  border-top:1px solid var(--line);
+  margin:12px 0;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>On-Site Estimate</h1>
+  <div class="sub">Create estimates on site • materials + labour • PDF export</div>
+</header>
+
+<main>
+  <!-- ================= CLIENT & JOB ================= -->
+<section class="card">
+  <h2>Client & Job Details</h2>
+
+  <div class="row">
+    <div>
+      <label>Client Name</label>
+      <input id="clientName" placeholder="e.g. John Smith">
+    </div>
+    <div>
+      <label>Client Phone</label>
+      <input id="clientPhone" placeholder="07...">
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <div>
+      <label>Client Email</label>
+      <input id="clientEmail" placeholder="email@example.com">
+    </div>
+    <div>
+      <label>Estimate Date</label>
+      <input id="estimateDate" type="date">
+    </div>
+  </div>
+
+  <div style="margin-top:10px">
+    <label>Job Address</label>
+    <textarea id="jobAddress" rows="2" placeholder="Full job address"></textarea>
+  </div>
+
+  <div style="margin-top:10px">
+    <label>Scope of Works</label>
+    <textarea id="jobDesc" rows="3" placeholder="Describe works to be carried out"></textarea>
+  </div>
+</section>
+
+<!-- ================= MATERIALS ================= -->
+<section class="card">
+  <h2>Materials</h2>
+
+  <div class="list-head">
+    <div>Item</div><div>Qty</div><div>Unit £</div><div></div>
+  </div>
+
+  <div class="list-item">
+    <input id="matName" placeholder="Material name">
+    <input id="matQty" type="number" inputmode="decimal" placeholder="Qty">
+    <input id="matCost" type="number" inputmode="decimal" placeholder="£">
+    <button id="addMatBtn">+</button>
+  </div>
+
+  <div class="list" id="materialsList"></div>
+
+  <div class="total-line">
+    <div class="small">Materials Subtotal</div>
+    <div id="materialsSubtotal">£0.00</div>
+  </div>
+</section>
+
+<!-- ================= LABOUR ================= -->
+<section class="card">
+  <h2>Labour</h2>
+
+  <div class="list-head">
+    <div>Task</div><div>Hours</div><div>Rate £</div><div></div>
+  </div>
+
+  <div class="list-item">
+    <input id="labTask" placeholder="Task description">
+    <input id="labHours" type="number" inputmode="decimal" placeholder="Hrs">
+    <input id="labRate" type="number" inputmode="decimal" placeholder="£/hr">
+    <button id="addLabBtn">+</button>
+  </div>
+
+  <div class="list" id="labourList"></div>
+
+  <div class="total-line">
+    <div class="small">Labour Subtotal</div>
+    <div id="labourSubtotal">£0.00</div>
+  </div>
+</section>
+
+<!-- ================= TOTALS ================= -->
+<section class="card">
+  <h2>Totals</h2>
+
+  <div class="row">
+    <div>
+      <label>Markup (%)</label>
+      <input id="markupPct" type="number" inputmode="decimal" value="0">
+    </div>
+    <div>
+      <label>VAT (%)</label>
+      <input id="vatPct" type="number" inputmode="decimal" value="20">
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <div class="total-line">
+    <div class="small">Subtotal</div>
+    <div id="subTotal">£0.00</div>
+  </div>
+
+  <div class="total-line">
+    <div class="small">Markup</div>
+    <div id="markupTotal">£0.00</div>
+  </div>
+
+  <div class="total-line">
+    <div class="small">VAT</div>
+    <div id="vatTotal">£0.00</div>
+  </div>
+
+  <hr class="sep">
+
+  <div class="total-line">
+    <div style="font-weight:800">TOTAL</div>
+    <div class="total" id="grandTotal">£0.00</div>
+  </div>
+
+  <div class="row" style="margin-top:12px">
+    <button class="secondary" id="saveDraftBtn">Save Draft</button>
+    <button id="makePdfBtn">Generate PDF</button>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <button class="secondary" id="newEstimateBtn">New / Clear</button>
+    <button class="secondary" id="exportJsonBtn">Export Backup</button>
+  </div>
+</section>
+<script>
+/* ===========================
+   On-Site Estimate • FPS
+   Single-file GitHub Pages app
+   =========================== */
+
+const £ = (n)=> {
+  const x = Number(n||0);
+  return "£" + x.toFixed(2);
+};
+const num = (v)=> {
+  const n = parseFloat(String(v).replace(/[^\d.\-]/g,""));
+  return isNaN(n) ? 0 : n;
+};
+
+const els = {
+  clientName: document.getElementById("clientName"),
+  clientPhone: document.getElementById("clientPhone"),
+  clientEmail: document.getElementById("clientEmail"),
+  estimateDate: document.getElementById("estimateDate"),
+  jobAddress: document.getElementById("jobAddress"),
+  jobDesc: document.getElementById("jobDesc"),
+
+  matName: document.getElementById("matName"),
+  matQty: document.getElementById("matQty"),
+  matCost: document.getElementById("matCost"),
+  addMatBtn: document.getElementById("addMatBtn"),
+  materialsList: document.getElementById("materialsList"),
+  materialsSubtotal: document.getElementById("materialsSubtotal"),
+
+  labTask: document.getElementById("labTask"),
+  labHours: document.getElementById("labHours"),
+  labRate: document.getElementById("labRate"),
+  addLabBtn: document.getElementById("addLabBtn"),
+  labourList: document.getElementById("labourList"),
+  labourSubtotal: document.getElementById("labourSubtotal"),
+
+  markupPct: document.getElementById("markupPct"),
+  vatPct: document.getElementById("vatPct"),
+  subTotal: document.getElementById("subTotal"),
+  markupTotal: document.getElementById("markupTotal"),
+  vatTotal: document.getElementById("vatTotal"),
+  grandTotal: document.getElementById("grandTotal"),
+
+  saveDraftBtn: document.getElementById("saveDraftBtn"),
+  makePdfBtn: document.getElementById("makePdfBtn"),
+  newEstimateBtn: document.getElementById("newEstimateBtn"),
+  exportJsonBtn: document.getElementById("exportJsonBtn"),
+};
+
+let state = {
+  materials: [],
+  labour: []
+};
+
+function todayISO(){
+  const d = new Date();
+  const tz = d.getTimezoneOffset()*60000;
+  return new Date(d - tz).toISOString().slice(0,10);
+}
+if(!els.estimateDate.value) els.estimateDate.value = todayISO();
+
+/* ===========================
+   Render lists
+   =========================== */
+function renderMaterials(){
+  els.materialsList.innerHTML = "";
+  state.materials.forEach((m, idx)=>{
+    const lineTotal = num(m.qty) * num(m.unit);
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.innerHTML = `
+      <input value="${escapeHtml(m.name)}" data-k="name" data-i="${idx}">
+      <input type="number" inputmode="decimal" value="${m.qty}" data-k="qty" data-i="${idx}">
+      <input type="number" inputmode="decimal" value="${m.unit}" data-k="unit" data-i="${idx}">
+      <button class="danger remove" title="Remove" data-remove="mat" data-i="${idx}">✕</button>
+    `;
+    els.materialsList.appendChild(div);
+
+    const meta = document.createElement("div");
+    meta.className = "small";
+    meta.style.margin = "-4px 0 10px";
+    meta.style.display = "flex";
+    meta.style.justifyContent = "space-between";
+    meta.innerHTML = `<span class="pill">Line total</span><span>${£(lineTotal)}</span>`;
+    els.materialsList.appendChild(meta);
+  });
+}
+
+function renderLabour(){
+  els.labourList.innerHTML = "";
+  state.labour.forEach((l, idx)=>{
+    const lineTotal = num(l.hours) * num(l.rate);
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.innerHTML = `
+      <input value="${escapeHtml(l.task)}" data-k="task" data-i="${idx}">
+      <input type="number" inputmode="decimal" value="${l.hours}" data-k="hours" data-i="${idx}">
+      <input type="number" inputmode="decimal" value="${l.rate}" data-k="rate" data-i="${idx}">
+      <button class="danger remove" title="Remove" data-remove="lab" data-i="${idx}">✕</button>
+    `;
+    els.labourList.appendChild(div);
+
+    const meta = document.createElement("div");
+    meta.className = "small";
+    meta.style.margin = "-4px 0 10px";
+    meta.style.display = "flex";
+    meta.style.justifyContent = "space-between";
+    meta.innerHTML = `<span class="pill">Line total</span><span>${£(lineTotal)}</span>`;
+    els.labourList.appendChild(meta);
+  });
+}
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+/* ===========================
+   Totals calc
+   =========================== */
+function calc(){
+  const matSub = state.materials.reduce((a,m)=>a + (num(m.qty)*num(m.unit)), 0);
+  const labSub = state.labour.reduce((a,l)=>a + (num(l.hours)*num(l.rate)), 0);
+  const sub = matSub + labSub;
+
+  const markupPct = num(els.markupPct.value);
+  const vatPct = num(els.vatPct.value);
+
+  const markup = sub * (markupPct/100);
+  const vatBase = sub + markup;
+  const vat = vatBase * (vatPct/100);
+  const total = vatBase + vat;
+
+  els.materialsSubtotal.textContent = £(matSub);
+  els.labourSubtotal.textContent = £(labSub);
+  els.subTotal.textContent = £(sub);
+  els.markupTotal.textContent = £(markup);
+  els.vatTotal.textContent = £(vat);
+  els.grandTotal.textContent = £(total);
+
+  return {matSub, labSub, sub, markupPct, vatPct, markup, vat, total};
+}
+
+/* ===========================
+   Add items
+   =========================== */
+function addMaterial(){
+  const name = els.matName.value.trim();
+  const qty = num(els.matQty.value);
+  const unit = num(els.matCost.value);
+  if(!name) return;
+
+  state.materials.unshift({name, qty: qty||1, unit});
+  els.matName.value = "";
+  els.matQty.value = "";
+  els.matCost.value = "";
+  renderMaterials();
+  calc();
+  autosave();
+}
+function addLabour(){
+  const task = els.labTask.value.trim();
+  const hours = num(els.labHours.value);
+  const rate = num(els.labRate.value);
+  if(!task) return;
+
+  state.labour.unshift({task, hours: hours||1, rate});
+  els.labTask.value = "";
+  els.labHours.value = "";
+  els.labRate.value = "";
+  renderLabour();
+  calc();
+  autosave();
+}
+
+els.addMatBtn.addEventListener("click", addMaterial);
+els.addLabBtn.addEventListener("click", addLabour);
+
+// Enter key adds
+[els.matName, els.matQty, els.matCost].forEach(el=>{
+  el.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); addMaterial(); }});
+});
+[els.labTask, els.labHours, els.labRate].forEach(el=>{
+  el.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); addLabour(); }});
+});
+
+// Remove + inline edit
+document.addEventListener("click",(e)=>{
+  const btn = e.target.closest("button[data-remove]");
+  if(!btn) return;
+  const type = btn.dataset.remove;
+  const i = parseInt(btn.dataset.i,10);
+
+  if(type==="mat"){
+    state.materials.splice(i,1);
+    renderMaterials();
+  }else{
+    state.labour.splice(i,1);
+    renderLabour();
+  }
+  calc();
+  autosave();
+});
+
+document.addEventListener("input",(e)=>{
+  const inp = e.target;
+  const k = inp.dataset.k;
+  const i = inp.dataset.i;
+  if(k==null || i==null) return;
+  const idx = parseInt(i,10);
+
+  if(state.materials[idx] && (k==="name"||k==="qty"||k==="unit")){
+    state.materials[idx][k] = (k==="name") ? inp.value : num(inp.value);
+    calc(); autosave();
+  }
+  if(state.labour[idx] && (k==="task"||k==="hours"||k==="rate")){
+    state.labour[idx][k] = (k==="task") ? inp.value : num(inp.value);
+    calc(); autosave();
+  }
+});
+
+// totals change
+[els.markupPct, els.vatPct].forEach(el=>el.addEventListener("input", ()=>{ calc(); autosave(); }));
+
+/* ===========================
+   Draft save/load
+   =========================== */
+const KEY = "fps_on_site_estimate_draft_v1";
+
+function getDoc(){
+  return {
+    clientName: els.clientName.value.trim(),
+    clientPhone: els.clientPhone.value.trim(),
+    clientEmail: els.clientEmail.value.trim(),
+    estimateDate: els.estimateDate.value,
+    jobAddress: els.jobAddress.value.trim(),
+    jobDesc: els.jobDesc.value.trim(),
+    markupPct: num(els.markupPct.value),
+    vatPct: num(els.vatPct.value),
+    materials: state.materials,
+    labour: state.labour,
+    savedAt: new Date().toISOString()
+  };
+}
+
+function setDoc(doc){
+  els.clientName.value = doc.clientName || "";
+  els.clientPhone.value = doc.clientPhone || "";
+  els.clientEmail.value = doc.clientEmail || "";
+  els.estimateDate.value = doc.estimateDate || todayISO();
+  els.jobAddress.value = doc.jobAddress || "";
+  els.jobDesc.value = doc.jobDesc || "";
+  els.markupPct.value = (doc.markupPct ?? 0);
+  els.vatPct.value = (doc.vatPct ?? 20);
+  state.materials = Array.isArray(doc.materials) ? doc.materials : [];
+  state.labour = Array.isArray(doc.labour) ? doc.labour : [];
+  renderMaterials();
+  renderLabour();
+  calc();
+}
+
+function autosave(){
+  try{ localStorage.setItem(KEY, JSON.stringify(getDoc())); }catch{}
+}
+
+function loadDraft(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return;
+    const doc = JSON.parse(raw);
+    setDoc(doc);
+  }catch{}
+}
+
+els.saveDraftBtn.addEventListener("click", ()=>{
+  autosave();
+  alert("Draft saved on this device.");
+});
+
+els.newEstimateBtn.addEventListener("click", ()=>{
+  if(!confirm("Clear this estimate?")) return;
+  state.materials = [];
+  state.labour = [];
+  els.clientName.value = "";
+  els.clientPhone.value = "";
+  els.clientEmail.value = "";
+  els.estimateDate.value = todayISO();
+  els.jobAddress.value = "";
+  els.jobDesc.value = "";
+  els.markupPct.value = 0;
+  els.vatPct.value = 20;
+  renderMaterials(); renderLabour(); calc();
+  autosave();
+});
+
+els.exportJsonBtn.addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify(getDoc(), null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `FPS_OnSiteEstimate_Backup_${(els.estimateDate.value||todayISO())}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+});
+
+/* ===========================
+   PDF generation
+   =========================== */
+function wrapText(doc, text, x, y, maxW, lineH){
+  const lines = doc.splitTextToSize(String(text||""), maxW);
+  lines.forEach((ln, idx)=> doc.text(ln, x, y + idx*lineH));
+  return y + (lines.length * lineH);
+}
+
+els.makePdfBtn.addEventListener("click", ()=>{
+  const totals = calc();
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 42;
+
+  // Header
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(16);
+  doc.text("FORD PROPERTY SERVICES", M, 56);
+
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(10);
+  doc.text("On-Site Estimate", M, 74);
+
+  doc.setFontSize(10);
+  doc.text(`Date: ${els.estimateDate.value || ""}`, W - M, 56, {align:"right"});
+
+  // Client box
+  let y = 96;
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(M, y, W-(M*2), 92, 10, 10);
+
+  doc.setFont("helvetica","bold");
+  doc.text("Client", M+12, y+18);
+  doc.setFont("helvetica","normal");
+
+  doc.text(`Name: ${els.clientName.value || ""}`, M+12, y+36);
+  doc.text(`Phone: ${els.clientPhone.value || ""}`, M+12, y+52);
+  doc.text(`Email: ${els.clientEmail.value || ""}`, M+12, y+68);
+
+  doc.text("Address:", (W/2), y+18);
+  y = wrapText(doc, els.jobAddress.value || "", (W/2), y+36, (W/2)-M-12, 12);
+
+  // Scope
+  y = 200;
+  doc.roundedRect(M, y, W-(M*2), 92, 10, 10);
+  doc.setFont("helvetica","bold");
+  doc.text("Scope of Works", M+12, y+18);
+  doc.setFont("helvetica","normal");
+  wrapText(doc, els.jobDesc.value || "", M+12, y+36, W-(M*2)-24, 12);
+
+  // Tables start
+  y = 312;
+
+  function tableTitle(title){
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(12);
+    doc.text(title, M, y);
+    y += 10;
+    doc.setLineWidth(0.8);
+    doc.line(M, y, W-M, y);
+    y += 16;
+  }
+
+  function ensureSpace(minSpace){
+    if(y + minSpace > H - M){
+      doc.addPage();
+      y = M;
+    }
+  }
+
+  // Materials table
+  tableTitle("Materials");
+  doc.setFontSize(10);
+  doc.setFont("helvetica","bold");
+  doc.text("Item", M, y);
+  doc.text("Qty", W-220, y);
+  doc.text("Unit", W-160, y);
+  doc.text("Total", W-M, y, {align:"right"});
+  doc.setFont("helvetica","normal");
+  y += 12;
+
+  const mat = state.materials.slice().reverse();
+  if(mat.length === 0){
+    doc.text("—", M, y); y += 14;
+  }else{
+    mat.forEach(m=>{
+      ensureSpace(28);
+      const lineTotal = num(m.qty)*num(m.unit);
+      doc.text(String(m.name||""), M, y);
+      doc.text(String(m.qty||0), W-220, y);
+      doc.text(£(m.unit), W-160, y);
+      doc.text(£(lineTotal), W-M, y, {align:"right"});
+      y += 14;
+    });
+  }
+
+  doc.setFont("helvetica","bold");
+  doc.text("Materials Subtotal", W-220, y+6);
+  doc.text(£(totals.matSub), W-M, y+6, {align:"right"});
+  doc.setFont("helvetica","normal");
+  y += 26;
+
+  // Labour table
+  tableTitle("Labour");
+  doc.setFontSize(10);
+  doc.setFont("helvetica","bold");
+  doc.text("Task", M, y);
+  doc.text("Hours", W-220, y);
+  doc.text("Rate", W-160, y);
+  doc.text("Total", W-M, y, {align:"right"});
+  doc.setFont("helvetica","normal");
+  y += 12;
+
+  const lab = state.labour.slice().reverse();
+  if(lab.length === 0){
+    doc.text("—", M, y); y += 14;
+  }else{
+    lab.forEach(l=>{
+      ensureSpace(28);
+      const lineTotal = num(l.hours)*num(l.rate);
+      doc.text(String(l.task||""), M, y);
+      doc.text(String(l.hours||0), W-220, y);
+      doc.text(£(l.rate), W-160, y);
+      doc.text(£(lineTotal), W-M, y, {align:"right"});
+      y += 14;
+    });
+  }
+
+  doc.setFont("helvetica","bold");
+  doc.text("Labour Subtotal", W-220, y+6);
+  doc.text(£(totals.labSub), W-M, y+6, {align:"right"});
+  doc.setFont("helvetica","normal");
+  y += 26;
+
+  // Totals box
+  ensureSpace(130);
+  doc.roundedRect(M, y, W-(M*2), 110, 10, 10);
+  doc.setFont("helvetica","bold");
+  doc.text("Totals", M+12, y+20);
+
+  doc.setFont("helvetica","normal");
+  doc.text("Subtotal", M+12, y+42);
+  doc.text(£(totals.sub), W-M-12, y+42, {align:"right"});
+
+  doc.text(`Markup (${totals.markupPct}%)`, M+12, y+58);
+  doc.text(£(totals.markup), W-M-12, y+58, {align:"right"});
+
+  doc.text(`VAT (${totals.vatPct}%)`, M+12, y+74);
+  doc.text(£(totals.vat), W-M-12, y+74, {align:"right"});
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(14);
+  doc.text("TOTAL", M+12, y+98);
+  doc.text(£(totals.total), W-M-12, y+98, {align:"right"});
+
+  // Footer
+  doc.setFontSize(9);
+  doc.setFont("helvetica","normal");
+  doc.text("Prepared on site • Ford Property Services", M, H - 26);
+
+  const fname = `FPS_Estimate_${(els.clientName.value||"Client").replace(/[^a-z0-9]+/gi,"_")}_${(els.estimateDate.value||todayISO())}.pdf`;
+  doc.save(fname);
+});
+
+/* ===========================
+   Init
+   =========================== */
+loadDraft();
+renderMaterials();
+renderLabour();
+calc();
+
+// autosave on typing in main fields
+[
+  els.clientName, els.clientPhone, els.clientEmail,
+  els.estimateDate, els.jobAddress, els.jobDesc
+].forEach(el=> el.addEventListener("input", autosave));
+</script>
+
+</main>
+</body>
+</html>
