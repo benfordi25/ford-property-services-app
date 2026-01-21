@@ -457,7 +457,7 @@ hr.sep{
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc,
+  getFirestore, collection, doc, setDoc, updateDoc, deleteDoc,
   onSnapshot, query, where, orderBy, limit,
   serverTimestamp, enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
@@ -929,8 +929,7 @@ async function saveToCloud(){
 
   try{
     if(!currentEstimateId){
-      // Create new
-      const newId = uid(); // create our own id for easy referencing
+      const newId = uid();
       const ref = doc(db, "estimates", newId);
       await setDoc(ref, {
         ...data,
@@ -941,7 +940,6 @@ async function saveToCloud(){
       els.currentIdPill.textContent = `Saved • ${currentEstimateId}`;
       els.saveStatus.textContent = "Saved to cloud ✔";
     }else{
-      // Update existing
       const ref = doc(db, "estimates", currentEstimateId);
       await updateDoc(ref, {
         ...data,
@@ -1022,13 +1020,22 @@ async function duplicateEstimate(id){
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
+/* ✅ AMENDED: Delete now removes from list instantly + shows real error if it fails */
 async function deleteEstimate(id){
   if(!confirm("Delete this estimate from the cloud?")) return;
+
   try{
     await deleteDoc(doc(db, "estimates", id));
+
+    // Optimistic UI update so it disappears immediately
+    estimatesCache = estimatesCache.filter(x => x.id !== id);
+    renderEstimatesList();
+
     if(currentEstimateId === id) clearForm(false);
-  }catch{
-    alert("Could not delete (offline?)");
+
+    els.saveStatus.textContent = "Deleted ✔";
+  }catch(err){
+    alert("Delete failed: " + (err?.message || err));
   }
 }
 
@@ -1247,3 +1254,4 @@ setSync(true, "Syncing…");
 </main>
 </body>
 </html>
+```0
