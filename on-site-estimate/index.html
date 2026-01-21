@@ -190,29 +190,18 @@ hr.sep{
 
 <header>
   <h1>On-Site Estimate</h1>
-  <div class="sub">Create estimates on site • materials + labour • PDF export</div>
+  <div class="sub">On-site estimate • materials + labour • GPS address • PDF export</div>
 </header>
 
 <main>
-  <!-- ================= CLIENT & JOB ================= -->
+  <!-- ================= AGENT & JOB ================= -->
 <section class="card">
-  <h2>Client & Job Details</h2>
+  <h2>Job Details</h2>
 
   <div class="row">
     <div>
-      <label>Client Name</label>
-      <input id="clientName" placeholder="e.g. John Smith">
-    </div>
-    <div>
-      <label>Client Phone</label>
-      <input id="clientPhone" placeholder="07...">
-    </div>
-  </div>
-
-  <div class="row" style="margin-top:10px">
-    <div>
-      <label>Client Email</label>
-      <input id="clientEmail" placeholder="email@example.com">
+      <label>Letting Agent / Branch</label>
+      <input id="clientName" placeholder="e.g. ABC Lettings - Chester">
     </div>
     <div>
       <label>Estimate Date</label>
@@ -220,9 +209,21 @@ hr.sep{
     </div>
   </div>
 
+  <div class="row" style="margin-top:10px">
+    <div>
+      <label>Door / Flat No. (if GPS misses it)</label>
+      <input id="doorNo" placeholder="e.g. 12 / Flat 3">
+    </div>
+    <div>
+      <label>GPS Address</label>
+      <button id="gpsBtn" class="secondary" type="button">📍 Use GPS to fill address</button>
+      <div class="small" id="gpsStatus" style="margin-top:6px"></div>
+    </div>
+  </div>
+
   <div style="margin-top:10px">
     <label>Job Address</label>
-    <textarea id="jobAddress" rows="2" placeholder="Full job address"></textarea>
+    <textarea id="jobAddress" rows="2" placeholder="Will fill from GPS (or type manually)"></textarea>
   </div>
 
   <div style="margin-top:10px">
@@ -243,7 +244,7 @@ hr.sep{
     <input id="matName" placeholder="Material name">
     <input id="matQty" type="number" inputmode="decimal" placeholder="Qty">
     <input id="matCost" type="number" inputmode="decimal" placeholder="£">
-    <button id="addMatBtn">+</button>
+    <button id="addMatBtn" type="button">+</button>
   </div>
 
   <div class="list" id="materialsList"></div>
@@ -259,14 +260,14 @@ hr.sep{
   <h2>Labour</h2>
 
   <div class="list-head">
-    <div>Task</div><div>Hours</div><div>Rate £</div><div></div>
+    <div>Name</div><div>Days</div><div>Rate £/day</div><div></div>
   </div>
 
   <div class="list-item">
-    <input id="labTask" placeholder="Task description">
-    <input id="labHours" type="number" inputmode="decimal" placeholder="Hrs">
-    <input id="labRate" type="number" inputmode="decimal" placeholder="£/hr">
-    <button id="addLabBtn">+</button>
+    <input id="labName" placeholder="Name (e.g. Joe)">
+    <input id="labDays" type="number" inputmode="decimal" placeholder="Days">
+    <input id="labRate" type="number" inputmode="decimal" placeholder="£/day">
+    <button id="addLabBtn" type="button">+</button>
   </div>
 
   <div class="list" id="labourList"></div>
@@ -283,25 +284,41 @@ hr.sep{
 
   <div class="row">
     <div>
-      <label>Markup (%)</label>
-      <input id="markupPct" type="number" inputmode="decimal" value="0">
+      <label>Markup (£)</label>
+      <input id="markupGBP" type="number" inputmode="decimal" value="0">
     </div>
+    <div>
+      <label>Commission (%)</label>
+      <input id="commissionPct" type="number" inputmode="decimal" value="0">
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:10px">
     <div>
       <label>VAT (%)</label>
       <input id="vatPct" type="number" inputmode="decimal" value="20">
+    </div>
+    <div>
+      <label>&nbsp;</label>
+      <div class="pill">VAT applies after markup + commission</div>
     </div>
   </div>
 
   <hr class="sep">
 
   <div class="total-line">
-    <div class="small">Subtotal</div>
+    <div class="small">Subtotal (Materials + Labour)</div>
     <div id="subTotal">£0.00</div>
   </div>
 
   <div class="total-line">
     <div class="small">Markup</div>
     <div id="markupTotal">£0.00</div>
+  </div>
+
+  <div class="total-line">
+    <div class="small">Commission</div>
+    <div id="commissionTotal">£0.00</div>
   </div>
 
   <div class="total-line">
@@ -317,22 +334,21 @@ hr.sep{
   </div>
 
   <div class="row" style="margin-top:12px">
-    <button class="secondary" id="saveDraftBtn">Save Draft</button>
-    <button id="makePdfBtn">Generate PDF</button>
+    <button class="secondary" id="saveDraftBtn" type="button">Save Draft</button>
+    <button id="makePdfBtn" type="button">Generate PDF</button>
   </div>
 
   <div class="row" style="margin-top:10px">
-    <button class="secondary" id="newEstimateBtn">New / Clear</button>
-    <button class="secondary" id="exportJsonBtn">Export Backup</button>
+    <button class="secondary" id="newEstimateBtn" type="button">New / Clear</button>
+    <button class="secondary" id="exportJsonBtn" type="button">Export Backup</button>
   </div>
 </section>
 <script>
 /* ===========================
    On-Site Estimate • FPS
-   Single-file GitHub Pages app
    =========================== */
 
-const £ = (n)=> {
+const fmtGBP = (n)=> {
   const x = Number(n||0);
   return "£" + x.toFixed(2);
 };
@@ -340,12 +356,19 @@ const num = (v)=> {
   const n = parseFloat(String(v).replace(/[^\d.\-]/g,""));
   return isNaN(n) ? 0 : n;
 };
+const escapeHtml = (s)=> String(s ?? "")
+  .replaceAll("&","&amp;")
+  .replaceAll("<","&lt;")
+  .replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;")
+  .replaceAll("'","&#039;");
 
 const els = {
   clientName: document.getElementById("clientName"),
-  clientPhone: document.getElementById("clientPhone"),
-  clientEmail: document.getElementById("clientEmail"),
   estimateDate: document.getElementById("estimateDate"),
+  doorNo: document.getElementById("doorNo"),
+  gpsBtn: document.getElementById("gpsBtn"),
+  gpsStatus: document.getElementById("gpsStatus"),
   jobAddress: document.getElementById("jobAddress"),
   jobDesc: document.getElementById("jobDesc"),
 
@@ -356,17 +379,20 @@ const els = {
   materialsList: document.getElementById("materialsList"),
   materialsSubtotal: document.getElementById("materialsSubtotal"),
 
-  labTask: document.getElementById("labTask"),
-  labHours: document.getElementById("labHours"),
+  labName: document.getElementById("labName"),
+  labDays: document.getElementById("labDays"),
   labRate: document.getElementById("labRate"),
   addLabBtn: document.getElementById("addLabBtn"),
   labourList: document.getElementById("labourList"),
   labourSubtotal: document.getElementById("labourSubtotal"),
 
-  markupPct: document.getElementById("markupPct"),
+  markupGBP: document.getElementById("markupGBP"),
+  commissionPct: document.getElementById("commissionPct"),
   vatPct: document.getElementById("vatPct"),
+
   subTotal: document.getElementById("subTotal"),
   markupTotal: document.getElementById("markupTotal"),
+  commissionTotal: document.getElementById("commissionTotal"),
   vatTotal: document.getElementById("vatTotal"),
   grandTotal: document.getElementById("grandTotal"),
 
@@ -376,10 +402,7 @@ const els = {
   exportJsonBtn: document.getElementById("exportJsonBtn"),
 };
 
-let state = {
-  materials: [],
-  labour: []
-};
+let state = { materials: [], labour: [] };
 
 function todayISO(){
   const d = new Date();
@@ -389,7 +412,7 @@ function todayISO(){
 if(!els.estimateDate.value) els.estimateDate.value = todayISO();
 
 /* ===========================
-   Render lists
+   Lists
    =========================== */
 function renderMaterials(){
   els.materialsList.innerHTML = "";
@@ -401,7 +424,7 @@ function renderMaterials(){
       <input value="${escapeHtml(m.name)}" data-k="name" data-i="${idx}">
       <input type="number" inputmode="decimal" value="${m.qty}" data-k="qty" data-i="${idx}">
       <input type="number" inputmode="decimal" value="${m.unit}" data-k="unit" data-i="${idx}">
-      <button class="danger remove" title="Remove" data-remove="mat" data-i="${idx}">✕</button>
+      <button class="danger remove" type="button" data-remove="mat" data-i="${idx}">✕</button>
     `;
     els.materialsList.appendChild(div);
 
@@ -410,7 +433,7 @@ function renderMaterials(){
     meta.style.margin = "-4px 0 10px";
     meta.style.display = "flex";
     meta.style.justifyContent = "space-between";
-    meta.innerHTML = `<span class="pill">Line total</span><span>${£(lineTotal)}</span>`;
+    meta.innerHTML = `<span class="pill">Line total</span><span>${fmtGBP(lineTotal)}</span>`;
     els.materialsList.appendChild(meta);
   });
 }
@@ -418,14 +441,14 @@ function renderMaterials(){
 function renderLabour(){
   els.labourList.innerHTML = "";
   state.labour.forEach((l, idx)=>{
-    const lineTotal = num(l.hours) * num(l.rate);
+    const lineTotal = num(l.days) * num(l.rate);
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
-      <input value="${escapeHtml(l.task)}" data-k="task" data-i="${idx}">
-      <input type="number" inputmode="decimal" value="${l.hours}" data-k="hours" data-i="${idx}">
+      <input value="${escapeHtml(l.name)}" data-k="name" data-i="${idx}">
+      <input type="number" inputmode="decimal" value="${l.days}" data-k="days" data-i="${idx}">
       <input type="number" inputmode="decimal" value="${l.rate}" data-k="rate" data-i="${idx}">
-      <button class="danger remove" title="Remove" data-remove="lab" data-i="${idx}">✕</button>
+      <button class="danger remove" type="button" data-remove="lab" data-i="${idx}">✕</button>
     `;
     els.labourList.appendChild(div);
 
@@ -434,44 +457,38 @@ function renderLabour(){
     meta.style.margin = "-4px 0 10px";
     meta.style.display = "flex";
     meta.style.justifyContent = "space-between";
-    meta.innerHTML = `<span class="pill">Line total</span><span>${£(lineTotal)}</span>`;
+    meta.innerHTML = `<span class="pill">Line total</span><span>${fmtGBP(lineTotal)}</span>`;
     els.labourList.appendChild(meta);
   });
 }
 
-function escapeHtml(s){
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
 /* ===========================
-   Totals calc
+   Totals
    =========================== */
 function calc(){
   const matSub = state.materials.reduce((a,m)=>a + (num(m.qty)*num(m.unit)), 0);
-  const labSub = state.labour.reduce((a,l)=>a + (num(l.hours)*num(l.rate)), 0);
+  const labSub = state.labour.reduce((a,l)=>a + (num(l.days)*num(l.rate)), 0);
   const sub = matSub + labSub;
 
-  const markupPct = num(els.markupPct.value);
-  const vatPct = num(els.vatPct.value);
+  const markup = num(els.markupGBP.value);
+  const commissionPct = num(els.commissionPct.value);
+  const commission = (sub + markup) * (commissionPct/100);
 
-  const markup = sub * (markupPct/100);
-  const vatBase = sub + markup;
+  const vatPct = num(els.vatPct.value);
+  const vatBase = sub + markup + commission;
   const vat = vatBase * (vatPct/100);
+
   const total = vatBase + vat;
 
-  els.materialsSubtotal.textContent = £(matSub);
-  els.labourSubtotal.textContent = £(labSub);
-  els.subTotal.textContent = £(sub);
-  els.markupTotal.textContent = £(markup);
-  els.vatTotal.textContent = £(vat);
-  els.grandTotal.textContent = £(total);
+  els.materialsSubtotal.textContent = fmtGBP(matSub);
+  els.labourSubtotal.textContent = fmtGBP(labSub);
+  els.subTotal.textContent = fmtGBP(sub);
+  els.markupTotal.textContent = fmtGBP(markup);
+  els.commissionTotal.textContent = fmtGBP(commission);
+  els.vatTotal.textContent = fmtGBP(vat);
+  els.grandTotal.textContent = fmtGBP(total);
 
-  return {matSub, labSub, sub, markupPct, vatPct, markup, vat, total};
+  return {matSub, labSub, sub, markup, commissionPct, commission, vatPct, vat, total};
 }
 
 /* ===========================
@@ -491,15 +508,16 @@ function addMaterial(){
   calc();
   autosave();
 }
-function addLabour(){
-  const task = els.labTask.value.trim();
-  const hours = num(els.labHours.value);
-  const rate = num(els.labRate.value);
-  if(!task) return;
 
-  state.labour.unshift({task, hours: hours||1, rate});
-  els.labTask.value = "";
-  els.labHours.value = "";
+function addLabour(){
+  const name = els.labName.value.trim();
+  const days = num(els.labDays.value);
+  const rate = num(els.labRate.value);
+  if(!name) return;
+
+  state.labour.unshift({name, days: days||1, rate});
+  els.labName.value = "";
+  els.labDays.value = "";
   els.labRate.value = "";
   renderLabour();
   calc();
@@ -509,15 +527,13 @@ function addLabour(){
 els.addMatBtn.addEventListener("click", addMaterial);
 els.addLabBtn.addEventListener("click", addLabour);
 
-// Enter key adds
 [els.matName, els.matQty, els.matCost].forEach(el=>{
   el.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); addMaterial(); }});
 });
-[els.labTask, els.labHours, els.labRate].forEach(el=>{
+[els.labName, els.labDays, els.labRate].forEach(el=>{
   el.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); addLabour(); }});
 });
 
-// Remove + inline edit
 document.addEventListener("click",(e)=>{
   const btn = e.target.closest("button[data-remove]");
   if(!btn) return;
@@ -546,29 +562,28 @@ document.addEventListener("input",(e)=>{
     state.materials[idx][k] = (k==="name") ? inp.value : num(inp.value);
     calc(); autosave();
   }
-  if(state.labour[idx] && (k==="task"||k==="hours"||k==="rate")){
-    state.labour[idx][k] = (k==="task") ? inp.value : num(inp.value);
+  if(state.labour[idx] && (k==="name"||k==="days"||k==="rate")){
+    state.labour[idx][k] = (k==="name") ? inp.value : num(inp.value);
     calc(); autosave();
   }
 });
 
-// totals change
-[els.markupPct, els.vatPct].forEach(el=>el.addEventListener("input", ()=>{ calc(); autosave(); }));
+[els.markupGBP, els.commissionPct, els.vatPct].forEach(el=>el.addEventListener("input", ()=>{ calc(); autosave(); }));
 
 /* ===========================
    Draft save/load
    =========================== */
-const KEY = "fps_on_site_estimate_draft_v1";
+const KEY = "fps_on_site_estimate_draft_v2";
 
 function getDoc(){
   return {
     clientName: els.clientName.value.trim(),
-    clientPhone: els.clientPhone.value.trim(),
-    clientEmail: els.clientEmail.value.trim(),
     estimateDate: els.estimateDate.value,
+    doorNo: els.doorNo.value.trim(),
     jobAddress: els.jobAddress.value.trim(),
     jobDesc: els.jobDesc.value.trim(),
-    markupPct: num(els.markupPct.value),
+    markupGBP: num(els.markupGBP.value),
+    commissionPct: num(els.commissionPct.value),
     vatPct: num(els.vatPct.value),
     materials: state.materials,
     labour: state.labour,
@@ -578,12 +593,12 @@ function getDoc(){
 
 function setDoc(doc){
   els.clientName.value = doc.clientName || "";
-  els.clientPhone.value = doc.clientPhone || "";
-  els.clientEmail.value = doc.clientEmail || "";
   els.estimateDate.value = doc.estimateDate || todayISO();
+  els.doorNo.value = doc.doorNo || "";
   els.jobAddress.value = doc.jobAddress || "";
   els.jobDesc.value = doc.jobDesc || "";
-  els.markupPct.value = (doc.markupPct ?? 0);
+  els.markupGBP.value = (doc.markupGBP ?? 0);
+  els.commissionPct.value = (doc.commissionPct ?? 0);
   els.vatPct.value = (doc.vatPct ?? 20);
   state.materials = Array.isArray(doc.materials) ? doc.materials : [];
   state.labour = Array.isArray(doc.labour) ? doc.labour : [];
@@ -615,12 +630,12 @@ els.newEstimateBtn.addEventListener("click", ()=>{
   state.materials = [];
   state.labour = [];
   els.clientName.value = "";
-  els.clientPhone.value = "";
-  els.clientEmail.value = "";
   els.estimateDate.value = todayISO();
+  els.doorNo.value = "";
   els.jobAddress.value = "";
   els.jobDesc.value = "";
-  els.markupPct.value = 0;
+  els.markupGBP.value = 0;
+  els.commissionPct.value = 0;
   els.vatPct.value = 20;
   renderMaterials(); renderLabour(); calc();
   autosave();
@@ -636,6 +651,70 @@ els.exportJsonBtn.addEventListener("click", ()=>{
 });
 
 /* ===========================
+   GPS Address
+   Uses OpenStreetMap Nominatim reverse geocode
+   =========================== */
+async function reverseGeocode(lat, lon){
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+  const res = await fetch(url, {method:"GET"});
+  if(!res.ok) throw new Error("Reverse geocode failed");
+  return res.json();
+}
+
+els.gpsBtn.addEventListener("click", async ()=>{
+  els.gpsStatus.textContent = "Getting location…";
+  els.gpsBtn.disabled = true;
+
+  if(!navigator.geolocation){
+    els.gpsStatus.textContent = "GPS not supported on this device/browser.";
+    els.gpsBtn.disabled = false;
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    try{
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      els.gpsStatus.textContent = "Finding address…";
+      const data = await reverseGeocode(lat, lon);
+
+      const a = data.address || {};
+      const house = a.house_number || "";
+      const road = a.road || a.pedestrian || a.cycleway || "";
+      const suburb = a.suburb || a.neighbourhood || "";
+      const town = a.town || a.city || a.village || "";
+      const county = a.county || "";
+      const postcode = a.postcode || "";
+
+      // Build a clean UK-ish line
+      let line1 = [house, road].filter(Boolean).join(" ").trim();
+      let line2 = [suburb, town].filter(Boolean).join(", ").trim();
+      let line3 = [county, postcode].filter(Boolean).join(", ").trim();
+
+      // If no house number, let user use Door/Flat field
+      const door = els.doorNo.value.trim();
+      if(!house && door){
+        line1 = [door, road].filter(Boolean).join(" ").trim();
+      }
+
+      const addr = [line1, line2, line3].filter(Boolean).join("\n").trim();
+      if(addr) els.jobAddress.value = addr;
+
+      els.gpsStatus.textContent = addr ? "Address filled ✔" : "Location found but no address returned — type manually.";
+      calc(); autosave();
+    }catch(err){
+      els.gpsStatus.textContent = "Couldn’t get address — you can type it manually.";
+    }finally{
+      els.gpsBtn.disabled = false;
+    }
+  }, (err)=>{
+    els.gpsStatus.textContent = "GPS blocked/denied — allow location permission then try again.";
+    els.gpsBtn.disabled = false;
+  }, {enableHighAccuracy:true, timeout:12000, maximumAge:30000});
+});
+
+/* ===========================
    PDF generation
    =========================== */
 function wrapText(doc, text, x, y, maxW, lineH){
@@ -646,14 +725,13 @@ function wrapText(doc, text, x, y, maxW, lineH){
 
 els.makePdfBtn.addEventListener("click", ()=>{
   const totals = calc();
-
   const { jsPDF } = window.jspdf;
+
   const doc = new jsPDF({unit:"pt", format:"a4"});
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 42;
 
-  // Header
   doc.setFont("helvetica","bold");
   doc.setFontSize(16);
   doc.text("FORD PROPERTY SERVICES", M, 56);
@@ -661,28 +739,26 @@ els.makePdfBtn.addEventListener("click", ()=>{
   doc.setFont("helvetica","normal");
   doc.setFontSize(10);
   doc.text("On-Site Estimate", M, 74);
-
-  doc.setFontSize(10);
   doc.text(`Date: ${els.estimateDate.value || ""}`, W - M, 56, {align:"right"});
 
-  // Client box
   let y = 96;
   doc.setDrawColor(220);
   doc.setLineWidth(0.8);
   doc.roundedRect(M, y, W-(M*2), 92, 10, 10);
 
   doc.setFont("helvetica","bold");
-  doc.text("Client", M+12, y+18);
+  doc.text("Agent / Job", M+12, y+18);
   doc.setFont("helvetica","normal");
 
-  doc.text(`Name: ${els.clientName.value || ""}`, M+12, y+36);
-  doc.text(`Phone: ${els.clientPhone.value || ""}`, M+12, y+52);
-  doc.text(`Email: ${els.clientEmail.value || ""}`, M+12, y+68);
+  doc.text(`Agent/Branch: ${els.clientName.value || ""}`, M+12, y+36);
+
+  const door = els.doorNo.value.trim();
+  const doorLine = door ? `Door/Flat: ${door}` : "";
+  if(doorLine) doc.text(doorLine, M+12, y+52);
 
   doc.text("Address:", (W/2), y+18);
-  y = wrapText(doc, els.jobAddress.value || "", (W/2), y+36, (W/2)-M-12, 12);
+  wrapText(doc, els.jobAddress.value || "", (W/2), y+36, (W/2)-M-12, 12);
 
-  // Scope
   y = 200;
   doc.roundedRect(M, y, W-(M*2), 92, 10, 10);
   doc.setFont("helvetica","bold");
@@ -690,7 +766,6 @@ els.makePdfBtn.addEventListener("click", ()=>{
   doc.setFont("helvetica","normal");
   wrapText(doc, els.jobDesc.value || "", M+12, y+36, W-(M*2)-24, 12);
 
-  // Tables start
   y = 312;
 
   function tableTitle(title){
@@ -710,7 +785,7 @@ els.makePdfBtn.addEventListener("click", ()=>{
     }
   }
 
-  // Materials table
+  // Materials
   tableTitle("Materials");
   doc.setFontSize(10);
   doc.setFont("helvetica","bold");
@@ -730,24 +805,24 @@ els.makePdfBtn.addEventListener("click", ()=>{
       const lineTotal = num(m.qty)*num(m.unit);
       doc.text(String(m.name||""), M, y);
       doc.text(String(m.qty||0), W-220, y);
-      doc.text(£(m.unit), W-160, y);
-      doc.text(£(lineTotal), W-M, y, {align:"right"});
+      doc.text(fmtGBP(m.unit), W-160, y);
+      doc.text(fmtGBP(lineTotal), W-M, y, {align:"right"});
       y += 14;
     });
   }
 
   doc.setFont("helvetica","bold");
   doc.text("Materials Subtotal", W-220, y+6);
-  doc.text(£(totals.matSub), W-M, y+6, {align:"right"});
+  doc.text(fmtGBP(totals.matSub), W-M, y+6, {align:"right"});
   doc.setFont("helvetica","normal");
   y += 26;
 
-  // Labour table
+  // Labour
   tableTitle("Labour");
   doc.setFontSize(10);
   doc.setFont("helvetica","bold");
-  doc.text("Task", M, y);
-  doc.text("Hours", W-220, y);
+  doc.text("Name", M, y);
+  doc.text("Days", W-220, y);
   doc.text("Rate", W-160, y);
   doc.text("Total", W-M, y, {align:"right"});
   doc.setFont("helvetica","normal");
@@ -759,48 +834,50 @@ els.makePdfBtn.addEventListener("click", ()=>{
   }else{
     lab.forEach(l=>{
       ensureSpace(28);
-      const lineTotal = num(l.hours)*num(l.rate);
-      doc.text(String(l.task||""), M, y);
-      doc.text(String(l.hours||0), W-220, y);
-      doc.text(£(l.rate), W-160, y);
-      doc.text(£(lineTotal), W-M, y, {align:"right"});
+      const lineTotal = num(l.days)*num(l.rate);
+      doc.text(String(l.name||""), M, y);
+      doc.text(String(l.days||0), W-220, y);
+      doc.text(fmtGBP(l.rate), W-160, y);
+      doc.text(fmtGBP(lineTotal), W-M, y, {align:"right"});
       y += 14;
     });
   }
 
   doc.setFont("helvetica","bold");
   doc.text("Labour Subtotal", W-220, y+6);
-  doc.text(£(totals.labSub), W-M, y+6, {align:"right"});
+  doc.text(fmtGBP(totals.labSub), W-M, y+6, {align:"right"});
   doc.setFont("helvetica","normal");
   y += 26;
 
   // Totals box
-  ensureSpace(130);
-  doc.roundedRect(M, y, W-(M*2), 110, 10, 10);
+  ensureSpace(150);
+  doc.roundedRect(M, y, W-(M*2), 130, 10, 10);
   doc.setFont("helvetica","bold");
   doc.text("Totals", M+12, y+20);
 
   doc.setFont("helvetica","normal");
   doc.text("Subtotal", M+12, y+42);
-  doc.text(£(totals.sub), W-M-12, y+42, {align:"right"});
+  doc.text(fmtGBP(totals.sub), W-M-12, y+42, {align:"right"});
 
-  doc.text(`Markup (${totals.markupPct}%)`, M+12, y+58);
-  doc.text(£(totals.markup), W-M-12, y+58, {align:"right"});
+  doc.text("Markup", M+12, y+58);
+  doc.text(fmtGBP(totals.markup), W-M-12, y+58, {align:"right"});
 
-  doc.text(`VAT (${totals.vatPct}%)`, M+12, y+74);
-  doc.text(£(totals.vat), W-M-12, y+74, {align:"right"});
+  doc.text(`Commission (${totals.commissionPct}%)`, M+12, y+74);
+  doc.text(fmtGBP(totals.commission), W-M-12, y+74, {align:"right"});
+
+  doc.text(`VAT (${totals.vatPct}%)`, M+12, y+90);
+  doc.text(fmtGBP(totals.vat), W-M-12, y+90, {align:"right"});
 
   doc.setFont("helvetica","bold");
   doc.setFontSize(14);
-  doc.text("TOTAL", M+12, y+98);
-  doc.text(£(totals.total), W-M-12, y+98, {align:"right"});
+  doc.text("TOTAL", M+12, y+114);
+  doc.text(fmtGBP(totals.total), W-M-12, y+114, {align:"right"});
 
-  // Footer
   doc.setFontSize(9);
   doc.setFont("helvetica","normal");
   doc.text("Prepared on site • Ford Property Services", M, H - 26);
 
-  const fname = `FPS_Estimate_${(els.clientName.value||"Client").replace(/[^a-z0-9]+/gi,"_")}_${(els.estimateDate.value||todayISO())}.pdf`;
+  const fname = `FPS_Estimate_${(els.clientName.value||"Agent").replace(/[^a-z0-9]+/gi,"_")}_${(els.estimateDate.value||todayISO())}.pdf`;
   doc.save(fname);
 });
 
@@ -812,10 +889,10 @@ renderMaterials();
 renderLabour();
 calc();
 
-// autosave on typing in main fields
 [
-  els.clientName, els.clientPhone, els.clientEmail,
-  els.estimateDate, els.jobAddress, els.jobDesc
+  els.clientName, els.estimateDate, els.doorNo,
+  els.jobAddress, els.jobDesc,
+  els.markupGBP, els.commissionPct, els.vatPct
 ].forEach(el=> el.addEventListener("input", autosave));
 </script>
 
