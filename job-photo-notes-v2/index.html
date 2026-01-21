@@ -1275,6 +1275,20 @@ $("btnClear").onclick = () => {
   setStatus("Cleared.");
   render();
 };
+  // ✅ Auto-populate address from Jobs Board
+(function prefillAddressFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  const addressFromJob = params.get("address");
+
+  if(addressFromJob){
+    const addrInput = document.getElementById("address");
+    if(addrInput && !addrInput.value){
+      addrInput.value = addressFromJob;
+      state.address = addressFromJob;
+      save();
+    }
+  }
+})();
 
 /* =========================================================
    Boot
