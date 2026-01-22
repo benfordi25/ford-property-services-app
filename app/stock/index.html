@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Ford Property Services • Stock</title>
+  <meta name="theme-color" content="#0b1220" />
+
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:rgba(255,255,255,.06);
+      --text:#e7eefc;
+      --muted:#a9b7d3;
+      --line:rgba(255,255,255,.14);
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --radius:18px;
+      --blue: rgba(74,163,255,.95);
+      --green: rgba(34,197,94,.95);
+      --red: rgba(239,68,68,.95);
+      --amber: rgba(245,158,11,.95);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 650px at 20% -10%, rgba(74,163,255,.22), transparent 60%),
+        radial-gradient(1000px 650px at 100% 0%, rgba(34,197,94,.12), transparent 55%),
+        var(--bg);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      padding:14px 14px 10px;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(to bottom, rgba(11,18,32,.92), rgba(11,18,32,.65));
+      border-bottom:1px solid var(--line);
+    }
+    .row{display:flex; gap:10px; align-items:center}
+    .title{font-weight:900; letter-spacing:.2px}
+    .pill{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      box-shadow:var(--shadow);
+    }
+    input, select{
+      width:100%;
+      background:rgba(255,255,255,.06);
+      border:1px solid var(--line);
+      color:var(--text);
+      padding:12px 12px;
+      border-radius:14px;
+      outline:none;
+    }
+    input::placeholder{color:rgba(233,240,255,.55)}
+    button{
+      cursor:pointer;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:12px 12px;
+      border-radius:14px;
+      font-weight:800;
+    }
+    button.primary{background:rgba(74,163,255,.16); border-color:rgba(74,163,255,.35)}
+    button.good{background:rgba(34,197,94,.14); border-color:rgba(34,197,94,.35)}
+    button.bad{background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.35)}
+    button:active{transform:translateY(1px)}
+    main{padding:14px; max-width:980px; margin:0 auto}
+    .grid{display:grid; grid-template-columns: 1fr; gap:12px}
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:12px;
+    }
+    .itemRow{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:10px;
+      align-items:center;
+    }
+    .name{font-weight:900; font-size:15px}
+    .meta{color:var(--muted); font-size:12px; margin-top:2px}
+    .qtyBox{
+      display:flex; align-items:center; gap:8px;
+      justify-content:flex-end;
+    }
+    .qty{
+      min-width:70px;
+      text-align:center;
+      font-weight:900;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.05);
+    }
+    .mini{padding:10px 10px; border-radius:14px; min-width:44px}
+    .low{border-color:rgba(245,158,11,.45) !important}
+    .verylow{border-color:rgba(239,68,68,.55) !important}
+    .hint{color:var(--muted); font-size:12px}
+    .split{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    @media (min-width: 860px){
+      .split{grid-template-columns: 1.2fr .8fr;}
+    }
+
+    /* Modal */
+    .overlay{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      z-index:100;
+      padding:12px;
+    }
+    .sheet{
+      width:min(980px, 100%);
+      background:rgba(11,18,32,.96);
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      padding:12px;
+      max-height:86vh;
+      overflow:auto;
+    }
+    .sheetHeader{display:flex; justify-content:space-between; align-items:center; gap:10px}
+    .sheetTitle{font-weight:1000}
+    .hr{height:1px; background:var(--line); margin:10px 0}
+    #qrRegion{
+      width:100%;
+      background:rgba(255,255,255,.05);
+      border:1px dashed rgba(255,255,255,.22);
+      border-radius:18px;
+      overflow:hidden;
+      min-height:240px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--muted);
+    }
+  </style>
+
+  <!-- Barcode scanner lib -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <!-- Firebase (modular) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getFirestore, collection, addDoc, doc, updateDoc, getDocs, query, where,
+      onSnapshot, orderBy, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    // ✅ YOUR JOBS BOARD FIREBASE CONFIG (inserted)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCJPVdTvzHFRiyLTzR08hMTBp71gPEPLU8",
+      authDomain: "fps-jobs-board.firebaseapp.com",
+      projectId: "fps-jobs-board",
+      storageBucket: "fps-jobs-board.firebasestorage.app",
+      messagingSenderId: "386598717430",
+      appId: "1:386598717430:web:06a2b508f1d7fcc92069d7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // UI elements
+    const els = {
+      search: document.getElementById("search"),
+      list: document.getElementById("list"),
+      status: document.getElementById("status"),
+      btnScan: document.getElementById("btnScan"),
+      btnAdd: document.getElementById("btnAdd"),
+      overlay: document.getElementById("overlay"),
+      closeSheet: document.getElementById("closeSheet"),
+      sheetTitle: document.getElementById("sheetTitle"),
+      modePill: document.getElementById("modePill"),
+
+      // Add/Edit form
+      f_barcode: document.getElementById("f_barcode"),
+      f_name: document.getElementById("f_name"),
+      f_qty: document.getElementById("f_qty"),
+      f_unit: document.getElementById("f_unit"),
+      f_category: document.getElementById("f_category"),
+      f_location: document.getElementById("f_location"),
+      f_minQty: document.getElementById("f_minQty"),
+      btnSaveItem: document.getElementById("btnSaveItem"),
+      btnDeleteItem: document.getElementById("btnDeleteItem"),
+
+      // Scanner
+      qrRegion: document.getElementById("qrRegion"),
+      btnStartScan: document.getElementById("btnStartScan"),
+      btnStopScan: document.getElementById("btnStopScan"),
+      scanHint: document.getElementById("scanHint"),
+
+      // Qty prompt (scan amount chooser)
+      qtyPrompt: document.getElementById("qtyPrompt"),
+      btnCustomAdd: document.getElementById("btnCustomAdd"),
+      btnCancelAdd: document.getElementById("btnCancelAdd"),
+      customAddRow: document.getElementById("customAddRow"),
+      customAddVal: document.getElementById("customAddVal"),
+      btnApplyCustom: document.getElementById("btnApplyCustom"),
+      qtyPromptHint: document.getElementById("qtyPromptHint"),
+    };
+
+    const STOCK_COL = collection(db, "stockItems");
+
+    let allItems = [];
+    let editId = null;      // currently editing item id
+    let lastScanned = "";   // debounce
+    let scanner = null;
+    let scanning = false;
+
+    // Holds the current scan awaiting amount choice
+    // { code: string, existingItem: {id,...} | null }
+    let pendingScan = null;
+
+    function esc(s=""){ return (s+"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    function openSheet(title){
+      els.sheetTitle.textContent = title;
+      els.overlay.style.display = "flex";
+    }
+    function closeSheet(){
+      els.overlay.style.display = "none";
+      hideQtyPrompt();
+      pendingScan = null;
+      stopScanner(); // safe
+    }
+
+    function clearForm(){
+      editId = null;
+      els.f_barcode.value = "";
+      els.f_name.value = "";
+      els.f_qty.value = "1";
+      els.f_unit.value = "pcs";
+      els.f_category.value = "";
+      els.f_location.value = "";
+      els.f_minQty.value = "";
+      els.btnDeleteItem.style.display = "none";
+    }
+
+    function showQtyPrompt(existingItem){
+      els.qtyPrompt.style.display = "block";
+      els.customAddRow.style.display = "none";
+      els.customAddVal.value = "";
+      els.qtyPromptHint.textContent = existingItem
+        ? `Barcode found: ${existingItem.name}`
+        : `New barcode — choose starting quantity then add details`;
+    }
+
+    function hideQtyPrompt(){
+      els.qtyPrompt.style.display = "none";
+      els.customAddRow.style.display = "none";
+      els.customAddVal.value = "";
+      els.qtyPromptHint.textContent = "";
+    }
+
+    function render(){
+      const term = (els.search.value || "").trim().toLowerCase();
+      const filtered = !term ? allItems : allItems.filter(it => {
+        const hay = `${it.name||""} ${it.category||""} ${it.location||""} ${it.barcode||""}`.toLowerCase();
+        return hay.includes(term);
+      });
+
+      if (!filtered.length){
+        els.list.innerHTML = `
+          <div class="card">
+            <div class="name">No items found</div>
+            <div class="meta">Try scanning a barcode or tap “Add item”.</div>
+          </div>
+        `;
+        return;
+      }
+
+      els.list.innerHTML = filtered.map(it => {
+        const qty = Number(it.qty || 0);
+        const min = it.minQty === undefined || it.minQty === null || it.minQty === "" ? null : Number(it.minQty);
+        const lowClass = (min !== null && qty <= min) ? (qty <= Math.max(0, Math.floor(min*0.5)) ? "verylow" : "low") : "";
+        const unit = it.unit || "pcs";
+        const metaBits = [
+          it.category ? `📦 ${esc(it.category)}` : "",
+          it.location ? `📍 ${esc(it.location)}` : "",
+          it.barcode ? `🏷️ ${esc(it.barcode)}` : ""
+        ].filter(Boolean).join(" • ");
+
+        return `
+          <div class="card ${lowClass}">
+            <div class="itemRow">
+              <div>
+                <div class="name">${esc(it.name || "Unnamed item")}</div>
+                <div class="meta">${metaBits || `<span class="hint">No category/location/barcode set</span>`}</div>
+                ${min !== null ? `<div class="meta">Min: <b>${esc(min)}</b> ${esc(unit)}</div>` : ``}
+              </div>
+
+              <div class="qtyBox">
+                <button class="mini bad" data-act="dec" data-id="${esc(it.id)}">–</button>
+                <div class="qty">${esc(qty)} ${esc(unit)}</div>
+                <button class="mini good" data-act="inc" data-id="${esc(it.id)}">+</button>
+                <button class="mini" data-act="edit" data-id="${esc(it.id)}">✏️</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function changeQty(id, delta){
+      const it = allItems.find(x => x.id === id);
+      if (!it) return;
+      const newQty = Math.max(0, Number(it.qty || 0) + delta);
+      await updateDoc(doc(db, "stockItems", id), { qty: newQty, updatedAt: serverTimestamp() });
+    }
+
+    async function findByBarcode(code){
+      const qy = query(STOCK_COL, where("barcode", "==", code));
+      const snap = await getDocs(qy);
+      const docs = [];
+      snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+      return docs[0] || null;
+    }
+
+    function openAddWithBarcode(code, startingQty=1){
+      clearForm();
+      els.f_barcode.value = code;
+      els.f_qty.value = String(startingQty || 1);
+      openSheet("Add new item");
+      els.modePill.textContent = "New";
+      els.f_name.focus();
+    }
+
+    function openEdit(id){
+      const it = allItems.find(x => x.id === id);
+      if (!it) return;
+      editId = id;
+      els.f_barcode.value = it.barcode || "";
+      els.f_name.value = it.name || "";
+      els.f_qty.value = String(it.qty ?? 0);
+      els.f_unit.value = it.unit || "pcs";
+      els.f_category.value = it.category || "";
+      els.f_location.value = it.location || "";
+      els.f_minQty.value = (it.minQty ?? "") === 0 ? "0" : (it.minQty ?? "");
+      els.btnDeleteItem.style.display = "none"; // v1 safe (no delete)
+      openSheet("Edit item");
+      els.modePill.textContent = "Edit";
+    }
+
+    async function saveItem(){
+      const barcode = (els.f_barcode.value || "").trim();
+      const name = (els.f_name.value || "").trim();
+      const qty = Number(els.f_qty.value || 0);
+      const unit = (els.f_unit.value || "pcs").trim();
+      const category = (els.f_category.value || "").trim();
+      const location = (els.f_location.value || "").trim();
+      const minQtyRaw = (els.f_minQty.value || "").trim();
+      const minQty = minQtyRaw === "" ? null : Number(minQtyRaw);
+
+      if (!name){
+        alert("Item name is required.");
+        els.f_name.focus();
+        return;
+      }
+      if (Number.isNaN(qty) || qty < 0){
+        alert("Quantity must be 0 or more.");
+        els.f_qty.focus();
+        return;
+      }
+      if (minQty !== null && (Number.isNaN(minQty) || minQty < 0)){
+        alert("Min stock must be blank or 0+.");
+        els.f_minQty.focus();
+        return;
+      }
+
+      const payload = {
+        name,
+        barcode: barcode || null,
+        qty,
+        unit: unit || "pcs",
+        category: category || null,
+        location: location || null,
+        minQty: minQty === null ? null : minQty,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (editId){
+        await updateDoc(doc(db, "stockItems", editId), payload);
+        closeSheet();
+        return;
+      }
+
+      // If adding new: if barcode provided, prevent duplicates (merge quantities)
+      if (barcode){
+        const existing = await findByBarcode(barcode);
+        if (existing){
+          const merged = Math.max(0, Number(existing.qty || 0) + qty);
+          await updateDoc(doc(db, "stockItems", existing.id), { qty: merged, updatedAt: serverTimestamp() });
+          closeSheet();
+          return;
+        }
+      }
+
+      await addDoc(STOCK_COL, payload);
+      closeSheet();
+    }
+
+    // Live sync list
+    function startLive(){
+      els.status.textContent = "Syncing…";
+      const qy = query(STOCK_COL, orderBy("updatedAt", "desc"));
+      onSnapshot(qy, (snap) => {
+        const arr = [];
+        snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
+        arr.sort((a,b) => {
+          const ta = a.updatedAt?.seconds || 0;
+          const tb = b.updatedAt?.seconds || 0;
+          return tb - ta;
+        });
+        allItems = arr;
+        els.status.textContent = `${arr.length} item${arr.length===1?"":"s"}`;
+        render();
+      }, (err) => {
+        console.error(err);
+        els.status.textContent = "Sync error (check Firebase rules/config)";
+      });
+    }
+
+    // Scanner controls
+    async function startScanner(){
+      if (scanning) return;
+      scanning = true;
+      els.scanHint.textContent = "Point your camera at the barcode…";
+      els.btnStartScan.disabled = true;
+      els.btnStopScan.disabled = false;
+      hideQtyPrompt();
+      pendingScan = null;
+
+      if (!scanner){
+        scanner = new Html5Qrcode("qrRegion");
+      }
+
+      const config = { fps: 10, qrbox: { width: 260, height: 160 } };
+
+      try{
+        await scanner.start(
+          { facingMode: "environment" },
+          config,
+          async (decodedText) => {
+            const code = (decodedText || "").trim();
+            if (!code) return;
+
+            // Debounce repeated reads
+            if (code === lastScanned) return;
+            lastScanned = code;
+            setTimeout(() => { lastScanned = ""; }, 1400);
+
+            // Find item by barcode
+            const existing = await findByBarcode(code);
+
+            if (existing){
+              pendingScan = { code, existingItem: existing };
+              els.scanHint.textContent = `✅ Found: ${existing.name}`;
+              showQtyPrompt(existing);
+            } else {
+              pendingScan = { code, existingItem: null };
+              els.scanHint.textContent = "🆕 New barcode — choose starting quantity";
+              showQtyPrompt(null);
+            }
+          }
+        );
+      } catch (e){
+        console.error(e);
+        els.scanHint.textContent = "Camera error. Check permissions or try again.";
+        scanning = false;
+        els.btnStartScan.disabled = false;
+        els.btnStopScan.disabled = true;
+      }
+    }
+
+    async function stopScanner(keepSheetOpen=false){
+      if (!scanner || !scanning) return;
+      try{ await scanner.stop(); } catch(e){}
+      try{ await scanner.clear(); } catch(e){}
+      scanning = false;
+      els.btnStartScan.disabled = false;
+      els.btnStopScan.disabled = true;
+      if (!keepSheetOpen){
+        els.scanHint.textContent = "Scanner stopped.";
+      }
+    }
+
+    // Events
+    els.search.addEventListener("input", render);
+
+    els.list.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const id = btn.getAttribute("data-id");
+      const act = btn.getAttribute("data-act");
+      if (!id || !act) return;
+
+      if (act === "inc") await changeQty(id, +1);
+      if (act === "dec") await changeQty(id, -1);
+      if (act === "edit") openEdit(id);
+    });
+
+    // View switching inside sheet
+    function showForm(){
+      document.getElementById("scanSection").style.display = "none";
+      document.getElementById("formSection").style.display = "block";
+    }
+
+    const _openSheet = openSheet;
+    openSheet = (title) => {
+      _openSheet(title);
+      hideQtyPrompt();
+      pendingScan = null;
+
+      if (title.toLowerCase().includes("scan")){
+        document.getElementById("scanSection").style.display = "block";
+        document.getElementById("formSection").style.display = "none";
+      } else {
+        showForm();
+      }
+    };
+
+    els.btnAdd.addEventListener("click", () => {
+      clearForm();
+      els.modePill.textContent = "New";
+      openSheet("Add new item");
+    });
+
+    els.btnScan.addEventListener("click", () => {
+      clearForm();
+      els.modePill.textContent = "Scan";
+      openSheet("Scan barcode");
+    });
+
+    els.closeSheet.addEventListener("click", closeSheet);
+    els.overlay.addEventListener("click", (e) => {
+      if (e.target === els.overlay) closeSheet();
+    });
+
+    els.btnSaveItem.addEventListener("click", saveItem);
+
+    els.btnStartScan.addEventListener("click", startScanner);
+    els.btnStopScan.addEventListener("click", () => stopScanner(false));
+
+    // ✅ Scan Amount Chooser handlers
+    els.qtyPrompt.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const qadd = btn.getAttribute("data-qadd");
+      if (!qadd) return;
+      const amt = Number(qadd);
+      if (!pendingScan || !amt || amt < 1) return;
+
+      const { code, existingItem } = pendingScan;
+
+      if (existingItem){
+        const newQty = Math.max(0, Number(existingItem.qty || 0) + amt);
+        await updateDoc(doc(db, "stockItems", existingItem.id), { qty: newQty, updatedAt: serverTimestamp() });
+        els.scanHint.textContent = `✅ Added +${amt} to: ${existingItem.name} (${newQty})`;
+        hideQtyPrompt();
+        pendingScan = null;
+        return;
+      }
+
+      // New barcode: prefill Add Item with chosen amount
+      await stopScanner(true);
+      hideQtyPrompt();
+      pendingScan = null;
+      openAddWithBarcode(code, amt);
+    });
+
+    els.btnCustomAdd.addEventListener("click", () => {
+      els.customAddRow.style.display = "block";
+      els.customAddVal.focus();
+    });
+
+    els.btnApplyCustom.addEventListener("click", async () => {
+      const amt = Number(els.customAddVal.value || 0);
+      if (!pendingScan || !amt || amt < 1) return;
+
+      // Apply custom amount similarly to preset
+      const { code, existingItem } = pendingScan;
+
+      if (existingItem){
+        const newQty = Math.max(0, Number(existingItem.qty || 0) + amt);
+        await updateDoc(doc(db, "stockItems", existingItem.id), { qty: newQty, updatedAt: serverTimestamp() });
+        els.scanHint.textContent = `✅ Added +${amt} to: ${existingItem.name} (${newQty})`;
+        hideQtyPrompt();
+        pendingScan = null;
+        return;
+      }
+
+      await stopScanner(true);
+      hideQtyPrompt();
+      pendingScan = null;
+      openAddWithBarcode(code, amt);
+    });
+
+    els.btnCancelAdd.addEventListener("click", () => {
+      hideQtyPrompt();
+      pendingScan = null;
+      els.scanHint.textContent = "Cancelled.";
+    });
+
+    // Start
+    startLive();
+    render();
+
+    // Expose for debugging
+    window.__stock = { db };
+  </script>
+</head>
+
+<body>
+  <header>
+    <div class="row" style="justify-content:space-between;">
+      <div>
+        <div class="title">FPS • Stock</div>
+        <div class="hint" id="status">Loading…</div>
+      </div>
+      <div class="row">
+        <button class="primary" id="btnScan">📷 Scan</button>
+        <button class="good" id="btnAdd">＋ Add item</button>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <input id="search" placeholder="Search stock… (name, category, location, barcode)" />
+    </div>
+  </header>
+
+  <main>
+    <div class="grid" id="list"></div>
+    <div class="hint" style="margin-top:10px;">
+      Tip: Scan → choose amount to add. New barcode → choose starting quantity then add details.
+    </div>
+  </main>
+
+  <!-- Bottom sheet / modal -->
+  <div class="overlay" id="overlay">
+    <div class="sheet">
+      <div class="sheetHeader">
+        <div>
+          <div class="sheetTitle" id="sheetTitle">Add</div>
+          <div class="hint">Mode: <span class="pill" id="modePill" style="padding:4px 10px;">New</span></div>
+        </div>
+        <button id="closeSheet">Close</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- SCAN SECTION -->
+      <div id="scanSection" style="display:none;">
+        <div id="qrRegion">Camera preview will appear here</div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="primary" id="btnStartScan">Start scan</button>
+          <button id="btnStopScan" disabled>Stop</button>
+        </div>
+
+        <div class="hint" style="margin-top:10px;" id="scanHint">Tap “Start scan” then point at the barcode.</div>
+
+        <!-- ✅ Add Amount Quick Prompt -->
+        <div id="qtyPrompt" class="card" style="display:none; margin-top:10px;">
+          <div class="name" style="margin-bottom:6px;">Add how many?</div>
+          <div class="row" style="flex-wrap:wrap; gap:8px;">
+            <button class="good" data-qadd="1">+1</button>
+            <button class="good" data-qadd="2">+2</button>
+            <button class="good" data-qadd="5">+5</button>
+            <button class="good" data-qadd="10">+10</button>
+            <button class="primary" id="btnCustomAdd">Custom…</button>
+            <button id="btnCancelAdd">Cancel</button>
+          </div>
+
+          <div id="customAddRow" style="display:none; margin-top:10px;">
+            <div class="row">
+              <input id="customAddVal" type="number" inputmode="numeric" min="1" placeholder="Enter amount…" />
+              <button class="good" id="btnApplyCustom">Apply</button>
+            </div>
+          </div>
+
+          <div class="hint" style="margin-top:8px;" id="qtyPromptHint"></div>
+        </div>
+      </div>
+
+      <!-- FORM SECTION -->
+      <div id="formSection">
+        <div class="split">
+          <div class="card">
+            <div class="hint">Barcode (scan fills this)</div>
+            <input id="f_barcode" placeholder="e.g. 5051234567890" />
+
+            <div style="height:10px"></div>
+
+            <div class="hint">Item name *</div>
+            <input id="f_name" placeholder="e.g. 15mm copper elbow" />
+
+            <div style="height:10px"></div>
+
+            <div class="row">
+              <div style="flex:1">
+                <div class="hint">Qty</div>
+                <input id="f_qty" type="number" inputmode="numeric" min="0" value="1" />
+              </div>
+              <div style="width:140px">
+                <div class="hint">Unit</div>
+                <select id="f_unit">
+                  <option value="pcs">pcs</option>
+                  <option value="boxes">boxes</option>
+                  <option value="tubes">tubes</option>
+                  <option value="rolls">rolls</option>
+                  <option value="metres">metres</option>
+                  <option value="litres">litres</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="height:10px"></div>
+
+            <div class="hint">Min stock (optional)</div>
+            <input id="f_minQty" type="number" inputmode="numeric" min="0" placeholder="e.g. 5" />
+          </div>
+
+          <div class="card">
+            <div class="hint">Category (optional)</div>
+            <input id="f_category" placeholder="e.g. Plumbing / Electrical / Fixings" />
+
+            <div style="height:10px"></div>
+
+            <div class="hint">Location (optional)</div>
+            <input id="f_location" placeholder="e.g. Unit shelf A3 / Van box 2" />
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <button class="good" style="flex:1" id="btnSaveItem">Save</button>
+              <button class="bad" style="display:none" id="btnDeleteItem">Delete</button>
+            </div>
+
+            <div class="hint" style="margin-top:10px;">
+              If you save with a barcode that already exists, it will add the quantity onto the existing item.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
