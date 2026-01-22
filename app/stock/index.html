@@ -39,14 +39,6 @@
     }
     .row{display:flex; gap:10px; align-items:center}
     .title{font-weight:900; letter-spacing:.2px}
-    .pill{
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:14px;
-      box-shadow:var(--shadow);
-    }
     input, select{
       width:100%;
       background:rgba(255,255,255,.06);
@@ -65,6 +57,9 @@
       padding:12px 12px;
       border-radius:14px;
       font-weight:800;
+      touch-action: manipulation;
+      user-select:none;
+      white-space:nowrap;
     }
     button.primary{background:rgba(74,163,255,.16); border-color:rgba(74,163,255,.35)}
     button.good{background:rgba(34,197,94,.14); border-color:rgba(34,197,94,.35)}
@@ -94,15 +89,21 @@
       flex-wrap:wrap;
     }
     .qty{
-      min-width:70px;
+      min-width:84px;
       text-align:center;
       font-weight:900;
       padding:10px 12px;
       border-radius:14px;
       border:1px solid var(--line);
       background:rgba(255,255,255,.05);
+      color:var(--text);
+    }
+    .qty.zero{
+      border-color: rgba(239,68,68,.55);
+      color: var(--red);
     }
     .mini{padding:10px 10px; border-radius:14px; min-width:44px}
+    .miniTxt{padding:10px 10px; border-radius:14px; min-width:48px}
     .low{border-color:rgba(245,158,11,.45) !important}
     .verylow{border-color:rgba(239,68,68,.55) !important}
     .hint{color:var(--muted); font-size:12px}
@@ -115,7 +116,7 @@
       .split{grid-template-columns: 1.2fr .8fr;}
     }
 
-    /* Modal */
+    /* Modal (bottom sheet) */
     .overlay{
       position:fixed; inset:0;
       background:rgba(0,0,0,.55);
@@ -137,7 +138,17 @@
     }
     .sheetHeader{display:flex; justify-content:space-between; align-items:center; gap:10px}
     .sheetTitle{font-weight:1000}
+    .pill{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      box-shadow:var(--shadow);
+    }
     .hr{height:1px; background:var(--line); margin:10px 0}
+
+    /* Barcode area */
     #qrRegion{
       width:100%;
       background:rgba(255,255,255,.05);
@@ -160,6 +171,45 @@
       font-size:12px;
       color:var(--text);
     }
+
+    /* Custom amount prompt (list) */
+    .promptOverlay{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      z-index:200;
+      padding:12px;
+    }
+    .promptSheet{
+      width:min(640px, 100%);
+      background:rgba(11,18,32,.96);
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      padding:12px;
+    }
+
+    /* Photo Identify UI */
+    .previewRow{display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;}
+    .preview{
+      width:120px; height:120px;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.05);
+      object-fit:cover;
+    }
+    .suggestions .pill{display:block; width:100%; text-align:left; margin-top:8px}
+    .mutedBox{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.05);
+      border-radius:18px;
+      padding:10px;
+      color:var(--muted);
+      font-size:12px;
+      white-space:pre-wrap;
+    }
   </style>
 
   <!-- Barcode scanner lib -->
@@ -168,9 +218,15 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, doc, updateDoc, getDocs, query, where,
-      onSnapshot, orderBy, serverTimestamp, arrayUnion
+      getFirestore, collection, addDoc, doc, updateDoc, getDocs, getDoc, query, where,
+      onSnapshot, orderBy, serverTimestamp, arrayUnion, runTransaction
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import {
+      getStorage, ref as sRef, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+    import {
+      getFunctions, httpsCallable
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
     // ✅ Your Firebase config (fps-jobs-board)
     const firebaseConfig = {
@@ -184,7 +240,12 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const storage = getStorage(app);
+    const functions = getFunctions(app);
     const STOCK_COL = collection(db, "stockItems");
+
+    // Callable (deployed in Part 2)
+    const identifyFromPhoto = httpsCallable(functions, "identifyFromPhoto");
 
     const els = {
       search: document.getElementById("search"),
@@ -192,10 +253,17 @@
       status: document.getElementById("status"),
       btnScan: document.getElementById("btnScan"),
       btnAdd: document.getElementById("btnAdd"),
+      btnPhoto: document.getElementById("btnPhoto"),
+
       overlay: document.getElementById("overlay"),
       closeSheet: document.getElementById("closeSheet"),
       sheetTitle: document.getElementById("sheetTitle"),
       modePill: document.getElementById("modePill"),
+
+      // Sections
+      scanSection: document.getElementById("scanSection"),
+      formSection: document.getElementById("formSection"),
+      photoSection: document.getElementById("photoSection"),
 
       // Add/Edit form
       f_barcodes: document.getElementById("f_barcodes"),
@@ -213,7 +281,7 @@
       btnStopScan: document.getElementById("btnStopScan"),
       scanHint: document.getElementById("scanHint"),
 
-      // Qty prompt (scan amount chooser + actions)
+      // Scan prompt
       qtyPrompt: document.getElementById("qtyPrompt"),
       qtyPromptHint: document.getElementById("qtyPromptHint"),
       suggestedBox: document.getElementById("suggestedBox"),
@@ -234,17 +302,38 @@
       assignSearch: document.getElementById("assignSearch"),
       assignList: document.getElementById("assignList"),
       btnAssignClose: document.getElementById("btnAssignClose"),
+
+      // List custom amount prompt
+      amtOverlay: document.getElementById("amtOverlay"),
+      amtTitle: document.getElementById("amtTitle"),
+      amtInput: document.getElementById("amtInput"),
+      amtApply: document.getElementById("amtApply"),
+      amtCancel: document.getElementById("amtCancel"),
+
+      // Photo Identify
+      photoInput: document.getElementById("photoInput"),
+      photoPreview: document.getElementById("photoPreview"),
+      photoStatus: document.getElementById("photoStatus"),
+      photoText: document.getElementById("photoText"),
+      photoBest: document.getElementById("photoBest"),
+      photoAlt: document.getElementById("photoAlt"),
+      photoBtnUseBest: document.getElementById("photoBtnUseBest"),
+      photoBtnUseAlt: document.getElementById("photoBtnUseAlt"),
+      photoBtnManual: document.getElementById("photoBtnManual"),
     };
 
     let allItems = [];
     let editId = null;
+
     let scanner = null;
     let scanning = false;
     let lastScanned = "";
-
-    // pendingScan:
-    // { code, existingItem, suggested: {name, brand, source} | null }
     let pendingScan = null;
+
+    let pendingListDelta = { id:null };
+
+    // Photo identify state
+    let lastPhotoSuggestion = null; // {name, altName, sizeHints, unitGuess, rawText}
 
     function esc(s=""){ return (s+"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
@@ -258,26 +347,15 @@
       hideAssign();
       pendingScan = null;
       stopScanner();
+      resetPhotoUI();
     }
 
-    function showForm(){
-      document.getElementById("scanSection").style.display = "none";
-      document.getElementById("formSection").style.display = "block";
+    function showOnly(section){
+      els.scanSection.style.display = "none";
+      els.formSection.style.display = "none";
+      els.photoSection.style.display = "none";
+      section.style.display = "block";
     }
-
-    const _openSheet = openSheet;
-    openSheet = (title) => {
-      _openSheet(title);
-      hideQtyPrompt();
-      hideAssign();
-      pendingScan = null;
-      if (title.toLowerCase().includes("scan")){
-        document.getElementById("scanSection").style.display = "block";
-        document.getElementById("formSection").style.display = "none";
-      } else {
-        showForm();
-      }
-    };
 
     function clearForm(){
       editId = null;
@@ -288,6 +366,179 @@
       els.f_category.value = "";
       els.f_location.value = "";
       els.f_minQty.value = "";
+    }
+
+    async function adjustQtyAtomic(itemId, delta){
+      const ref = doc(db, "stockItems", itemId);
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data() || {};
+        const cur = Number(data.qty || 0);
+        const next = Math.max(0, cur + Number(delta || 0));
+        tx.update(ref, { qty: next, updatedAt: serverTimestamp() });
+      });
+    }
+
+    async function findByBarcode(code){
+      const q1 = query(STOCK_COL, where("barcode", "==", code));
+      const s1 = await getDocs(q1);
+      let found = null;
+      s1.forEach(d => { if (!found) found = { id: d.id, ...d.data() }; });
+      if (found) return found;
+
+      const q2 = query(STOCK_COL, where("barcodes", "array-contains", code));
+      const s2 = await getDocs(q2);
+      s2.forEach(d => { if (!found) found = { id: d.id, ...d.data() }; });
+      return found;
+    }
+
+    async function fetchOpenFoodFacts(code){
+      const url = `https://world.openfoodfacts.net/api/v2/product/${encodeURIComponent(code)}`;
+      try{
+        const res = await fetch(url, { method:"GET" });
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (!data || data.status !== 1 || !data.product) return null;
+
+        const p = data.product;
+        const name =
+          (p.product_name && p.product_name.trim()) ||
+          (p.product_name_en && p.product_name_en.trim()) ||
+          (p.generic_name && p.generic_name.trim()) ||
+          "";
+        const brand = (p.brands && p.brands.trim()) || "";
+        if (!name && !brand) return null;
+
+        return { name: name || "", brand: brand || "", source: "Open Food Facts" };
+      } catch(e){
+        return null;
+      }
+    }
+
+    function showQtyPrompt(){
+      els.qtyPrompt.style.display = "block";
+      els.customAddRow.style.display = "none";
+      els.customAddVal.value = "";
+      els.assignBox.style.display = "none";
+    }
+    function hideQtyPrompt(){
+      els.qtyPrompt.style.display = "none";
+      els.customAddRow.style.display = "none";
+      els.customAddVal.value = "";
+      els.qtyPromptHint.textContent = "";
+      els.suggestedBox.style.display = "none";
+    }
+    function showSuggested(suggested){
+      if (!suggested) { els.suggestedBox.style.display = "none"; return; }
+      els.suggestedBox.style.display = "block";
+      els.suggestedName.textContent = suggested.name || "(No name found)";
+      els.suggestedBrand.textContent = suggested.brand ? `Brand: ${suggested.brand}` : "";
+      els.suggestedTag.textContent = suggested.source || "";
+    }
+
+    function hideAssign(){
+      els.assignBox.style.display = "none";
+      els.assignSearch.value = "";
+      els.assignList.innerHTML = "";
+    }
+
+    function parseBarcodes(input){
+      const arr = (input || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+      return [...new Set(arr)];
+    }
+
+    function openAddWithBarcode(code, startingQty=1, suggested=null){
+      clearForm();
+      els.f_barcodes.value = code ? code : "";
+      els.f_qty.value = String(startingQty || 1);
+      if (suggested?.name) els.f_name.value = suggested.name + (suggested.brand ? ` (${suggested.brand})` : "");
+      openSheet("Add new item");
+      els.modePill.textContent = "New";
+      showOnly(els.formSection);
+      els.f_name.focus();
+    }
+
+    function openEdit(id){
+      const it = allItems.find(x => x.id === id);
+      if (!it) return;
+      editId = id;
+
+      const bars = Array.isArray(it.barcodes) ? it.barcodes : (it.barcode ? [it.barcode] : []);
+      els.f_barcodes.value = bars.join(", ");
+
+      els.f_name.value = it.name || "";
+      els.f_qty.value = String(it.qty ?? 0);
+      els.f_unit.value = it.unit || "pcs";
+      els.f_category.value = it.category || "";
+      els.f_location.value = it.location || "";
+      els.f_minQty.value = (it.minQty ?? "") === 0 ? "0" : (it.minQty ?? "");
+      openSheet("Edit item");
+      els.modePill.textContent = "Edit";
+      showOnly(els.formSection);
+    }
+
+    async function saveItem(){
+      const barcodes = parseBarcodes(els.f_barcodes.value);
+      const name = (els.f_name.value || "").trim();
+      const qty = Number(els.f_qty.value || 0);
+      const unit = (els.f_unit.value || "pcs").trim();
+      const category = (els.f_category.value || "").trim();
+      const location = (els.f_location.value || "").trim();
+      const minQtyRaw = (els.f_minQty.value || "").trim();
+      const minQty = minQtyRaw === "" ? null : Number(minQtyRaw);
+
+      if (!name){ alert("Item name is required."); els.f_name.focus(); return; }
+      if (Number.isNaN(qty) || qty < 0){ alert("Quantity must be 0 or more."); els.f_qty.focus(); return; }
+      if (minQty !== null && (Number.isNaN(minQty) || minQty < 0)){ alert("Min stock must be blank or 0+."); els.f_minQty.focus(); return; }
+
+      const primaryBarcode = barcodes[0] || null;
+
+      const payload = {
+        name,
+        barcode: primaryBarcode,
+        barcodes: barcodes.length ? barcodes : null,
+        qty,
+        unit: unit || "pcs",
+        category: category || null,
+        location: location || null,
+        minQty: minQty === null ? null : minQty,
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+      };
+
+      if (editId){
+        const ref = doc(db, "stockItems", editId);
+        const snap = await getDoc(ref);
+        const existingCreated = snap.exists() ? snap.data()?.createdAt : null;
+
+        const upd = { ...payload };
+        if (existingCreated) delete upd.createdAt;
+
+        await updateDoc(ref, upd);
+        closeSheet();
+        return;
+      }
+
+      if (primaryBarcode){
+        const existing = await findByBarcode(primaryBarcode);
+        if (existing){
+          await adjustQtyAtomic(existing.id, qty);
+          await updateDoc(doc(db, "stockItems", existing.id), {
+            barcode: existing.barcode || primaryBarcode,
+            barcodes: arrayUnion(primaryBarcode),
+            updatedAt: serverTimestamp()
+          });
+          closeSheet();
+          return;
+        }
+      }
+
+      await addDoc(STOCK_COL, payload);
+      closeSheet();
     }
 
     function render(){
@@ -302,7 +553,7 @@
         els.list.innerHTML = `
           <div class="card">
             <div class="name">No items found</div>
-            <div class="meta">Try scanning a barcode or tap “Add item”.</div>
+            <div class="meta">Try scanning a barcode, using Photo Identify, or tap “Add item”.</div>
           </div>
         `;
         return;
@@ -313,6 +564,7 @@
         const min = it.minQty === undefined || it.minQty === null || it.minQty === "" ? null : Number(it.minQty);
         const lowClass = (min !== null && qty <= min) ? (qty <= Math.max(0, Math.floor(min*0.5)) ? "verylow" : "low") : "";
         const unit = it.unit || "pcs";
+        const qtyClass = qty === 0 ? "qty zero" : "qty";
 
         const bars = Array.isArray(it.barcodes) ? it.barcodes : (it.barcode ? [it.barcode] : []);
         const barcodeLabel = bars.length ? `🏷️ ${esc(bars[0])}${bars.length>1 ? ` +${bars.length-1}` : ""}` : "";
@@ -333,9 +585,15 @@
               </div>
 
               <div class="qtyBox">
-                <button class="mini bad" data-act="dec" data-id="${esc(it.id)}">–</button>
-                <div class="qty">${esc(qty)} ${esc(unit)}</div>
-                <button class="mini good" data-act="inc" data-id="${esc(it.id)}">+</button>
+                <button class="mini bad" data-act="add" data-delta="-1" data-id="${esc(it.id)}">–</button>
+                <div class="${qtyClass}">${esc(qty)} ${esc(unit)}</div>
+
+                <button class="miniTxt good" data-act="add" data-delta="1" data-id="${esc(it.id)}">+1</button>
+                <button class="miniTxt good" data-act="add" data-delta="2" data-id="${esc(it.id)}">+2</button>
+                <button class="miniTxt good" data-act="add" data-delta="5" data-id="${esc(it.id)}">+5</button>
+                <button class="miniTxt good" data-act="add" data-delta="10" data-id="${esc(it.id)}">+10</button>
+                <button class="miniTxt primary" data-act="custom" data-id="${esc(it.id)}">Custom</button>
+
                 <button class="mini" data-act="edit" data-id="${esc(it.id)}">✏️</button>
               </div>
             </div>
@@ -344,207 +602,13 @@
       }).join("");
     }
 
-    async function changeQty(id, delta){
-      const it = allItems.find(x => x.id === id);
-      if (!it) return;
-      const newQty = Math.max(0, Number(it.qty || 0) + delta);
-      await updateDoc(doc(db, "stockItems", id), { qty: newQty, updatedAt: serverTimestamp() });
-    }
-
-    async function findByBarcode(code){
-      // 1) legacy single field
-      const q1 = query(STOCK_COL, where("barcode", "==", code));
-      const s1 = await getDocs(q1);
-      let found = null;
-      s1.forEach(d => { if (!found) found = { id: d.id, ...d.data() }; });
-      if (found) return found;
-
-      // 2) new array field
-      const q2 = query(STOCK_COL, where("barcodes", "array-contains", code));
-      const s2 = await getDocs(q2);
-      s2.forEach(d => { if (!found) found = { id: d.id, ...d.data() }; });
-      return found;
-    }
-
-    async function fetchOpenFoodFacts(code){
-      // Works best for food/supermarket branded items; trade items often won’t exist.
-      const url = `https://world.openfoodfacts.net/api/v2/product/${encodeURIComponent(code)}`;
-      try{
-        const res = await fetch(url, { method:"GET" });
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (!data || data.status !== 1 || !data.product) return null;
-
-        const p = data.product;
-        const name =
-          (p.product_name && p.product_name.trim()) ||
-          (p.product_name_en && p.product_name_en.trim()) ||
-          (p.generic_name && p.generic_name.trim()) ||
-          "";
-
-        const brand = (p.brands && p.brands.trim()) || "";
-
-        if (!name && !brand) return null;
-
-        return {
-          name: name || "",
-          brand: brand || "",
-          source: "Open Food Facts"
-        };
-      } catch(e){
-        return null;
-      }
-    }
-
-    function showQtyPrompt(){
-      els.qtyPrompt.style.display = "block";
-      els.customAddRow.style.display = "none";
-      els.customAddVal.value = "";
-      els.assignBox.style.display = "none";
-    }
-
-    function hideQtyPrompt(){
-      els.qtyPrompt.style.display = "none";
-      els.customAddRow.style.display = "none";
-      els.customAddVal.value = "";
-      els.qtyPromptHint.textContent = "";
-      els.suggestedBox.style.display = "none";
-    }
-
-    function showSuggested(suggested){
-      if (!suggested) {
-        els.suggestedBox.style.display = "none";
-        return;
-      }
-      els.suggestedBox.style.display = "block";
-      els.suggestedName.textContent = suggested.name || "(No name found)";
-      els.suggestedBrand.textContent = suggested.brand ? `Brand: ${suggested.brand}` : "";
-      els.suggestedTag.textContent = suggested.source || "";
-    }
-
-    function hideAssign(){
-      els.assignBox.style.display = "none";
-      els.assignSearch.value = "";
-      els.assignList.innerHTML = "";
-    }
-
-    function openAddWithBarcode(code, startingQty=1, suggested=null){
-      clearForm();
-      // store as comma list in UI (but will save as array)
-      els.f_barcodes.value = code ? code : "";
-      els.f_qty.value = String(startingQty || 1);
-      if (suggested?.name) els.f_name.value = suggested.name + (suggested.brand ? ` (${suggested.brand})` : "");
-      openSheet("Add new item");
-      els.modePill.textContent = "New";
-      els.f_name.focus();
-    }
-
-    function openEdit(id){
-      const it = allItems.find(x => x.id === id);
-      if (!it) return;
-      editId = id;
-
-      const bars = Array.isArray(it.barcodes) ? it.barcodes : (it.barcode ? [it.barcode] : []);
-      els.f_barcodes.value = bars.join(", ");
-
-      els.f_name.value = it.name || "";
-      els.f_qty.value = String(it.qty ?? 0);
-      els.f_unit.value = it.unit || "pcs";
-      els.f_category.value = it.category || "";
-      els.f_location.value = it.location || "";
-      els.f_minQty.value = (it.minQty ?? "") === 0 ? "0" : (it.minQty ?? "");
-      openSheet("Edit item");
-      els.modePill.textContent = "Edit";
-    }
-
-    function parseBarcodes(input){
-      const arr = (input || "")
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean);
-      // unique
-      return [...new Set(arr)];
-    }
-
-    async function saveItem(){
-      const barcodes = parseBarcodes(els.f_barcodes.value);
-      const name = (els.f_name.value || "").trim();
-      const qty = Number(els.f_qty.value || 0);
-      const unit = (els.f_unit.value || "pcs").trim();
-      const category = (els.f_category.value || "").trim();
-      const location = (els.f_location.value || "").trim();
-      const minQtyRaw = (els.f_minQty.value || "").trim();
-      const minQty = minQtyRaw === "" ? null : Number(minQtyRaw);
-
-      if (!name){
-        alert("Item name is required.");
-        els.f_name.focus();
-        return;
-      }
-      if (Number.isNaN(qty) || qty < 0){
-        alert("Quantity must be 0 or more.");
-        els.f_qty.focus();
-        return;
-      }
-      if (minQty !== null && (Number.isNaN(minQty) || minQty < 0)){
-        alert("Min stock must be blank or 0+.");
-        els.f_minQty.focus();
-        return;
-      }
-
-      const primaryBarcode = barcodes[0] || null;
-
-      const payload = {
-        name,
-        barcode: primaryBarcode,             // keep legacy
-        barcodes: barcodes.length ? barcodes : null,
-        qty,
-        unit: unit || "pcs",
-        category: category || null,
-        location: location || null,
-        minQty: minQty === null ? null : minQty,
-        updatedAt: serverTimestamp(),
-      };
-
-      if (editId){
-        await updateDoc(doc(db, "stockItems", editId), payload);
-        closeSheet();
-        return;
-      }
-
-      // If any barcode already exists, merge into that item (add qty + attach barcode)
-      if (primaryBarcode){
-        const existing = await findByBarcode(primaryBarcode);
-        if (existing){
-          const newQty = Math.max(0, Number(existing.qty || 0) + qty);
-          // attach barcode in array
-          await updateDoc(doc(db, "stockItems", existing.id), {
-            qty: newQty,
-            updatedAt: serverTimestamp(),
-            barcode: existing.barcode || primaryBarcode,
-            barcodes: arrayUnion(primaryBarcode)
-          });
-          closeSheet();
-          return;
-        }
-      }
-
-      await addDoc(STOCK_COL, payload);
-      closeSheet();
-    }
-
-    // Live sync list
     function startLive(){
       els.status.textContent = "Syncing…";
-      const qy = query(STOCK_COL, orderBy("updatedAt", "desc"));
+      const qy = query(STOCK_COL, orderBy("name", "asc"));
       onSnapshot(qy, (snap) => {
         const arr = [];
         snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
-        arr.sort((a,b) => {
-          const ta = a.updatedAt?.seconds || 0;
-          const tb = b.updatedAt?.seconds || 0;
-          return tb - ta;
-        });
+        arr.sort((a,b) => String(a.name||"").localeCompare(String(b.name||""), "en", { sensitivity:"base" }));
         allItems = arr;
         els.status.textContent = `${arr.length} item${arr.length===1?"":"s"}`;
         render();
@@ -554,6 +618,22 @@
       });
     }
 
+    // ----- List custom amount prompt -----
+    function openListCustom(id){
+      pendingListDelta = { id };
+      const it = allItems.find(x => x.id === id);
+      els.amtTitle.textContent = `Add custom amount${it?.name ? ` • ${it.name}` : ""}`;
+      els.amtInput.value = "";
+      els.amtOverlay.style.display = "flex";
+      els.amtInput.focus();
+    }
+    function closeListCustom(){
+      els.amtOverlay.style.display = "none";
+      els.amtInput.value = "";
+      pendingListDelta = { id:null };
+    }
+
+    // ----- Barcode scan -----
     async function startScanner(){
       if (scanning) return;
       scanning = true;
@@ -564,11 +644,7 @@
       hideAssign();
       pendingScan = null;
 
-      if (!scanner){
-        scanner = new Html5Qrcode("qrRegion");
-      }
-
-      // Larger scan box helps a lot
+      if (!scanner) scanner = new Html5Qrcode("qrRegion");
       const config = { fps: 10, qrbox: { width: 300, height: 220 } };
 
       try{
@@ -583,7 +659,6 @@
             lastScanned = code;
             setTimeout(() => { lastScanned = ""; }, 1400);
 
-            // 1) Firestore lookup (your own stock database)
             const existing = await findByBarcode(code);
 
             if (existing){
@@ -595,7 +670,6 @@
               return;
             }
 
-            // 2) Not found -> try Open Food Facts for a suggestion
             els.scanHint.textContent = "Searching product database…";
             const suggested = await fetchOpenFoodFacts(code);
 
@@ -652,7 +726,140 @@
       els.assignSearch.focus();
     }
 
-    // Events
+    // ----- Photo Identify (Option 1) -----
+    function resetPhotoUI(){
+      lastPhotoSuggestion = null;
+      els.photoPreview.src = "";
+      els.photoPreview.style.display = "none";
+      els.photoStatus.textContent = "Take a photo of the item label/packaging.";
+      els.photoText.textContent = "";
+      els.photoBest.textContent = "—";
+      els.photoAlt.textContent = "—";
+      els.photoBtnUseBest.disabled = true;
+      els.photoBtnUseAlt.disabled = true;
+    }
+
+    function guessUnitFromText(t){
+      const s = (t||"").toLowerCase();
+      if (/\bml\b|\blitre\b|\bliter\b|\bl\b/.test(s)) return "litres";
+      if (/\bmetre\b|\bmeters?\b|\bm\b|\bmm\b|\bcm\b/.test(s)) return "metres";
+      if (/\broll\b/.test(s)) return "rolls";
+      if (/\bbox\b|\bpack\b/.test(s)) return "boxes";
+      if (/\btube\b|\bcartridge\b/.test(s)) return "tubes";
+      return "pcs";
+    }
+
+    function extractSizeHints(t){
+      const s = (t||"");
+      const hints = [];
+      const patterns = [
+        /\b\d{1,4}\s?mm\b/gi,
+        /\b\d{1,4}\s?cm\b/gi,
+        /\b\d{1,4}\s?m\b/gi,
+        /\b\d{1,4}\s?ml\b/gi,
+        /\b\d{1,3}\s?l\b/gi,
+        /\b\d{1,3}\s?(pack|pk)\b/gi,
+        /\b\d{1,3}\s?(pcs|pc)\b/gi
+      ];
+      for (const re of patterns){
+        const m = s.match(re);
+        if (m) m.forEach(x => hints.push(x.trim()));
+      }
+      return [...new Set(hints)].slice(0, 6);
+    }
+
+    function buildNameFromSuggestion(best, sizeHints){
+      if (!best) return "";
+      const clean = best.replace(/\s+/g, " ").trim();
+      if (!sizeHints || !sizeHints.length) return clean;
+      // append the first size hint if not already included
+      const first = sizeHints[0];
+      if (clean.toLowerCase().includes(first.toLowerCase())) return clean;
+      return `${clean} • ${first}`;
+    }
+
+    async function handlePhotoFile(file){
+      if (!file) return;
+      resetPhotoUI();
+
+      // Preview
+      const url = URL.createObjectURL(file);
+      els.photoPreview.src = url;
+      els.photoPreview.style.display = "block";
+
+      els.photoStatus.textContent = "Uploading photo…";
+
+      // Upload to Storage
+      const ts = Date.now();
+      const path = `stock-photo-identify/${ts}-${Math.random().toString(16).slice(2)}.jpg`;
+      const r = sRef(storage, path);
+      const bytes = await file.arrayBuffer();
+      await uploadBytes(r, new Uint8Array(bytes), { contentType: file.type || "image/jpeg" });
+
+      els.photoStatus.textContent = "Analysing photo…";
+
+      // Call function
+      let result;
+      try{
+        result = await identifyFromPhoto({ storagePath: path });
+      } catch(err){
+        console.error(err);
+        els.photoStatus.textContent = "Photo identify failed (check Functions/Vision API).";
+        els.photoText.textContent = (err && (err.message || err.toString())) || "";
+        return;
+      }
+
+      const data = result?.data || {};
+      const ocrText = (data.ocrText || "").trim();
+      const bestName = (data.bestName || "").trim();
+      const altName = (data.altName || "").trim();
+
+      const sizeHints = extractSizeHints(ocrText);
+      const unitGuess = guessUnitFromText(ocrText);
+
+      lastPhotoSuggestion = {
+        bestName,
+        altName,
+        sizeHints,
+        unitGuess,
+        rawText: ocrText
+      };
+
+      els.photoStatus.textContent = "Suggestions ready (tap to use).";
+      els.photoText.textContent = ocrText ? ocrText.slice(0, 1800) : "(No readable text found)";
+
+      els.photoBest.textContent = bestName ? buildNameFromSuggestion(bestName, sizeHints) : "—";
+      els.photoAlt.textContent = altName ? buildNameFromSuggestion(altName, sizeHints) : "—";
+
+      els.photoBtnUseBest.disabled = !bestName;
+      els.photoBtnUseAlt.disabled = !altName;
+    }
+
+    function usePhotoSuggestion(which){
+      if (!lastPhotoSuggestion) return;
+      const picked = which === "alt" ? lastPhotoSuggestion.altName : lastPhotoSuggestion.bestName;
+      const sizeHints = lastPhotoSuggestion.sizeHints || [];
+      const unitGuess = lastPhotoSuggestion.unitGuess || "pcs";
+
+      clearForm();
+      els.f_qty.value = "1";
+      els.f_unit.value = unitGuess;
+      els.f_name.value = buildNameFromSuggestion(picked, sizeHints);
+
+      // optional: auto category hint from keywords (simple)
+      const t = (lastPhotoSuggestion.rawText || "").toLowerCase();
+      if (/ct1|silicone|sealant|adhesive/.test(t)) els.f_category.value = "Sealants / Adhesives";
+      else if (/screw|fixing|anchor|rawl/.test(t)) els.f_category.value = "Fixings";
+      else if (/cable|socket|rcd|fuse/.test(t)) els.f_category.value = "Electrical";
+      else if (/copper|pipe|elbow|valve|tap|plumb/.test(t)) els.f_category.value = "Plumbing";
+
+      openSheet("Add new item");
+      els.modePill.textContent = "New";
+      showOnly(els.formSection);
+      els.f_name.focus();
+    }
+
+    // ----- Wire up UI -----
     els.search.addEventListener("input", render);
 
     els.list.addEventListener("click", async (e) => {
@@ -662,34 +869,78 @@
       const act = btn.getAttribute("data-act");
       if (!id || !act) return;
 
-      if (act === "inc") await changeQty(id, +1);
-      if (act === "dec") await changeQty(id, -1);
-      if (act === "edit") openEdit(id);
+      if (act === "add"){
+        const delta = Number(btn.getAttribute("data-delta") || "0");
+        if (!delta) return;
+        await adjustQtyAtomic(id, delta);
+      }
+      if (act === "custom"){
+        openListCustom(id);
+      }
+      if (act === "edit"){
+        openEdit(id);
+      }
+    });
+
+    // List custom prompt
+    els.amtCancel.addEventListener("click", closeListCustom);
+    els.amtOverlay.addEventListener("click", (e) => { if (e.target === els.amtOverlay) closeListCustom(); });
+    els.amtApply.addEventListener("click", async () => {
+      const amt = Number(els.amtInput.value || 0);
+      if (!pendingListDelta.id || !amt || amt < 1) return;
+      await adjustQtyAtomic(pendingListDelta.id, amt);
+      closeListCustom();
     });
 
     els.btnAdd.addEventListener("click", () => {
       clearForm();
-      els.modePill.textContent = "New";
       openSheet("Add new item");
+      els.modePill.textContent = "New";
+      showOnly(els.formSection);
     });
 
     els.btnScan.addEventListener("click", () => {
       clearForm();
-      els.modePill.textContent = "Scan";
       openSheet("Scan barcode");
+      els.modePill.textContent = "Scan";
+      showOnly(els.scanSection);
+    });
+
+    els.btnPhoto.addEventListener("click", () => {
+      resetPhotoUI();
+      openSheet("Photo Identify");
+      els.modePill.textContent = "Photo";
+      showOnly(els.photoSection);
+      // open camera chooser
+      els.photoInput.value = "";
+      els.photoInput.click();
+    });
+
+    els.photoInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      await handlePhotoFile(file);
+    });
+
+    els.photoBtnUseBest.addEventListener("click", () => usePhotoSuggestion("best"));
+    els.photoBtnUseAlt.addEventListener("click", () => usePhotoSuggestion("alt"));
+    els.photoBtnManual.addEventListener("click", () => {
+      clearForm();
+      openSheet("Add new item");
+      els.modePill.textContent = "New";
+      showOnly(els.formSection);
+      els.f_name.focus();
     });
 
     els.closeSheet.addEventListener("click", closeSheet);
-    els.overlay.addEventListener("click", (e) => {
-      if (e.target === els.overlay) closeSheet();
-    });
+    els.overlay.addEventListener("click", (e) => { if (e.target === els.overlay) closeSheet(); });
 
     els.btnSaveItem.addEventListener("click", saveItem);
 
     els.btnStartScan.addEventListener("click", startScanner);
     els.btnStopScan.addEventListener("click", stopScanner);
 
-    // Amount buttons (+1/+2/+5/+10)
+    // Scan prompt buttons
     els.qtyPrompt.addEventListener("click", async (e) => {
       const btn = e.target.closest("button");
       if (!btn) return;
@@ -702,15 +953,13 @@
       const { code, existingItem } = pendingScan;
 
       if (existingItem){
-        const newQty = Math.max(0, Number(existingItem.qty || 0) + amt);
-        await updateDoc(doc(db, "stockItems", existingItem.id), { qty: newQty, updatedAt: serverTimestamp() });
-        els.scanHint.textContent = `✅ Added +${amt} to: ${existingItem.name} (${newQty})`;
+        await adjustQtyAtomic(existingItem.id, amt);
+        els.scanHint.textContent = `✅ Added +${amt} to: ${existingItem.name}`;
         hideQtyPrompt();
         pendingScan = null;
         return;
       }
 
-      // New barcode -> choose amount means starting qty
       hideQtyPrompt();
       const suggested = pendingScan.suggested || null;
       pendingScan = null;
@@ -730,9 +979,8 @@
       const { code, existingItem } = pendingScan;
 
       if (existingItem){
-        const newQty = Math.max(0, Number(existingItem.qty || 0) + amt);
-        await updateDoc(doc(db, "stockItems", existingItem.id), { qty: newQty, updatedAt: serverTimestamp() });
-        els.scanHint.textContent = `✅ Added +${amt} to: ${existingItem.name} (${newQty})`;
+        await adjustQtyAtomic(existingItem.id, amt);
+        els.scanHint.textContent = `✅ Added +${amt} to: ${existingItem.name}`;
         hideQtyPrompt();
         pendingScan = null;
         return;
@@ -752,16 +1000,13 @@
       els.scanHint.textContent = "Cancelled.";
     });
 
-    // New barcode actions
     els.btnUseSuggested.addEventListener("click", async () => {
       if (!pendingScan || pendingScan.existingItem) return;
-      // Use suggested or placeholder name, then open add form with qty=1
       const { code, suggested } = pendingScan;
-      const sug = suggested || { name: "", brand: "", source: "" };
       hideQtyPrompt();
       pendingScan = null;
       await stopScanner();
-      openAddWithBarcode(code, 1, sug);
+      openAddWithBarcode(code, 1, suggested || null);
     });
 
     els.btnManualCreate.addEventListener("click", async () => {
@@ -790,9 +1035,8 @@
       const targetId = btn.getAttribute("data-assign-id");
       const code = pendingScan.code;
 
-      // attach barcode to selected item
       await updateDoc(doc(db, "stockItems", targetId), {
-        barcode: code,            // also set legacy primary to this barcode (keeps things simple)
+        barcode: code,
         barcodes: arrayUnion(code),
         updatedAt: serverTimestamp()
       });
@@ -803,21 +1047,39 @@
       pendingScan = null;
     });
 
+    // Default open = list
+    function openList(){
+      // no sheet
+    }
+
     // Start
     startLive();
     render();
+
+    // ----- Helpers used above but defined later -----
+    function openListCustom(id){
+      pendingListDelta = { id };
+      const it = allItems.find(x => x.id === id);
+      els.amtTitle.textContent = `Add custom amount${it?.name ? ` • ${it.name}` : ""}`;
+      els.amtInput.value = "";
+      els.amtOverlay.style.display = "flex";
+      els.amtInput.focus();
+    }
+
+    // (scanner helpers already defined above)
   </script>
 </head>
 
 <body>
   <header>
-    <div class="row" style="justify-content:space-between;">
+    <div class="row" style="justify-content:space-between; flex-wrap:wrap;">
       <div>
         <div class="title">FPS • Stock</div>
         <div class="hint" id="status">Loading…</div>
       </div>
-      <div class="row">
+      <div class="row" style="flex-wrap:wrap;">
         <button class="primary" id="btnScan">📷 Scan</button>
+        <button class="primary" id="btnPhoto">📸 Photo Identify</button>
         <button class="good" id="btnAdd">＋ Add item</button>
       </div>
     </div>
@@ -830,7 +1092,7 @@
   <main>
     <div class="grid" id="list"></div>
     <div class="hint" style="margin-top:10px;">
-      Tip: First scan links a barcode to an item. After that, scanning finds it instantly.
+      Tip: Photo Identify works best when the label is clear and close-up. Qty still needs your input.
     </div>
   </main>
 
@@ -847,6 +1109,47 @@
 
       <div class="hr"></div>
 
+      <!-- PHOTO IDENTIFY SECTION -->
+      <div id="photoSection" style="display:none;">
+        <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none" />
+
+        <div class="previewRow">
+          <img id="photoPreview" class="preview" alt="Preview" style="display:none" />
+          <div style="flex:1; min-width:220px;">
+            <div class="name">Photo Identify</div>
+            <div class="hint" id="photoStatus">Take a photo of the item label/packaging.</div>
+            <div class="row" style="margin-top:10px; flex-wrap:wrap;">
+              <button class="primary" onclick="document.getElementById('photoInput').click()">Take another photo</button>
+              <button id="photoBtnManual">Manual add</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="card suggestions">
+          <div class="name">Suggested names</div>
+          <div class="hint">Tap one to autofill the add form.</div>
+
+          <button class="pill" id="photoBtnUseBest" disabled>
+            <div class="hint">Best match</div>
+            <div style="font-weight:900" id="photoBest">—</div>
+          </button>
+
+          <button class="pill" id="photoBtnUseAlt" disabled>
+            <div class="hint">Alternative</div>
+            <div style="font-weight:900" id="photoAlt">—</div>
+          </button>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="card">
+          <div class="name">OCR text (what it read)</div>
+          <div class="mutedBox" id="photoText">(No text yet)</div>
+        </div>
+      </div>
+
       <!-- SCAN SECTION -->
       <div id="scanSection" style="display:none;">
         <div id="qrRegion">Camera preview will appear here</div>
@@ -858,7 +1161,7 @@
 
         <div class="hint" style="margin-top:10px;" id="scanHint">Tap “Start scan” then point at the barcode.</div>
 
-        <!-- ✅ Add Amount / Actions Prompt -->
+        <!-- Add Amount / Actions Prompt -->
         <div id="qtyPrompt" class="card" style="display:none; margin-top:10px;">
           <div class="name" style="margin-bottom:6px;">What do you want to do?</div>
           <div class="hint" id="qtyPromptHint"></div>
@@ -876,7 +1179,7 @@
             <div class="hr"></div>
           </div>
 
-          <!-- Amount chooser (used when item exists, or for new item starting qty) -->
+          <!-- Amount chooser -->
           <div class="row" style="flex-wrap:wrap; gap:8px; margin-top:8px;">
             <button class="good" data-qadd="1">+1</button>
             <button class="good" data-qadd="2">+2</button>
@@ -965,7 +1268,7 @@
             </div>
 
             <div class="hint" style="margin-top:10px;">
-              Tip: Add one barcode once, then scanning will find it forever.
+              Tip: Photo Identify will pre-fill name + unit guess, you still choose qty.
             </div>
           </div>
         </div>
@@ -974,5 +1277,21 @@
     </div>
   </div>
 
+  <!-- List custom amount prompt -->
+  <div class="promptOverlay" id="amtOverlay">
+    <div class="promptSheet">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-weight:1000;" id="amtTitle">Add custom amount</div>
+        <button id="amtCancel">Close</button>
+      </div>
+      <div class="hr"></div>
+      <div class="hint">Enter how many to add</div>
+      <div class="row" style="margin-top:10px;">
+        <input id="amtInput" type="number" inputmode="numeric" min="1" placeholder="e.g. 12" />
+        <button class="good" id="amtApply">Add</button>
+      </div>
+    </div>
+  </div>
+
 </body>
-</html>
+                                                                         </html>
