@@ -116,7 +116,7 @@
       .split{grid-template-columns: 1.2fr .8fr;}
     }
 
-    /* Modal (bottom sheet) */
+    /* Bottom sheet */
     .overlay{
       position:fixed; inset:0;
       background:rgba(0,0,0,.55);
@@ -148,7 +148,7 @@
     }
     .hr{height:1px; background:var(--line); margin:10px 0}
 
-    /* Barcode area */
+    /* Scanner box */
     #qrRegion{
       width:100%;
       background:rgba(255,255,255,.05);
@@ -172,7 +172,7 @@
       color:var(--text);
     }
 
-    /* Custom amount prompt (list) */
+    /* List custom amount prompt */
     .promptOverlay{
       position:fixed; inset:0;
       background:rgba(0,0,0,.55);
@@ -190,26 +190,6 @@
       box-shadow:var(--shadow);
       padding:12px;
     }
-
-    /* Photo Identify UI */
-    .previewRow{display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;}
-    .preview{
-      width:120px; height:120px;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.05);
-      object-fit:cover;
-    }
-    .suggestions .pill{display:block; width:100%; text-align:left; margin-top:8px}
-    .mutedBox{
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.05);
-      border-radius:18px;
-      padding:10px;
-      color:var(--muted);
-      font-size:12px;
-      white-space:pre-wrap;
-    }
   </style>
 
   <!-- Barcode scanner lib -->
@@ -221,12 +201,6 @@
       getFirestore, collection, addDoc, doc, updateDoc, getDocs, getDoc, query, where,
       onSnapshot, orderBy, serverTimestamp, arrayUnion, runTransaction
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-    import {
-      getStorage, ref as sRef, uploadBytes, getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
-    import {
-      getFunctions, httpsCallable
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
     // ✅ Your Firebase config (fps-jobs-board)
     const firebaseConfig = {
@@ -240,12 +214,7 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const storage = getStorage(app);
-    const functions = getFunctions(app);
     const STOCK_COL = collection(db, "stockItems");
-
-    // Callable (deployed in Part 2)
-    const identifyFromPhoto = httpsCallable(functions, "identifyFromPhoto");
 
     const els = {
       search: document.getElementById("search"),
@@ -253,17 +222,14 @@
       status: document.getElementById("status"),
       btnScan: document.getElementById("btnScan"),
       btnAdd: document.getElementById("btnAdd"),
-      btnPhoto: document.getElementById("btnPhoto"),
 
       overlay: document.getElementById("overlay"),
       closeSheet: document.getElementById("closeSheet"),
       sheetTitle: document.getElementById("sheetTitle"),
       modePill: document.getElementById("modePill"),
 
-      // Sections
       scanSection: document.getElementById("scanSection"),
       formSection: document.getElementById("formSection"),
-      photoSection: document.getElementById("photoSection"),
 
       // Add/Edit form
       f_barcodes: document.getElementById("f_barcodes"),
@@ -309,17 +275,6 @@
       amtInput: document.getElementById("amtInput"),
       amtApply: document.getElementById("amtApply"),
       amtCancel: document.getElementById("amtCancel"),
-
-      // Photo Identify
-      photoInput: document.getElementById("photoInput"),
-      photoPreview: document.getElementById("photoPreview"),
-      photoStatus: document.getElementById("photoStatus"),
-      photoText: document.getElementById("photoText"),
-      photoBest: document.getElementById("photoBest"),
-      photoAlt: document.getElementById("photoAlt"),
-      photoBtnUseBest: document.getElementById("photoBtnUseBest"),
-      photoBtnUseAlt: document.getElementById("photoBtnUseAlt"),
-      photoBtnManual: document.getElementById("photoBtnManual"),
     };
 
     let allItems = [];
@@ -330,31 +285,51 @@
     let lastScanned = "";
     let pendingScan = null;
 
+    // For list custom amount
     let pendingListDelta = { id:null };
 
-    // Photo identify state
-    let lastPhotoSuggestion = null; // {name, altName, sizeHints, unitGuess, rawText}
-
     function esc(s=""){ return (s+"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    function showOnly(section){
+      els.scanSection.style.display = "none";
+      els.formSection.style.display = "none";
+      section.style.display = "block";
+    }
 
     function openSheet(title){
       els.sheetTitle.textContent = title;
       els.overlay.style.display = "flex";
     }
+
+    async function stopScanner(){
+      if (!scanner || !scanning) return;
+      try{ await scanner.stop(); } catch(e){}
+      try{ await scanner.clear(); } catch(e){}
+      scanning = false;
+      els.btnStartScan.disabled = false;
+      els.btnStopScan.disabled = true;
+    }
+
+    function hideQtyPrompt(){
+      els.qtyPrompt.style.display = "none";
+      els.customAddRow.style.display = "none";
+      els.customAddVal.value = "";
+      els.qtyPromptHint.textContent = "";
+      els.suggestedBox.style.display = "none";
+    }
+
+    function hideAssign(){
+      els.assignBox.style.display = "none";
+      els.assignSearch.value = "";
+      els.assignList.innerHTML = "";
+    }
+
     function closeSheet(){
       els.overlay.style.display = "none";
       hideQtyPrompt();
       hideAssign();
       pendingScan = null;
       stopScanner();
-      resetPhotoUI();
-    }
-
-    function showOnly(section){
-      els.scanSection.style.display = "none";
-      els.formSection.style.display = "none";
-      els.photoSection.style.display = "none";
-      section.style.display = "block";
     }
 
     function clearForm(){
@@ -368,6 +343,7 @@
       els.f_minQty.value = "";
     }
 
+    // ✅ Atomic qty change (prevents random glitches)
     async function adjustQtyAtomic(itemId, delta){
       const ref = doc(db, "stockItems", itemId);
       await runTransaction(db, async (tx) => {
@@ -393,6 +369,7 @@
       return found;
     }
 
+    // Optional barcode database (works mainly for retail products)
     async function fetchOpenFoodFacts(code){
       const url = `https://world.openfoodfacts.net/api/v2/product/${encodeURIComponent(code)}`;
       try{
@@ -416,19 +393,6 @@
       }
     }
 
-    function showQtyPrompt(){
-      els.qtyPrompt.style.display = "block";
-      els.customAddRow.style.display = "none";
-      els.customAddVal.value = "";
-      els.assignBox.style.display = "none";
-    }
-    function hideQtyPrompt(){
-      els.qtyPrompt.style.display = "none";
-      els.customAddRow.style.display = "none";
-      els.customAddVal.value = "";
-      els.qtyPromptHint.textContent = "";
-      els.suggestedBox.style.display = "none";
-    }
     function showSuggested(suggested){
       if (!suggested) { els.suggestedBox.style.display = "none"; return; }
       els.suggestedBox.style.display = "block";
@@ -437,10 +401,11 @@
       els.suggestedTag.textContent = suggested.source || "";
     }
 
-    function hideAssign(){
+    function showQtyPrompt(){
+      els.qtyPrompt.style.display = "block";
+      els.customAddRow.style.display = "none";
+      els.customAddVal.value = "";
       els.assignBox.style.display = "none";
-      els.assignSearch.value = "";
-      els.assignList.innerHTML = "";
     }
 
     function parseBarcodes(input){
@@ -523,6 +488,7 @@
         return;
       }
 
+      // If barcode exists already, treat as “add qty” + store barcode in array
       if (primaryBarcode){
         const existing = await findByBarcode(primaryBarcode);
         if (existing){
@@ -553,7 +519,7 @@
         els.list.innerHTML = `
           <div class="card">
             <div class="name">No items found</div>
-            <div class="meta">Try scanning a barcode, using Photo Identify, or tap “Add item”.</div>
+            <div class="meta">Tap “Scan” or “Add item”. (Use Assign to link barcodes to items.)</div>
           </div>
         `;
         return;
@@ -602,6 +568,7 @@
       }).join("");
     }
 
+    // ✅ Stable ordering so items don’t jump around
     function startLive(){
       els.status.textContent = "Syncing…";
       const qy = query(STOCK_COL, orderBy("name", "asc"));
@@ -670,7 +637,7 @@
               return;
             }
 
-            els.scanHint.textContent = "Searching product database…";
+            els.scanHint.textContent = "Searching barcode database…";
             const suggested = await fetchOpenFoodFacts(code);
 
             pendingScan = { code, existingItem: null, suggested: suggested || null };
@@ -689,22 +656,13 @@
       }
     }
 
-    async function stopScanner(){
-      if (!scanner || !scanning) return;
-      try{ await scanner.stop(); } catch(e){}
-      try{ await scanner.clear(); } catch(e){}
-      scanning = false;
-      els.btnStartScan.disabled = false;
-      els.btnStopScan.disabled = true;
-    }
-
     // ----- Assign barcode to existing item -----
     function buildAssignList(term=""){
       const t = (term || "").trim().toLowerCase();
       const matches = !t ? allItems : allItems.filter(it => {
         const hay = `${it.name||""} ${it.category||""} ${it.location||""}`.toLowerCase();
         return hay.includes(t);
-      }).slice(0, 20);
+      }).slice(0, 30);
 
       if (!matches.length){
         els.assignList.innerHTML = `<div class="hint">No matches.</div>`;
@@ -726,140 +684,7 @@
       els.assignSearch.focus();
     }
 
-    // ----- Photo Identify (Option 1) -----
-    function resetPhotoUI(){
-      lastPhotoSuggestion = null;
-      els.photoPreview.src = "";
-      els.photoPreview.style.display = "none";
-      els.photoStatus.textContent = "Take a photo of the item label/packaging.";
-      els.photoText.textContent = "";
-      els.photoBest.textContent = "—";
-      els.photoAlt.textContent = "—";
-      els.photoBtnUseBest.disabled = true;
-      els.photoBtnUseAlt.disabled = true;
-    }
-
-    function guessUnitFromText(t){
-      const s = (t||"").toLowerCase();
-      if (/\bml\b|\blitre\b|\bliter\b|\bl\b/.test(s)) return "litres";
-      if (/\bmetre\b|\bmeters?\b|\bm\b|\bmm\b|\bcm\b/.test(s)) return "metres";
-      if (/\broll\b/.test(s)) return "rolls";
-      if (/\bbox\b|\bpack\b/.test(s)) return "boxes";
-      if (/\btube\b|\bcartridge\b/.test(s)) return "tubes";
-      return "pcs";
-    }
-
-    function extractSizeHints(t){
-      const s = (t||"");
-      const hints = [];
-      const patterns = [
-        /\b\d{1,4}\s?mm\b/gi,
-        /\b\d{1,4}\s?cm\b/gi,
-        /\b\d{1,4}\s?m\b/gi,
-        /\b\d{1,4}\s?ml\b/gi,
-        /\b\d{1,3}\s?l\b/gi,
-        /\b\d{1,3}\s?(pack|pk)\b/gi,
-        /\b\d{1,3}\s?(pcs|pc)\b/gi
-      ];
-      for (const re of patterns){
-        const m = s.match(re);
-        if (m) m.forEach(x => hints.push(x.trim()));
-      }
-      return [...new Set(hints)].slice(0, 6);
-    }
-
-    function buildNameFromSuggestion(best, sizeHints){
-      if (!best) return "";
-      const clean = best.replace(/\s+/g, " ").trim();
-      if (!sizeHints || !sizeHints.length) return clean;
-      // append the first size hint if not already included
-      const first = sizeHints[0];
-      if (clean.toLowerCase().includes(first.toLowerCase())) return clean;
-      return `${clean} • ${first}`;
-    }
-
-    async function handlePhotoFile(file){
-      if (!file) return;
-      resetPhotoUI();
-
-      // Preview
-      const url = URL.createObjectURL(file);
-      els.photoPreview.src = url;
-      els.photoPreview.style.display = "block";
-
-      els.photoStatus.textContent = "Uploading photo…";
-
-      // Upload to Storage
-      const ts = Date.now();
-      const path = `stock-photo-identify/${ts}-${Math.random().toString(16).slice(2)}.jpg`;
-      const r = sRef(storage, path);
-      const bytes = await file.arrayBuffer();
-      await uploadBytes(r, new Uint8Array(bytes), { contentType: file.type || "image/jpeg" });
-
-      els.photoStatus.textContent = "Analysing photo…";
-
-      // Call function
-      let result;
-      try{
-        result = await identifyFromPhoto({ storagePath: path });
-      } catch(err){
-        console.error(err);
-        els.photoStatus.textContent = "Photo identify failed (check Functions/Vision API).";
-        els.photoText.textContent = (err && (err.message || err.toString())) || "";
-        return;
-      }
-
-      const data = result?.data || {};
-      const ocrText = (data.ocrText || "").trim();
-      const bestName = (data.bestName || "").trim();
-      const altName = (data.altName || "").trim();
-
-      const sizeHints = extractSizeHints(ocrText);
-      const unitGuess = guessUnitFromText(ocrText);
-
-      lastPhotoSuggestion = {
-        bestName,
-        altName,
-        sizeHints,
-        unitGuess,
-        rawText: ocrText
-      };
-
-      els.photoStatus.textContent = "Suggestions ready (tap to use).";
-      els.photoText.textContent = ocrText ? ocrText.slice(0, 1800) : "(No readable text found)";
-
-      els.photoBest.textContent = bestName ? buildNameFromSuggestion(bestName, sizeHints) : "—";
-      els.photoAlt.textContent = altName ? buildNameFromSuggestion(altName, sizeHints) : "—";
-
-      els.photoBtnUseBest.disabled = !bestName;
-      els.photoBtnUseAlt.disabled = !altName;
-    }
-
-    function usePhotoSuggestion(which){
-      if (!lastPhotoSuggestion) return;
-      const picked = which === "alt" ? lastPhotoSuggestion.altName : lastPhotoSuggestion.bestName;
-      const sizeHints = lastPhotoSuggestion.sizeHints || [];
-      const unitGuess = lastPhotoSuggestion.unitGuess || "pcs";
-
-      clearForm();
-      els.f_qty.value = "1";
-      els.f_unit.value = unitGuess;
-      els.f_name.value = buildNameFromSuggestion(picked, sizeHints);
-
-      // optional: auto category hint from keywords (simple)
-      const t = (lastPhotoSuggestion.rawText || "").toLowerCase();
-      if (/ct1|silicone|sealant|adhesive/.test(t)) els.f_category.value = "Sealants / Adhesives";
-      else if (/screw|fixing|anchor|rawl/.test(t)) els.f_category.value = "Fixings";
-      else if (/cable|socket|rcd|fuse/.test(t)) els.f_category.value = "Electrical";
-      else if (/copper|pipe|elbow|valve|tap|plumb/.test(t)) els.f_category.value = "Plumbing";
-
-      openSheet("Add new item");
-      els.modePill.textContent = "New";
-      showOnly(els.formSection);
-      els.f_name.focus();
-    }
-
-    // ----- Wire up UI -----
+    // ----- Events -----
     els.search.addEventListener("input", render);
 
     els.list.addEventListener("click", async (e) => {
@@ -906,32 +731,6 @@
       showOnly(els.scanSection);
     });
 
-    els.btnPhoto.addEventListener("click", () => {
-      resetPhotoUI();
-      openSheet("Photo Identify");
-      els.modePill.textContent = "Photo";
-      showOnly(els.photoSection);
-      // open camera chooser
-      els.photoInput.value = "";
-      els.photoInput.click();
-    });
-
-    els.photoInput.addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      await handlePhotoFile(file);
-    });
-
-    els.photoBtnUseBest.addEventListener("click", () => usePhotoSuggestion("best"));
-    els.photoBtnUseAlt.addEventListener("click", () => usePhotoSuggestion("alt"));
-    els.photoBtnManual.addEventListener("click", () => {
-      clearForm();
-      openSheet("Add new item");
-      els.modePill.textContent = "New";
-      showOnly(els.formSection);
-      els.f_name.focus();
-    });
-
     els.closeSheet.addEventListener("click", closeSheet);
     els.overlay.addEventListener("click", (e) => { if (e.target === els.overlay) closeSheet(); });
 
@@ -944,6 +743,8 @@
     els.qtyPrompt.addEventListener("click", async (e) => {
       const btn = e.target.closest("button");
       if (!btn) return;
+
+      // Amount buttons are on the card (data-qadd)
       const qadd = btn.getAttribute("data-qadd");
       if (!qadd) return;
 
@@ -1047,26 +848,9 @@
       pendingScan = null;
     });
 
-    // Default open = list
-    function openList(){
-      // no sheet
-    }
-
     // Start
     startLive();
     render();
-
-    // ----- Helpers used above but defined later -----
-    function openListCustom(id){
-      pendingListDelta = { id };
-      const it = allItems.find(x => x.id === id);
-      els.amtTitle.textContent = `Add custom amount${it?.name ? ` • ${it.name}` : ""}`;
-      els.amtInput.value = "";
-      els.amtOverlay.style.display = "flex";
-      els.amtInput.focus();
-    }
-
-    // (scanner helpers already defined above)
   </script>
 </head>
 
@@ -1079,7 +863,6 @@
       </div>
       <div class="row" style="flex-wrap:wrap;">
         <button class="primary" id="btnScan">📷 Scan</button>
-        <button class="primary" id="btnPhoto">📸 Photo Identify</button>
         <button class="good" id="btnAdd">＋ Add item</button>
       </div>
     </div>
@@ -1092,7 +875,7 @@
   <main>
     <div class="grid" id="list"></div>
     <div class="hint" style="margin-top:10px;">
-      Tip: Photo Identify works best when the label is clear and close-up. Qty still needs your input.
+      Tip: Use Assign once for trade items (barcode not found). After that, scanning will add instantly.
     </div>
   </main>
 
@@ -1108,47 +891,6 @@
       </div>
 
       <div class="hr"></div>
-
-      <!-- PHOTO IDENTIFY SECTION -->
-      <div id="photoSection" style="display:none;">
-        <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none" />
-
-        <div class="previewRow">
-          <img id="photoPreview" class="preview" alt="Preview" style="display:none" />
-          <div style="flex:1; min-width:220px;">
-            <div class="name">Photo Identify</div>
-            <div class="hint" id="photoStatus">Take a photo of the item label/packaging.</div>
-            <div class="row" style="margin-top:10px; flex-wrap:wrap;">
-              <button class="primary" onclick="document.getElementById('photoInput').click()">Take another photo</button>
-              <button id="photoBtnManual">Manual add</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="card suggestions">
-          <div class="name">Suggested names</div>
-          <div class="hint">Tap one to autofill the add form.</div>
-
-          <button class="pill" id="photoBtnUseBest" disabled>
-            <div class="hint">Best match</div>
-            <div style="font-weight:900" id="photoBest">—</div>
-          </button>
-
-          <button class="pill" id="photoBtnUseAlt" disabled>
-            <div class="hint">Alternative</div>
-            <div style="font-weight:900" id="photoAlt">—</div>
-          </button>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="card">
-          <div class="name">OCR text (what it read)</div>
-          <div class="mutedBox" id="photoText">(No text yet)</div>
-        </div>
-      </div>
 
       <!-- SCAN SECTION -->
       <div id="scanSection" style="display:none;">
@@ -1268,7 +1010,7 @@
             </div>
 
             <div class="hint" style="margin-top:10px;">
-              Tip: Photo Identify will pre-fill name + unit guess, you still choose qty.
+              Qty “0” shows red. List stays sorted by name (no jumping).
             </div>
           </div>
         </div>
@@ -1294,4 +1036,5 @@
   </div>
 
 </body>
-                                                                         </html>
+</html>
+```0
