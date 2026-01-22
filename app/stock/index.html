@@ -66,6 +66,7 @@
     button.bad{background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.35)}
     button.warn{background:rgba(245,158,11,.12); border-color:rgba(245,158,11,.35)}
     button:active{transform:translateY(1px)}
+    button.holdActive{outline:2px solid rgba(239,68,68,.45)}
     main{padding:14px; max-width:980px; margin:0 auto}
     .grid{display:grid; grid-template-columns: 1fr; gap:12px}
     .card{
@@ -199,7 +200,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
       getFirestore, collection, addDoc, doc, updateDoc, getDocs, getDoc, query, where,
-      onSnapshot, orderBy, serverTimestamp, arrayUnion, runTransaction
+      onSnapshot, orderBy, serverTimestamp, arrayUnion, runTransaction, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     // ✅ Your Firebase config (fps-jobs-board)
@@ -240,6 +241,7 @@
       f_location: document.getElementById("f_location"),
       f_minQty: document.getElementById("f_minQty"),
       btnSaveItem: document.getElementById("btnSaveItem"),
+      btnDeleteItem: document.getElementById("btnDeleteItem"),
 
       // Scanner
       qrRegion: document.getElementById("qrRegion"),
@@ -285,8 +287,12 @@
     let lastScanned = "";
     let pendingScan = null;
 
-    // For list custom amount
     let pendingListDelta = { id:null };
+
+    // Hold-to-delete state
+    let deleteHoldTimer = null;
+    let deleteHoldStart = 0;
+    let deleteHolding = false;
 
     function esc(s=""){ return (s+"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
@@ -324,12 +330,24 @@
       els.assignList.innerHTML = "";
     }
 
+    function resetHoldDeleteUI(){
+      if (deleteHoldTimer) clearTimeout(deleteHoldTimer);
+      deleteHoldTimer = null;
+      deleteHolding = false;
+      deleteHoldStart = 0;
+      if (els.btnDeleteItem){
+        els.btnDeleteItem.classList.remove("holdActive");
+        els.btnDeleteItem.textContent = "🗑️ Hold 2s to Delete";
+      }
+    }
+
     function closeSheet(){
       els.overlay.style.display = "none";
       hideQtyPrompt();
       hideAssign();
       pendingScan = null;
       stopScanner();
+      resetHoldDeleteUI();
     }
 
     function clearForm(){
@@ -341,6 +359,7 @@
       els.f_category.value = "";
       els.f_location.value = "";
       els.f_minQty.value = "";
+      resetHoldDeleteUI();
     }
 
     // ✅ Atomic qty change (prevents random glitches)
@@ -424,6 +443,7 @@
       openSheet("Add new item");
       els.modePill.textContent = "New";
       showOnly(els.formSection);
+      els.btnDeleteItem.style.display = "none";
       els.f_name.focus();
     }
 
@@ -444,6 +464,8 @@
       openSheet("Edit item");
       els.modePill.textContent = "Edit";
       showOnly(els.formSection);
+      els.btnDeleteItem.style.display = "inline-block";
+      resetHoldDeleteUI();
     }
 
     async function saveItem(){
@@ -488,7 +510,6 @@
         return;
       }
 
-      // If barcode exists already, treat as “add qty” + store barcode in array
       if (primaryBarcode){
         const existing = await findByBarcode(primaryBarcode);
         if (existing){
@@ -504,6 +525,14 @@
       }
 
       await addDoc(STOCK_COL, payload);
+      closeSheet();
+    }
+
+    async function deleteItemNow(){
+      if (!editId) return;
+      const ok = confirm("Delete this item? This cannot be undone.");
+      if (!ok) { resetHoldDeleteUI(); return; }
+      await deleteDoc(doc(db, "stockItems", editId));
       closeSheet();
     }
 
@@ -568,7 +597,6 @@
       }).join("");
     }
 
-    // ✅ Stable ordering so items don’t jump around
     function startLive(){
       els.status.textContent = "Syncing…";
       const qy = query(STOCK_COL, orderBy("name", "asc"));
@@ -722,6 +750,7 @@
       openSheet("Add new item");
       els.modePill.textContent = "New";
       showOnly(els.formSection);
+      els.btnDeleteItem.style.display = "none";
     });
 
     els.btnScan.addEventListener("click", () => {
@@ -739,12 +768,11 @@
     els.btnStartScan.addEventListener("click", startScanner);
     els.btnStopScan.addEventListener("click", stopScanner);
 
-    // Scan prompt buttons
+    // Scan prompt buttons (amount buttons are data-qadd)
     els.qtyPrompt.addEventListener("click", async (e) => {
       const btn = e.target.closest("button");
       if (!btn) return;
 
-      // Amount buttons are on the card (data-qadd)
       const qadd = btn.getAttribute("data-qadd");
       if (!qadd) return;
 
@@ -847,6 +875,46 @@
       hideQtyPrompt();
       pendingScan = null;
     });
+
+    // ✅ Hold-to-delete logic (2 seconds)
+    function startHoldDelete(){
+      if (!editId) return;
+      resetHoldDeleteUI();
+
+      deleteHolding = true;
+      deleteHoldStart = Date.now();
+      els.btnDeleteItem.classList.add("holdActive");
+      els.btnDeleteItem.textContent = "⏳ Keep holding…";
+
+      deleteHoldTimer = setTimeout(async () => {
+        // still holding?
+        if (!deleteHolding) return;
+        els.btnDeleteItem.textContent = "✅ Deleting…";
+        await deleteItemNow();
+      }, 2000);
+    }
+
+    function endHoldDelete(){
+      deleteHolding = false;
+      // If they released early, cancel
+      if (deleteHoldTimer){
+        clearTimeout(deleteHoldTimer);
+        deleteHoldTimer = null;
+      }
+      if (els.btnDeleteItem){
+        els.btnDeleteItem.classList.remove("holdActive");
+        els.btnDeleteItem.textContent = "🗑️ Hold 2s to Delete";
+      }
+    }
+
+    // Pointer events (best for mobile)
+    els.btnDeleteItem.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      startHoldDelete();
+    });
+    els.btnDeleteItem.addEventListener("pointerup", endHoldDelete);
+    els.btnDeleteItem.addEventListener("pointercancel", endHoldDelete);
+    els.btnDeleteItem.addEventListener("pointerleave", endHoldDelete);
 
     // Start
     startLive();
@@ -1005,8 +1073,9 @@
 
             <div class="hr"></div>
 
-            <div class="row">
+            <div class="row" style="gap:10px; flex-wrap:wrap;">
               <button class="good" style="flex:1" id="btnSaveItem">Save</button>
+              <button class="bad" id="btnDeleteItem" style="display:none;">🗑️ Hold 2s to Delete</button>
             </div>
 
             <div class="hint" style="margin-top:10px;">
